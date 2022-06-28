@@ -1,6 +1,11 @@
       program pert_result 
+c -----------------------------------------------------
+c Program for Perturbation Tool (V4r4)
 c Obtain state perturbation time-series, i.e., 
 c difference of model state with and without control perturbation. 
+c
+c 28 June 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
+c -----------------------------------------------------
 
 c Perturbation (perturbation variable, location, time, amplitude)
       integer pert_v, pert_i, pert_j, pert_t

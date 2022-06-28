@@ -1,4 +1,9 @@
+c Subroutines for V4r4 tools.
 c
+c 28 June 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
+c   StripSpaces: Remove spaces from string.
+c   ijloc: Itentify native grid location (i,j) from lat/lon.
+c 
 c ============================================================
 c 
       subroutine StripSpaces(string)
@@ -40,7 +45,7 @@ c that (xc,yc) is defined
       if (pert_x .gt. 180.) pert_x = pert_x - 360.
       pert_y = modulo(pert_y,360.)
       if (pert_y .gt. 180.) pert_y = pert_y - 360.
-      if (pert_y .gt. 90.)  pert_y = 90. - pert_y 
+      if (pert_y .gt. 90.)  pert_y = 180. - pert_y 
       if (pert_y .lt. -90.) pert_y = -180. - pert_y
 
 c Find (i,j) pair within 10-degrees of (x,y)

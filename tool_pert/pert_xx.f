@@ -1,5 +1,12 @@
       program pert_xx
-
+c -----------------------------------------------------
+c Program for Perturbation Tool (V4r4)
+c 
+c Perturb (modify) V4r4 control specified by pert_xx.nml created by
+c pert_nml.f. 
+c
+c 28 June 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
+c -----------------------------------------------------
 c Perturbation (perturbation variable, location, time, amplitude)
       integer pert_v, pert_i, pert_j, pert_t
       real*4 pert_a
