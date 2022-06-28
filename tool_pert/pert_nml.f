@@ -1,16 +1,21 @@
       program pert_nml
-c Make namelist (pert_xx.nml) for pert_xx.f
 c -----------------------------------------------------
+c Program for Perturbation Tool (V4r4)
+c
+c Create namelist (pert_xx.nml) for pert_xx.f
+c 
 c Example input: 
 c     Perturb EMPMR at (85,601) at week 5
 c     using default perturbation magnitude. 
 c 
 c     1
+c     1 
 c     85
 c     601
 c     5
 c     1
 c
+c 28 June 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 
