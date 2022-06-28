@@ -1,0 +1,48 @@
+Files for V4r4 Perturbation Tool.
+
+26 June 2022, Ichiro Fukumori
+
+  -rw-r--r--  1 ifukumor g26113     266 Jun 27 14:36 Makefile
+  -rw-r--r--  1 ifukumor g26113    1729 Jun 26 12:41 README
+  -rw-r--r--  1 ifukumor g26113    3447 Jun 23 10:12 data
+  -rw-r--r--  1 ifukumor g26113    8831 Jun 22 15:08 data.diagnostics
+  -rw-r--r--  1 ifukumor g26113     406 Jun 15 17:49 data.pkg
+  -r--r--r--  1 ifukumor g26113 1263600 Jun 25 17:05 f3_b_2_c_2.grid
+  -r--r--r--  1 ifukumor g26113 3369600 Jun 20 14:18 f3_b_2_c_2.out
+  -rwxr-xr-x  1 ifukumor g26113    2724 Jun 27 00:52 pert.csh
+  -rw-r--r--  1 ifukumor g26113    6759 Jun 27 14:35 pert_nml.f
+  -rw-r--r--  1 ifukumor g26113      13 Jun 26 12:24 pert_nml.in_ref
+  -rw-r--r--  1 ifukumor g26113    7434 Jun 26 12:22 pert_result.f
+  -rw-r--r--  1 ifukumor g26113    2331 Jun 26 12:22 pert_xx.f
+  lrwxrwxrwx  1 ifukumor g26113      15 Jun 26 12:26 pert_xx.grid -> f3_b_2_c_2.grid
+  lrwxrwxrwx  1 ifukumor g26113      14 Jun 26 12:26 pert_xx.scale -> f3_b_2_c_2.out
+  -rw-r--r--  1 ifukumor g26113    1968 Jun 27 14:35 tool_sub.f
+
+------------------------------------------------------------------------
+
+data
+data.diagnostic
+data.pkg
+    Namelist files for MITgcm tailored for Perturbation Tool. 
+    (File data is set to run the model for only 18-months for test
+    purposes.)  
+
+pert_nml.f
+pert_nml.in_ref
+tool_sub.f
+    Creates namelist file for perturbation of control read by
+    pert_xx.f 
+
+pert_xx.f
+pert_xx.grid
+pert_xx.scale
+    Creates perturbed control file. 
+
+pert_result.f 
+    Computes difference between model state with and without the
+    contol perturbation, normalized by the magnitude of the
+    perturbation (i.e., forward sensitivity). 
+
+pert.csh
+    PBS script to run the perturbation tool with perturbation
+    specified by pert_nml. 
