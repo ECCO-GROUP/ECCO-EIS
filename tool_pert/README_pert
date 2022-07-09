@@ -1,0 +1,249 @@
+This README file describes the ECCO Perturbation Tool, set up on
+Pleiades. (06 July 2022. Ichiro Fukumori; fukumori@jpl.nasa.gov)
+
+============================
+Quick guide to run the Tool
+============================
+
+Skip to step c) if you have already run setup.csh. "pfe25>" denotes the
+Unix prompt on Pleiades. 
+
+a) Create and cd to some work directory. 
+
+    pfe25>mkdir USRDIR
+
+    pfe25>cd USRDIR
+
+b) Set up perturbation tool.
+
+    pfe25>source PUBLICDIR/setup.csh
+
+c) Specify perturbation (follow the prompt). 
+
+    pfe25>pert_nml.x 
+
+d) Submit PBS job to run the Perturbation Tool's computation.
+
+    pfe25>qsub tool_pert.csh
+
+e) Results will be generated in subdirectory run_pert_*****/pert_result_output.
+
+
+============
+Description 
+============
+
+The Perturbation Tool computes the ECCO ocean model's (V4r4) response
+to a perturbation to its controls; i.e., forward sensitivity.  The
+tool is useful for studying the ocean's response to changes in the
+controls and to assess the accuracy of adjoint gradients.
+
+The ocean model is the flux-forced version of ECCO's Version 4 release
+4 (V4r4) ocean state estimate. The output of the Perturbation Tool
+consists of differences in time-series of model state (sea level,
+ocean bottom pressure, temperature, salinity, velocity) between model
+integrations with and without the perturbation, normalized by dividing
+the results by the amplitude of the perturbation. Perturbation to the
+control is at a particular model grid point at a particular time
+defined weekly, starting from 12Z January 01, 1992, which is the
+starting instant of V4r4. The model time-step is 1-hour and the
+perturbation is interpolated linearly in time.
+
+To run the tool, do the following.  
+
+Skip to step 3 if you have already run setup.csh. "pfe25>" denotes the
+Unix prompt on Pleiades. 
+
+1) Create and cd to some work directory. Results and pertinent files
+   will be created under this directory.
+
+    pfe25>mkdir USRDIR
+
+    pfe25>cd USRDIR
+
+2) Set up perturbation tool.
+
+    pfe25>source PUBLICDIR/setup.csh
+
+3) Modify default files "data" and "tool_pert.csh" as needed.
+
+   For demonstration purpose, and to avoid unintentionally long
+   computations, Step 2) sets up the namelist file "data" and the PBS
+   script "tool_pert.csh" to integrate for only 18-months using the
+   "devel" queue.
+
+   Specifically, variable nTimeSteps in file "data" indicates the
+   number of 1-hour time-steps that MITgcm will integrate. The "data"
+   file set up by Step 2) above has,
+
+	    nTimeSteps=13110,
+
+   which amounts to an 18-month integration period. To run the full
+   26-year period of V4r4, select
+
+	    nTimeSteps=227903,
+
+   The PBS script "tool_pert.csh" limits the walltime to 2-hours using
+   the "devel" queue;
+
+	#PBS -l walltime=2:00:00
+	#PBS -q devel 
+
+   Revise/remove these variables/parameters as needed. For reference,
+   18-month and 26-year integrations take approximately 35-min and
+   10-hours walltime, respectively, in the Tool's particular
+   configuration on Pleiades.
+
+4) Specify perturbation
+
+    pfe25>pert_nml.x 
+
+   Respond to the prompt (?) interactively. For instance, the example
+   below perturbs "empmr" (evaporation minus precipitation minus river
+   runoff) at the model's native grid point (85,601) at week 12 with
+   magnitude -1e-3 (kg/m2/s).
+
+Available control variables to perturb ...
+    1) empmr
+    2) pload
+    3) qnet
+    4) qsw
+    5) saltflux
+    6) spflx
+    7) tauu
+    8) tauv
+   Enter control ... (1- 8) ?
+1
+  ..... perturbing empmr
+
+Choose location for perturbation ...
+    Enter 1 to choose native grid location (i,j),
+          9 to select by latitude/longitude ... (1 or 9)?
+1
+    Enter native (i,j) grid to perturb ...
+   i ... (1-90) ?
+85
+   j ... (1-1170) ?
+601
+  ...... perturbation at (i,j) =           85         601
+        C-grid is (long E, lat N) =  -151.8  73.5
+        Depth (m) =   3808.8
+
+Enter week to perturb ... (1-1358) ?
+12
+  ...... perturbing week =           12
+
+ Default perturbation =   -1.00000005E-03
+        in unit kg/m2/s (upward freshwater flux)
+ Enter 1 to keep, 9 to change ... ??
+1
+ Wrote pert_xx.nml
+ Wrote pert_xx.str
+
+   Program pert_nml.x will generate two text files pert_xx.nml and
+   pert_xx.str that are used in PBS script tool_pert.csh in step
+   5). File pert_xx.nml is a namelist file specifying the control
+   perturbation. File pert_xx.str contains a character string for
+   naming a directory ("run_directory") under the one created in step
+   1), where the computation's output will be placed. The
+   run_directory for the example above will be
+   run_pert_1_85_601_12_-1.00E-03, which bears a description of the
+   perturbation in its name. The Perturbation Tool's output will be
+   placed in sub-directory pert_result_output under this
+   run_directory.
+
+   Choosing a perturbation amplitude that is too large or too small
+   may cause numerical inaccuracies. 
+
+5) Submit PBS job to run the Perturbation Tool's computation. The
+   computation will run V4r4 with the perturbed control and compare
+   the results without the perturbation that's been pre-computed.
+
+    pfe25>qsub tool_pert.csh
+
+6) Results of the computation will be generated in sub-directory
+   pert_result_output under the "run_directory" (cf step 4).  The
+   results include the following files.
+
+    pert_xx.nml: 
+	Namelist file with specifics of the perturbation saved for
+	reference. Created by pert_nml.x in step 4).
+
+    pert_result.obp_day
+    pert_result.ssh_day
+        Daily mean output of ocean bottom pressure (obp) and sea level
+        (ssh). Units are meters in equivalent sea level for
+        both. Files are direct access binary. Each record is for a
+        particular day and consists of a time-step index and a
+        2-dimensional array (90-by-1170) of the daily mean quantity on
+        the model's native grid. The time-step index (1-hour time-step
+        from 12Z January 01, 1992) is an integer*8 (64-bit integer)
+        variable. The 2d array is real*4 (single precision) and is
+        normalized as the model's response to a unit perturbation of
+        the control (control's unit noted by pert_nml.x in step
+        4). For reference, the units for the different controls are;
+
+	ctrl (1) = 'empmr'   'kg/m2/s (upward freshwater flux)' 
+        ctrl (2) = 'pload'   'N/m2 (downward surface pressure loading)'
+	ctrl (3) = 'qnet'    'W/m2 (net upward heat flux)'
+        ctrl (4) = 'qsw'     'W/m2 (net upward shortwave radiation)'
+	ctrl (5) = 'saltflux''g/m2/s (net upward salt flux)'
+        ctrl (6) = 'spflx'   'g/m2/s (net downward salt plume flux)'
+	ctrl (7) = 'tauu'    'N/m2 (westward wind stress)'
+        ctrl (8) = 'tauv'    'N/m2 (southward wind stress)'             
+
+    pert_result.obp_mon
+    pert_result.salt_mon
+    pert_result.ssh_mon
+    pert_result.theta_mon
+    pert_result.uvelmass_mon
+    pert_result.vvelmass_mon
+        Monthly mean output of ocean bottom pressure (obp), salinity
+        (salt), sea level (ssh), potential temperature (theta), zonal
+        velocity (uvelmass), and meridional velocity (vvelmass). Units
+        are PSU for salt, degrees centigrade for theta, and m/s for
+        velocity. Units for obp and ssh are meters in equivalent sea
+        level for both. Files are direct access binary. Each record is
+        for a particular month and consists of a time-step index and
+        an array of the model's field on its native grid, which is
+        90-by-1170-by-50 for 3-dimensional fields of salt, theta, and
+        velocity and 90-by-1170 for 2-dimensional obp and ssh. The
+        time-step index (1-hour time-step from 12Z January 01, 1992)
+        is an integer*8 (64-bit integer) variable. The array is real*4
+        (single precision) and is normalized as the model's response
+        to a unit perturbation of the control as in the daily fields
+        above.
+
+   Example code to read a particular record (irec) of
+   pert_result.theta_mon
+
+   FORTRAN
+   ------- 
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      integer irec
+      integer*8 itime
+      real*4 fld(nx,ny,nr)
+      character*256 f_in
+
+      f_in = 'pert_result.theta_mon'
+      open(60, file=f_in, access='direct',
+     $     recl=nx*ny*nr*4+8, form='unformatted')
+      read(60,rec=irec) itime, fld
+
+ 
+   IDL 
+   ---
+     nx = 90
+     ny = 1170
+     nr = 50
+
+     f_in = 'pert_result.theta_mon'
+     close,1 & openr,1,f_in,/swap_if_little_endian
+     d_rec = {itime:long64(0), fld:fltarr(nx,ny,nr)}
+     d_file = assoc(1,d_rec)
+     d_theta = d_file(irec)
+     
+
+
+

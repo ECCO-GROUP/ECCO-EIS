@@ -1,27 +1,53 @@
 Files for V4r4 Perturbation Tool.
 
-28 June 2022, Ichiro Fukumori
+08 July 2022, Ichiro Fukumori
 
-  -rw-r--r-- 1 ifukumor g26113  266 Jun 27 14:36 Makefile
-  -rw-r--r-- 1 ifukumor g26113 1602 Jun 28 10:05 README
-  -rw-r--r-- 1 ifukumor g26113 3447 Jun 23 10:12 data
-  -rw-r--r-- 1 ifukumor g26113 8831 Jun 22 15:08 data.diagnostics
-  -rw-r--r-- 1 ifukumor g26113  406 Jun 15 17:49 data.pkg
-  -rwxr-xr-x 1 ifukumor g26113 2724 Jun 27 00:52 pert.csh
-  -rw-r--r-- 1 ifukumor g26113 6870 Jun 28 09:59 pert_nml.f
-  -rw-r--r-- 1 ifukumor g26113   15 Jun 27 23:05 pert_nml.in_ref
-  -rw-r--r-- 1 ifukumor g26113 7643 Jun 28 09:55 pert_result.f
-  -rw-r--r-- 1 ifukumor g26113 2625 Jun 28 09:58 pert_xx.f
-  -rw-r--r-- 1 ifukumor g26113 2163 Jun 28 09:51 tool_sub.f
+  -rwxr-xr-x 1 ifukumor g26113 202780 Jul  8 23:38 Installation_and_Use.pdf
+  -rw-r--r-- 1 ifukumor g26113    266 Jun 27 14:36 Makefile
+  -rw-r--r-- 1 ifukumor g26113   2810 Jul  8 15:28 README
+  -rw-r--r-- 1 ifukumor g26113   8539 Jul  8 15:26 README_pert
+  -rw-r--r-- 1 ifukumor g26113   3447 Jun 23 10:12 data
+  -rw-r--r-- 1 ifukumor g26113   3447 Jul  3 18:42 data.18mo
+  -rw-r--r-- 1 ifukumor g26113   2819 Jul  1 16:03 data.diagnostics
+  -rw-r--r-- 1 ifukumor g26113    406 Jun 15 17:49 data.pkg
+  -rwxr-xr-x 1 ifukumor g26113   2390 Jul  8 21:26 gen_pert_ref.csh
+  -rw-r--r-- 1 ifukumor g26113   7669 Jul  8 15:41 pert_nml.f
+  -rw-r--r-- 1 ifukumor g26113     15 Jun 27 23:05 pert_nml.in_ref
+  -rw-r--r-- 1 ifukumor g26113   8765 Jul  8 15:42 pert_result.f
+  -rw-r--r-- 1 ifukumor g26113   2625 Jun 28 09:58 pert_xx.f
+  -rwxr-xr-x 1 ifukumor g26113   1067 Jul  8 16:08 setup.csh
+  -rwxr-xr-x 1 ifukumor g26113   2689 Jul  9 00:26 tool_pert.csh
+  -rw-r--r-- 1 ifukumor g26113   2163 Jun 28 09:51 tool_sub.f
 
 ------------------------------------------------------------------------
 
+Installation_and_Use.pdf
+    Description for how to install and use the Perturbation Tool. 
+
+Makefile
+    Makefile for the tool's FORTAN routines. 
+
+README
+    This file. 
+
+README_pert
+    Description for Users of using the Perturbation Tool. 
+
 data
+data.18mo
 data.diagnostic
 data.pkg
     Namelist files for MITgcm tailored for Perturbation Tool. 
-    (File data is set to run the model for only 18-months for test
-    purposes.)  
+    File data is set to run the model for only 18-months for test
+    purposes; see README_pert and/or Installation Guide for
+    details. File data.18mo is identical with data but for user
+    testing. 
+
+gen_pert_ref.csh
+    Example PBS script for generating reference model result
+    (integration without perturbation). Configured to run for only
+    2-hours walltime for testing purpose; see README_pert and/or
+    Installation Guide for details.
 
 pert_nml.f
 pert_nml.in_ref
@@ -39,6 +65,11 @@ pert_result.f
     contol perturbation, normalized by the magnitude of the
     perturbation (i.e., forward sensitivity). 
 
-pert.csh
-    Example PBS script to run the perturbation tool with perturbation
-    specified by pert_nml.f
+setup.csh
+    User script to setup tools to run run the Perturbation Tool. 
+
+tool_pert.csh
+    Example PBS script for users to run the perturbation tool with
+    perturbation specified by running pert_nml.f. Configured to run
+    for only 2-hours walltime for testing purpose; see README_pert
+    and/or Installation Guide for details.

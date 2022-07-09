@@ -24,7 +24,7 @@ c Perturbation (perturbation variable, location, time, amplitude)
       real*4 pert_a, pert_x, pert_y
       namelist /PERT_SPEC/ pert_v, pert_i, pert_j, pert_t, pert_a
 
-      integer check_v, check_i, check_j, check_t, check_a
+      integer check_v, check_i, check_j, check_t, check_a, check_d
 
 c 
       integer nctrl                    ! number of controls 
@@ -42,10 +42,17 @@ c
       integer iloc
 
       integer i
+      character*256 basedir 
 
 c --------------
+c Set directory where tool files exist
+      open (50, file='pert_nml.tooldir')
+      read (50,'(a)') basedir
+      basedir = trim(basedir) // '/tool_pert'
+      
+c --------------
 c Read model grid
-      file_in = 'pert_xx.grid'
+      file_in = trim(basedir) // '/pert_xx.grid'
       open (50, file=file_in, action='read', access='direct',
      $     recl=nx*ny*4, form='unformatted')
       read (50,rec=1) xc
@@ -102,26 +109,39 @@ c Select spatial location (native or lat/lon)
       if (iloc .ne. 9) then 
 
 c spatial location (native grid point)
-      check_i = 0
-      check_j = 0
+         check_i = 0
+         check_j = 0
+         check_d = 0
 
-      write (6,*) '   Enter native (i,j) grid to perturb ... '
-      do while (check_i .eq. 0) 
-         write (6,"('   i ... (1-',i2,') ?')") nx
-         read (5,*) pert_i
-         if (pert_i .ge. 1 .and. pert_i .le. nx) check_i = 1
-      end do
-      do while (check_j .eq. 0) 
-         write (6,"('   j ... (1-',i4,') ?')") ny
-         read (5,*) pert_j
-         if (pert_j .ge. 1 .and. pert_j .le. ny) check_j = 1
-      end do
+c         do while (check_d .eq. 0) 
+            write (6,*) '   Enter native (i,j) grid to perturb ... '
+            do while (check_i .eq. 0) 
+               write (6,"('   i ... (1-',i2,') ?')") nx
+               read (5,*) pert_i
+               if (pert_i .ge. 1 .and. pert_i .le. nx) check_i = 1
+            end do
+            do while (check_j .eq. 0) 
+               write (6,"('   j ... (1-',i4,') ?')") ny
+               read (5,*) pert_j
+               if (pert_j .ge. 1 .and. pert_j .le. ny) check_j = 1
+            end do
+cc make sure point is wet      
+c            if (bathy(pert_i,pert_j) .le. 0.) then
+c               write (6,1016) '   C-grid point is dry. Depth (m)= ',
+c     $              bathy(pert_i,pert_j)
+c 1016          format(a,f7.1,' Try again.')
+c               check_i = 0
+c               check_j = 0
+c            else
+c               check_d = 1
+c            endif
+c         enddo
 
       else 
-
-         check_i = 0
+c choosing by long/lat 
+         check_d = 0
          write (6,*) '   Enter lon/lat (x,y) grid to perturb ... '
-         do while (check_i .eq. 0) 
+         do while (check_d .eq. 0) 
             write (6,*) '   longitude ... (E)?'
             read (5,*) pert_x
 
@@ -129,7 +149,7 @@ c spatial location (native grid point)
             read (5,*) pert_y
 
             call ijloc(pert_x,pert_y,pert_i,pert_j,xc,yc,nx,ny)
-
+c make sure point is wet      
             if (bathy(pert_i,pert_j) .le. 0.) then
                write (6,1007) pert_i,pert_j
  1007          format('   Closest (i,j) is (',i2,1x,i4,')')
@@ -137,18 +157,18 @@ c spatial location (native grid point)
      $              bathy(pert_i,pert_j)
  1006          format(a,f7.1,' Try again.')
             else
-               check_i = 1
+               check_d = 1
             endif
          end do
       endif
 
       write(6,*) ' ...... perturbation at (i,j) = ',pert_i,pert_j
       write(6,1004) 
-     $           '        which is (long E, lat N) = ',
+     $           '        C-grid is (long E, lat N) = ',
      $     xc(pert_i,pert_j),yc(pert_i,pert_j)
  1004 format(a,1x,f6.1,1x,f5.1)
       write(6,1005) 
-     $           '        Depth (m) at this location = ',
+     $           '        Depth (m) = ',
      $     bathy(pert_i,pert_j)
  1005 format(a,1x,f7.1)
       write (6,*) 
@@ -164,7 +184,7 @@ c time (week)
       write (6,*) 
 
 c amplitude
-      file_in = 'pert_xx.scale'
+      file_in = trim(basedir) // '/pert_xx.scale'
       inquire (file=trim(file_in), EXIST=file_exists)
       if (.not. file_exists) then
          write (6,*) ' **** Error: default perturbation scale file = ',
