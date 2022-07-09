@@ -5,7 +5,9 @@ c Obtain state perturbation time-series, i.e.,
 c difference of model state with and without control perturbation. 
 c
 c 28 June 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
-c -----------------------------------------------------
+c   05 July 2022: Added time to output. Skips instances with no
+c                 corresponding reference output. 
+c     -----------------------------------------------------
 
 c Perturbation (perturbation variable, location, time, amplitude)
       integer pert_v, pert_i, pert_j, pert_t
@@ -61,42 +63,42 @@ c Compute perturbed state
 
 c Sea Level (monthly mean) 
       call pr2d_r8(trim(f_dir) // '/pert_result.ssh_mon',
-     $     'diags/state_2d_ssh_mon_mean.*.data', 3, 
+     $     'diags/state_2d_set1_mon.*.data', 1, 
      $     f_ref, pert_a)
 
 c OBP (monthly mean) 
       call pr2d_r8(trim(f_dir) // '/pert_result.obp_mon',
-     $     'diags/state_2d_obp_mon_mean.*.data', 2, 
+     $     'diags/state_2d_set1_mon.*.data', 2, 
      $     f_ref, pert_a)
 
 c Sea Level (daily mean) 
       call pr2d_r8(trim(f_dir) // '/pert_result.ssh_day',
-     $     'diags/state_2d_ssh_day_mean.*.data', 3, 
+     $     'diags/state_2d_set1_day.*.data', 1, 
      $     f_ref, pert_a)
 
 c OBP (daily mean) 
       call pr2d_r8(trim(f_dir) // '/pert_result.obp_day',
-     $     'diags/state_2d_obp_day_mean.*.data', 2, 
+     $     'diags/state_2d_set1_day.*.data', 2, 
      $     f_ref, pert_a)
 
 c T (monthly mean) 
       call pr3d(trim(f_dir) // '/pert_result.theta_mon',
-     $     'diags/state_3d_set1.*.data', 1, 
+     $     'diags/state_3d_set1_mon.*.data', 1, 
      $     f_ref, pert_a)
 
 c S (monthly mean) 
       call pr3d(trim(f_dir) // '/pert_result.salt_mon',
-     $     'diags/state_3d_set1.*.data', 2, 
+     $     'diags/state_3d_set1_mon.*.data', 2, 
      $     f_ref, pert_a)
 
 c UVELMASS (monthly mean) 
       call pr3d(trim(f_dir) // '/pert_result.uvelmass_mon',
-     $     'diags/trsp_3d_set1.*.data', 1, 
+     $     'diags/state_3d_set1_mon.*.data', 3, 
      $     f_ref, pert_a)
 
 c VVELMASS (monthly mean) 
       call pr3d(trim(f_dir) // '/pert_result.vvelmass_mon',
-     $     'diags/trsp_3d_set1.*.data', 2, 
+     $     'diags/state_3d_set1_mon.*.data', 4, 
      $     f_ref, pert_a)
 
       stop
@@ -110,6 +112,7 @@ c Perturbed Result 2d
       real*4 pert_a
       integer  rdrec 
 c 
+      logical f_exists
       integer nx, ny
       parameter (nx=90, ny=1170)
       real*4 dum2d_pert(nx,ny)
@@ -117,10 +120,11 @@ c
       character*256 f_file
       character*256 f_command 
       integer irec 
+      integer*8 i1,i2,itime
 
 c Open output file 
       open(60, file=f_out, access='direct',
-     $     recl=nx*ny*4, form='unformatted')
+     $     recl=nx*ny*4+8, form='unformatted')
 
 c List input file 
       f_command = 'ls -al ' // 
@@ -142,17 +146,26 @@ c read perturbed file
          read(51,rec=rdrec) dum2d_pert
          close(51)
 
+c get time-index from filename 
+      i2 = index(f_file,'.',.TRUE.)
+      i1 = index(f_file(1:i2-1),'.',.TRUE.)
+      read(f_file(i1+1:i2-1),*) itime
+
 c read reference file 
          f_file = trim(f_ref) // '/' // trim(f_file)
-         open(51, file=f_file, access='direct',
-     $     recl=nx*ny*4, form='unformatted')
-         read(51,rec=rdrec) dum2d_ref
-         close(51)
+         inquire (file=trim(f_file), EXIST=f_exists)
+         if (f_exists) then
 
-         irec = irec + 1
-         dum2d_pert = (dum2d_pert - dum2d_ref)/pert_a
-         write(60,rec=irec) dum2d_pert
+            open(51, file=f_file, access='direct',
+     $           recl=nx*ny*4, form='unformatted')
+            read(51,rec=rdrec) dum2d_ref
+            close(51)
 
+            irec = irec + 1
+            dum2d_pert = (dum2d_pert - dum2d_ref)/pert_a
+            write(60,rec=irec) itime, dum2d_pert
+
+         endif
       enddo
 
  999  close (50)
@@ -169,6 +182,7 @@ c Perturbed Result 2d
       real*4 pert_a
       integer  rdrec 
 c 
+      logical f_exists
       integer nx, ny
       parameter (nx=90, ny=1170)
       real*8 dum2d_pert(nx,ny)
@@ -177,10 +191,11 @@ c
       character*256 f_file
       character*256 f_command 
       integer irec 
+      integer*8 i1,i2,itime
 
 c Open output file 
       open(60, file=f_out, access='direct',
-     $     recl=nx*ny*4, form='unformatted')
+     $     recl=nx*ny*4+8, form='unformatted')
 
 c List input file 
       f_command = 'ls -al ' // 
@@ -202,17 +217,27 @@ c read perturbed file
          read(51,rec=rdrec) dum2d_pert
          close(51)
 
+c get time-index from filename 
+      i2 = index(f_file,'.',.TRUE.)
+      i1 = index(f_file(1:i2-1),'.',.TRUE.)
+      read(f_file(i1+1:i2-1),*) itime
+
 c read reference file 
          f_file = trim(f_ref) // '/' // trim(f_file)
-         open(51, file=f_file, access='direct',
-     $     recl=nx*ny*8, form='unformatted')
-         read(51,rec=rdrec) dum2d_ref
-         close(51)
+         inquire (file=trim(f_file), EXIST=f_exists)
+         if (f_exists) then
 
-         irec = irec + 1
-         dum2d_pert = (dum2d_pert - dum2d_ref)/pert_a
-         dum2d = real(dum2d_pert)
-         write(60,rec=irec) dum2d
+            open(51, file=f_file, access='direct',
+     $           recl=nx*ny*8, form='unformatted')
+            read(51,rec=rdrec) dum2d_ref
+            close(51)
+
+            irec = irec + 1
+            dum2d_pert = (dum2d_pert - dum2d_ref)/pert_a
+            dum2d = real(dum2d_pert)
+            write(60,rec=irec) itime, dum2d
+
+         endif
 
       enddo
 
@@ -230,6 +255,7 @@ c Perturbed Result 2d
       real*4 pert_a
       integer  rdrec 
 c 
+      logical f_exists
       integer nx, ny
       parameter (nx=90, ny=1170, nr=50)
       real*4 dum3d_pert(nx,ny,nr)
@@ -237,10 +263,11 @@ c
       character*256 f_file
       character*256 f_command 
       integer irec 
+      integer*8 i1,i2,itime
 
 c Open output file 
       open(60, file=f_out, access='direct',
-     $     recl=nx*ny*nr*4, form='unformatted')
+     $     recl=nx*ny*nr*4+8, form='unformatted')
 
 c List input file 
       f_command = 'ls -al ' // 
@@ -262,16 +289,26 @@ c read perturbed file
          read(51,rec=rdrec) dum3d_pert
          close(51)
 
+c get time-index from filename 
+      i2 = index(f_file,'.',.TRUE.)
+      i1 = index(f_file(1:i2-1),'.',.TRUE.)
+      read(f_file(i1+1:i2-1),*) itime
+
 c read reference file 
          f_file = trim(f_ref) // '/' // trim(f_file)
-         open(51, file=f_file, access='direct',
-     $     recl=nx*ny*nr*4, form='unformatted')
-         read(51,rec=rdrec) dum3d_ref
-         close(51)
+         inquire (file=trim(f_file), EXIST=f_exists)
+         if (f_exists) then
 
-         irec = irec + 1
-         dum3d_pert = (dum3d_pert - dum3d_ref)/pert_a
-         write(60,rec=irec) dum3d_pert
+            open(51, file=f_file, access='direct',
+     $           recl=nx*ny*nr*4, form='unformatted')
+            read(51,rec=rdrec) dum3d_ref
+            close(51)
+
+            irec = irec + 1
+            dum3d_pert = (dum3d_pert - dum3d_ref)/pert_a
+            write(60,rec=irec) itime, dum3d_pert
+
+         endif
 
       enddo
 
