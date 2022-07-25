@@ -19,21 +19,21 @@ c
 
       logical f_exists
       character*256 f_command 
-      character*256 f_ref
-      character*256 f_dir
+      character*256 d_ref
+      character*256 d_out
 
 c --------------
 c Reference run directory
-      call getarg(1,f_ref)
-      write(6,*) 'reference run directory : ',trim(f_ref)
+      call getarg(1,d_ref)
+      write(6,*) 'reference run directory : ',trim(d_ref)
 
 c Output directory
-      f_dir = 'pert_result_output'
-      f_command = 'mkdir ' // trim(f_dir)
+      d_out = 'pert_result_output'
+      f_command = 'mkdir ' // trim(d_out)
       call execute_command_line(f_command, wait=.true.)
 
 c Save copy of perturbation namelist for reference 
-      f_command = 'cp pert_xx.nml ' // trim(f_dir)
+      f_command = 'cp pert_xx.nml ' // trim(d_out)
       call execute_command_line(f_command, wait=.true.)
 
 c --------------
@@ -61,126 +61,115 @@ c Read in Perturbation specification from namelist file
 c --------------
 c Compute perturbed state
 
-c Sea Level (monthly mean) 
-      call pr2d_r8(trim(f_dir) // '/pert_result.ssh_mon',
-     $     'diags/state_2d_set1_mon.*.data', 1, 
-     $     f_ref, pert_a)
+c SSH & OBP (monthly mean) 
+      call pr2d_r8(trim(d_out),
+     $     'state_2d_set1_mon', 2, 
+     $     trim(d_ref), pert_a)
 
-c OBP (monthly mean) 
-      call pr2d_r8(trim(f_dir) // '/pert_result.obp_mon',
-     $     'diags/state_2d_set1_mon.*.data', 2, 
-     $     f_ref, pert_a)
+c SSH & OBP (daily mean) 
+      call pr2d_r8(trim(d_out),
+     $     'state_2d_set1_day', 2, 
+     $     trim(d_ref), pert_a)
 
-c Sea Level (daily mean) 
-      call pr2d_r8(trim(f_dir) // '/pert_result.ssh_day',
-     $     'diags/state_2d_set1_day.*.data', 1, 
-     $     f_ref, pert_a)
-
-c OBP (daily mean) 
-      call pr2d_r8(trim(f_dir) // '/pert_result.obp_day',
-     $     'diags/state_2d_set1_day.*.data', 2, 
-     $     f_ref, pert_a)
-
-c T (monthly mean) 
-      call pr3d(trim(f_dir) // '/pert_result.theta_mon',
-     $     'diags/state_3d_set1_mon.*.data', 1, 
-     $     f_ref, pert_a)
-
-c S (monthly mean) 
-      call pr3d(trim(f_dir) // '/pert_result.salt_mon',
-     $     'diags/state_3d_set1_mon.*.data', 2, 
-     $     f_ref, pert_a)
-
-c UVELMASS (monthly mean) 
-      call pr3d(trim(f_dir) // '/pert_result.uvelmass_mon',
-     $     'diags/state_3d_set1_mon.*.data', 3, 
-     $     f_ref, pert_a)
-
-c VVELMASS (monthly mean) 
-      call pr3d(trim(f_dir) // '/pert_result.vvelmass_mon',
-     $     'diags/state_3d_set1_mon.*.data', 4, 
-     $     f_ref, pert_a)
+c T,S,U,V (monthly mean) 
+      call pr3d(trim(d_out),
+     $     'state_3d_set1_mon', 4, 
+     $     trim(d_ref), pert_a)
 
       stop
       end
 c 
 c ========================================================
 c
-      subroutine pr2d(f_out, f_in, rdrec, f_ref, pert_a)
+      subroutine pr2d(d_out, f_in, nrec, d_ref, pert_a)
 c Perturbed Result 2d
-      character(len=*) :: f_out, f_in, f_ref
+      character(len=*) :: d_out, f_in, d_ref
       real*4 pert_a
-      integer  rdrec 
+      integer  nrec 
 c 
       logical f_exists
       integer nx, ny
       parameter (nx=90, ny=1170)
       real*4 dum2d_pert(nx,ny)
       real*4 dum2d_ref(nx,ny)
-      character*256 f_file
+      character*256 f_file, f_ref, f_pert, f_out, f_meta
       character*256 f_command 
       integer irec 
-      integer*8 i1,i2,itime
-
-c Open output file 
-      open(60, file=f_out, access='direct',
-     $     recl=nx*ny*4+8, form='unformatted')
 
 c List input file 
-      f_command = 'ls -al ' // 
-     $     f_in //
-     $     '| awk ''{ print $9 }'' > pert_result.dum'
+      f_command = 'ls diags/' // f_in // '*.data' //
+     $     '| xargs -n 1 basename > pert_result.dum_data'
       call execute_command_line(f_command, wait=.true.)
 
-      f_file = 'pert_result.dum'
+      f_command = 'ls diags/' // f_in // '*.meta' //
+     $     '| xargs -n 1 basename > pert_result.dum_meta'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_file = 'pert_result.dum_data'
       open(50, file=f_file, status='old', action='read')
-      irec = 0
+
+      f_file = 'pert_result.dum_meta'
+      open(51, file=f_file, status='old', action='read')
 
 c Read input file one by one 
       do 
 c read perturbed file 
          read(50,'(a)',END=999) f_file
-
-         open(51, file=f_file, access='direct',
-     $     recl=nx*ny*4, form='unformatted')
-         read(51,rec=rdrec) dum2d_pert
-         close(51)
-
-c get time-index from filename 
-      i2 = index(f_file,'.',.TRUE.)
-      i1 = index(f_file(1:i2-1),'.',.TRUE.)
-      read(f_file(i1+1:i2-1),*) itime
+         read(51,'(a)',END=999) f_meta
 
 c read reference file 
-         f_file = trim(f_ref) // '/' // trim(f_file)
-         inquire (file=trim(f_file), EXIST=f_exists)
+         f_pert = 'diags/' // trim(f_file)
+         f_ref = trim(d_ref) // '/diags/' // trim(f_file)
+         f_out = trim(d_out) // '/' // trim(f_file)
+
+         inquire (file=trim(f_ref), EXIST=f_exists)
          if (f_exists) then
 
-            open(51, file=f_file, access='direct',
+            open(52, file=f_pert, access='direct',
      $           recl=nx*ny*4, form='unformatted')
-            read(51,rec=rdrec) dum2d_ref
-            close(51)
 
-            irec = irec + 1
-            dum2d_pert = (dum2d_pert - dum2d_ref)/pert_a
-            write(60,rec=irec) itime, dum2d_pert
+            open(53, file=f_ref, access='direct',
+     $           recl=nx*ny*4, form='unformatted')
+
+            open(60, file=f_out, access='direct',
+     $           recl=nx*ny*4, form='unformatted')
+
+            do irec=1,nrec
+               read(52,rec=irec) dum2d_pert
+
+               read(53,rec=irec) dum2d_ref
+
+               dum2d_pert = (dum2d_pert - dum2d_ref)/pert_a
+
+               write(60,rec=irec) dum2d_pert
+            enddo
+
+            close(52)
+            close(53)
+            close(60)
+
+c Copy meta file
+            f_ref = trim(d_ref) // '/diags/' // trim(f_meta)
+            f_command = 'cp ' // trim(f_ref) // ' ' // trim(d_out)
+            call execute_command_line(f_command, wait=.true.)
 
          endif
       enddo
 
- 999  close (50)
-      close (60)
+ 999  continue
+      close(50)
+      close(51)
 
       return
       end
 c 
 c ========================================================
 c
-      subroutine pr2d_r8(f_out, f_in, rdrec, f_ref, pert_a)
+      subroutine pr2d_r8(d_out, f_in, nrec, d_ref, pert_a)
 c Perturbed Result 2d
-      character(len=*) :: f_out, f_in, f_ref
+      character(len=*) :: d_out, f_in, d_ref
       real*4 pert_a
-      integer  rdrec 
+      integer  nrec 
 c 
       logical f_exists
       integer nx, ny
@@ -188,132 +177,161 @@ c
       real*8 dum2d_pert(nx,ny)
       real*8 dum2d_ref(nx,ny)
       real*4 dum2d(nx,ny)
-      character*256 f_file
+      character*256 f_file, f_ref, f_pert, f_out, f_meta
       character*256 f_command 
       integer irec 
-      integer*8 i1,i2,itime
-
-c Open output file 
-      open(60, file=f_out, access='direct',
-     $     recl=nx*ny*4+8, form='unformatted')
 
 c List input file 
-      f_command = 'ls -al ' // 
-     $     f_in //
-     $     '| awk ''{ print $9 }'' > pert_result.dum'
+      f_command = 'ls diags/' // f_in // '*.data' //
+     $     '| xargs -n 1 basename > pert_result.dum_data'
       call execute_command_line(f_command, wait=.true.)
 
-      f_file = 'pert_result.dum'
+      f_command = 'ls diags/' // f_in // '*.meta' //
+     $     '| xargs -n 1 basename > pert_result.dum_meta'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_file = 'pert_result.dum_data'
       open(50, file=f_file, status='old', action='read')
-      irec = 0
+
+      f_file = 'pert_result.dum_meta'
+      open(51, file=f_file, status='old', action='read')
 
 c Read input file one by one 
       do 
 c read perturbed file 
          read(50,'(a)',END=999) f_file
-
-         open(51, file=f_file, access='direct',
-     $     recl=nx*ny*8, form='unformatted')
-         read(51,rec=rdrec) dum2d_pert
-         close(51)
-
-c get time-index from filename 
-      i2 = index(f_file,'.',.TRUE.)
-      i1 = index(f_file(1:i2-1),'.',.TRUE.)
-      read(f_file(i1+1:i2-1),*) itime
+         read(51,'(a)',END=999) f_meta
 
 c read reference file 
-         f_file = trim(f_ref) // '/' // trim(f_file)
-         inquire (file=trim(f_file), EXIST=f_exists)
+         f_pert = 'diags/' // trim(f_file)
+         f_ref = trim(d_ref) // '/diags/' // trim(f_file)
+         f_out = trim(d_out) // '/' // trim(f_file)
+
+         inquire (file=trim(f_ref), EXIST=f_exists)
          if (f_exists) then
 
-            open(51, file=f_file, access='direct',
+            open(52, file=f_pert, access='direct',
      $           recl=nx*ny*8, form='unformatted')
-            read(51,rec=rdrec) dum2d_ref
-            close(51)
 
-            irec = irec + 1
-            dum2d_pert = (dum2d_pert - dum2d_ref)/pert_a
-            dum2d = real(dum2d_pert)
-            write(60,rec=irec) itime, dum2d
+            open(53, file=f_ref, access='direct',
+     $           recl=nx*ny*8, form='unformatted')
+
+            open(60, file=f_out, access='direct',
+     $           recl=nx*ny*4, form='unformatted')
+
+            do irec=1,nrec
+               read(52,rec=irec) dum2d_pert
+
+               read(53,rec=irec) dum2d_ref
+
+               dum2d_pert = (dum2d_pert - dum2d_ref)/pert_a
+               dum2d = real(dum2d_pert)
+
+               write(60,rec=irec) dum2d
+            enddo
+
+            close(52)
+            close(53)
+            close(60)
+
+c Copy meta file
+            f_ref = trim(d_ref) // '/diags/' // trim(f_meta)
+            f_command = 'cp ' // trim(f_ref) // ' ' // trim(d_out)
+            call execute_command_line(f_command, wait=.true.)
+            f_command = 'sed -i "s|float64|float32|g" ' //
+     $           trim(d_out) // '/' // trim(f_meta)
+            call execute_command_line(f_command, wait=.true.)
 
          endif
-
       enddo
 
- 999  close (50)
-      close (60)
+ 999  continue
+      close(50)
+      close(51)
 
       return
       end
 c 
 c ========================================================
 c
-      subroutine pr3d(f_out, f_in, rdrec, f_ref, pert_a)
+      subroutine pr3d(d_out, f_in, nrec, d_ref, pert_a)
 c Perturbed Result 2d
-      character(len=*) :: f_out, f_in, f_ref
+      character(len=*) :: d_out, f_in, d_ref
       real*4 pert_a
-      integer  rdrec 
+      integer  nrec 
 c 
       logical f_exists
-      integer nx, ny
+      integer nx, ny, nr 
       parameter (nx=90, ny=1170, nr=50)
       real*4 dum3d_pert(nx,ny,nr)
       real*4 dum3d_ref(nx,ny,nr)
-      character*256 f_file
+      character*256 f_file, f_ref, f_pert, f_out, f_meta
       character*256 f_command 
       integer irec 
-      integer*8 i1,i2,itime
-
-c Open output file 
-      open(60, file=f_out, access='direct',
-     $     recl=nx*ny*nr*4+8, form='unformatted')
 
 c List input file 
-      f_command = 'ls -al ' // 
-     $     f_in //
-     $     '| awk ''{ print $9 }'' > pert_result.dum'
+      f_command = 'ls diags/' // f_in // '*.data' //
+     $     '| xargs -n 1 basename > pert_result.dum_data'
       call execute_command_line(f_command, wait=.true.)
 
-      f_file = 'pert_result.dum'
+      f_command = 'ls diags/' // f_in // '*.meta' //
+     $     '| xargs -n 1 basename > pert_result.dum_meta'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_file = 'pert_result.dum_data'
       open(50, file=f_file, status='old', action='read')
-      irec = 0
+
+      f_file = 'pert_result.dum_meta'
+      open(51, file=f_file, status='old', action='read')
 
 c Read input file one by one 
       do 
 c read perturbed file 
          read(50,'(a)',END=999) f_file
-
-         open(51, file=f_file, access='direct',
-     $     recl=nx*ny*nr*4, form='unformatted')
-         read(51,rec=rdrec) dum3d_pert
-         close(51)
-
-c get time-index from filename 
-      i2 = index(f_file,'.',.TRUE.)
-      i1 = index(f_file(1:i2-1),'.',.TRUE.)
-      read(f_file(i1+1:i2-1),*) itime
+         read(51,'(a)',END=999) f_meta
 
 c read reference file 
-         f_file = trim(f_ref) // '/' // trim(f_file)
-         inquire (file=trim(f_file), EXIST=f_exists)
+         f_pert = 'diags/' // trim(f_file)
+         f_ref = trim(d_ref) // '/diags/' // trim(f_file)
+         f_out = trim(d_out) // '/' // trim(f_file)
+
+         inquire (file=trim(f_ref), EXIST=f_exists)
          if (f_exists) then
 
-            open(51, file=f_file, access='direct',
+            open(52, file=f_pert, access='direct',
      $           recl=nx*ny*nr*4, form='unformatted')
-            read(51,rec=rdrec) dum3d_ref
-            close(51)
 
-            irec = irec + 1
-            dum3d_pert = (dum3d_pert - dum3d_ref)/pert_a
-            write(60,rec=irec) itime, dum3d_pert
+            open(53, file=f_ref, access='direct',
+     $           recl=nx*ny*nr*4, form='unformatted')
+
+            open(60, file=f_out, access='direct',
+     $           recl=nx*ny*nr*4, form='unformatted')
+
+            do irec=1,nrec
+               read(52,rec=irec) dum3d_pert
+
+               read(53,rec=irec) dum3d_ref
+
+               dum3d_pert = (dum3d_pert - dum3d_ref)/pert_a
+
+               write(60,rec=irec) dum3d_pert
+            enddo
+
+            close(52)
+            close(53)
+            close(60)
+
+c Copy meta file
+            f_ref = trim(d_ref) // '/diags/' // trim(f_meta)
+            f_command = 'cp ' // trim(f_ref) // ' ' // trim(d_out)
+            call execute_command_line(f_command, wait=.true.)
 
          endif
-
       enddo
 
- 999  close (50)
-      close (60)
+ 999  continue
+      close(50)
+      close(51)
 
       return
       end

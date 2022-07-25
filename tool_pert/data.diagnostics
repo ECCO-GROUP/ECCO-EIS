@@ -15,7 +15,7 @@
    dumpatlast = .TRUE.,
 #---
   frequency(1) = 2635200.0,
-   fields(1:4,1) = 'THETA   ','SALT    ','UVELMASS','VVELMASS'
+   fields(1:4,1) = 'THETA   ','SALT    ','UVEL','VVEL'
    filename(1) = 'diags/state_3d_set1_mon',
 #---
   frequency(2) = 2635200.0,
