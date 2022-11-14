@@ -1,0 +1,76 @@
+Files of the ECCO Modeling Utilities (EMU).
+
+08 July 2022, Ichiro Fukumori
+
+  -rwxr-xr-x 1 ifukumor g26113 202780 Jul  8 23:38 Installation_and_Use.pdf
+  -rw-r--r-- 1 ifukumor g26113    266 Jun 27 14:36 Makefile
+  -rw-r--r-- 1 ifukumor g26113   2810 Jul  8 15:28 README
+  -rw-r--r-- 1 ifukumor g26113   8539 Jul  8 15:26 README_pert
+  -rw-r--r-- 1 ifukumor g26113   3447 Jun 23 10:12 data
+  -rw-r--r-- 1 ifukumor g26113   3447 Jul  3 18:42 data.18mo
+  -rw-r--r-- 1 ifukumor g26113   2819 Jul  1 16:03 data.diagnostics
+  -rw-r--r-- 1 ifukumor g26113    406 Jun 15 17:49 data.pkg
+  -rwxr-xr-x 1 ifukumor g26113   2390 Jul  8 21:26 gen_pert_ref.csh
+  -rw-r--r-- 1 ifukumor g26113   7669 Jul  8 15:41 pert_nml.f
+  -rw-r--r-- 1 ifukumor g26113   8765 Jul  8 15:42 pert_result.f
+  -rw-r--r-- 1 ifukumor g26113   2625 Jun 28 09:58 pert_xx.f
+  -rwxr-xr-x 1 ifukumor g26113   1067 Jul  8 16:08 setup.csh
+  -rwxr-xr-x 1 ifukumor g26113   2689 Jul  9 00:26 emu_pert.csh
+  -rw-r--r-- 1 ifukumor g26113   2163 Jun 28 09:51 emu_sub.f
+
+------------------------------------------------------------------------
+
+Installation_and_Use.pdf
+    Description of EMU. 
+
+Makefile
+    Makefile for EMU programs.
+
+README
+    This file. 
+
+README_ad
+    User readme file for Adjoint Tool. 
+
+README_pert
+    User readme file for Perturbation Tool. 
+
+data
+data.18mo
+data.diagnostic
+data.pkg
+    Namelist files for MITgcm tailored for Perturbation Tool. 
+    File data is set to run the model for only 18-months for test
+    purposes; see README_pert and/or Installation Guide for
+    details. File data.18mo is identical with data but for user
+    testing. 
+
+gen_pert_ref.csh
+    Example PBS script for generating reference model result
+    (integration without perturbation). Configured to run for only
+    2-hours walltime for testing purpose; see README_pert and/or
+    Installation Guide for details.
+
+pert_nml.f
+tool_sub.f
+    Creates namelist file for perturbation of control read by
+    pert_xx.f 
+
+pert_xx.f
+    Creates perturbed control file. Reads files pert_xx.grid and
+    pert_xx.scale to be downloaded from ECCO Drive; these input files
+    contain V4r4 grid information and default perturbation amplitude.
+
+pert_result.f 
+    Computes difference between model state with and without the
+    contol perturbation, normalized by the magnitude of the
+    perturbation (i.e., forward sensitivity). 
+
+setup.csh
+    User script to setup tools to run run the Perturbation Tool. 
+
+tool_pert.csh
+    Example PBS script for users to run the perturbation tool with
+    perturbation specified by running pert_nml.f. Configured to run
+    for only 2-hours walltime for testing purpose; see README_pert
+    and/or Installation Guide for details.

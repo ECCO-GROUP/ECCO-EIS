@@ -1,0 +1,14 @@
+#
+#
+# ******************
+# ECCO cost function
+# ******************
+#
+ &ECCO_COST_NML
+#
+ /
+#
+ &ECCO_GENCOST_NML
+#
+ /
+#
