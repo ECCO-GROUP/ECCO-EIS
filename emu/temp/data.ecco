@@ -1,0 +1,25 @@
+#
+#
+# ******************
+# ECCO cost function
+# ******************
+#
+ &ECCO_COST_NML
+#
+ /
+#
+ &ECCO_GENCOST_NML
+  gencost_avgperiod(1)  = 'month',
+  gencost_avgperiod(2)  = 'month',
+  gencost_barfile(1)='m_boxmean_eta_dyn'
+  gencost_barfile(2)='m_boxmean_obp'
+  gencost_mask(1)='objf_1_mask_'
+  gencost_mask(2)='objf_2_mask_'
+  gencost_name(1) = 'boxmean',
+  gencost_name(2) = 'boxmean',
+  gencost_msk_is3d(1)=.FALSE.,
+  gencost_msk_is3d(2)=.FALSE.,
+  mult_gencost(1)=   1.0000E+00            ,
+  mult_gencost(2)=  -1.0000E+00            ,
+ /
+#

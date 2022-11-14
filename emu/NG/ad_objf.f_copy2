@@ -1,0 +1,4610 @@
+      program ad_objf
+c -----------------------------------------------------
+c Program for Adjoint Tool (V4r4)
+c
+c Define objective function for Adjoint Tool.
+c Modify data.ecco and create mask it uses. 
+c 
+c Example input: 
+c     Perturb EMPMR at (85,601) at week 5
+c     using default perturbation magnitude. 
+c 
+c     1
+c     1 
+c     85
+c     601
+c     5
+c     1
+c
+c 27 July 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
+c -----------------------------------------------------
+      external StripSpaces
+c files
+      character*256 tooldir   ! directory where tool files are 
+      character*130 file_in, file_out  ! file names 
+      logical file_exists
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+
+      real*4 dum2d(nx,ny), dum3d(nx,ny,nr)
+
+c Objective function 
+      integer nvar, ovar    ! number of OBJF variables 
+      parameter (nvar=5)    
+      character*72 f_var(nvar), f_unit(nvar)
+
+c Costfunction (variable, location)
+      character*1 pert_1, pert_2, c1, c2
+      integer pert_v, pert_i, pert_j, pert_k
+
+      character*256 f_command, s_command
+      integer ifunc    ! index for spatial mask 
+c 
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+      integer iuv  ! index for either UVEL or VVEL
+
+      logical :: f_exist
+
+c For different OBJF variables 
+      character*6 f0, f1
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='tool_setup_dir')
+      read (50,'(a)') tooldir
+      close (50)
+      
+c --------------
+c Read model grid
+      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      inquire (file=trim(file_in), EXIST=file_exists)
+      if (.not. file_exists) then
+         write (6,*) ' **** Error: model grid file = ',
+     $        trim(file_in) 
+         write (6,*) '**** does not exist'
+         stop
+      endif
+      open (50, file=file_in, action='read', access='stream')
+      read (50) xc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) yc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) rc
+      close (50)
+      rc = -rc  ! switch sign 
+
+      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) bathy
+      close (50)
+      
+c --------------
+c Variable name
+      f_var(1) = 'SSH'
+      f_var(2) = 'OBP'   
+      f_var(3) = 'THETA'    
+      f_var(4) = 'SALT'     
+      f_var(5) = 'UV'   
+
+      f_unit(1) = '(m)'
+      f_unit(2) = '(equivalent sea level m)'   
+      f_unit(3) = '(deg C)'    
+      f_unit(4) = '(PSU)'     
+      f_unit(5) = '(m/s)'   
+
+c --------------
+c Interactive specification of perturbation 
+
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'ad_objf.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of ad_objf.f'
+      write(51,"(a)")
+     $     'Adjoint Tool objective function (OBJF) specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Set up data.ecco with OBJF specification
+      f_command = 'cp -f data.ecco_ad data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
+c Define OBJF's time-period (common to all variables defining OBJF)
+      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+
+      call objf_time
+
+c --------------
+c Define OBJF's VARIABLE(s) 
+
+      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+
+      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      do i=1,nvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
+
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      wirte(f1,"(i)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. nvar) 
+
+         write (6,"(/,3x,a,i1,a)")
+     $     'Choose OBFJ variable ',nobjf+1,' ... (1-',nvar,')?'
+         write(6,) '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_var(iobjf))
+
+         write(51,"(3x,a,i,a,a)") 'OBJF variable ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,/)")
+     $        ' --> OBJF variable : ', trim(f_var(pert_v))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i)") nobjf-1
+            wirte(f1,"(i)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s}(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         endif
+
+c Define new OBJF variable 
+         call objf_var(f1,iobjf)
+
+      end do 
+
+      stop
+      end
+c 
+c ============================================================
+c 
+      subroutine objf_time
+
+c Specifiy OBJF in time; Output temporal mask (weight) and set
+c model integration time accordingly in files data and pbs_ad.csh. 
+c
+c For this version of the ECCO Modeling Utility, OBJF will be
+c restricted to being a function of monthly averages; i.e., 
+c      gencost_avgperiod(*)='month'
+c
+
+c V4r4 specific 
+      integer nsteps, nyears, nmonths, whours
+      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
+      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
+
+      real*4 tmask(nmonths), tdum 
+      character*12 tmask_type
+
+c Other variables 
+      character*1   atime
+      character*128 atime_desc
+
+      integer itarget, ndays
+      integer itarget2, i
+
+      integer nTimesteps, nHours
+      character*24 fstep
+
+      real*4 tdum 
+      character*256 f_command
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(i)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
+
+c ---------
+c Select OBJF time period 
+      write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+
+      write(6,"(/,3x,a)") 'Select OBJF time-period among ... '
+      write(6,"(3x,a)")
+     $     '... a particular MONTH (m), a particular YEAR (y)'
+      write(6,"(3x,a,/)") '... or another PERIOD (p)'
+      write(6,"(a,/)") '(NOTE: Controls are weekly averages.) '
+
+      atime = 'x' 
+      do while (atime.ne.'M' .and. atime.ne.'m' .and.
+     $       atime.ne.'Y' .and. atime.ne.'y' .and.
+     $       atime.ne.'P' .and. atime.ne.'p' ) 
+         write(6,*) '... Enter (m/y/p) ?'
+         read(5,'(a)') atime
+      enddo
+
+      if (atime .eq. 'M' .or. atime .eq. 'm') then 
+         atime_desc =  'a month'
+      else if (atime .eq. 'Y' .or. atime .eq. 'y') then 
+         atime_desc =  'a year'
+      else
+         atime_desc =  'a period'
+      endif
+
+      write(6,"(3x,a,a,/)") 'OBJF time-period will be '
+     $     , trim(atime_desc)
+
+      write(51,'("atime = ",a)') trim(atime)
+      write(51,"(a,a,/)") ' --> OBJF time-period is '
+     $     , trim(atime_desc)
+
+c ----------------------- For different OBJF time periods  
+c For a particular MONTH
+      if (atime.eq.'M' .or. atime.eq.'m') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.312) 
+            write(6,*) 'Enter OBJF month ... (1-312)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'MONTH = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF month among (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget) = 1.
+
+c Set model integration time steps (nTimesteps)
+         ndays = sum(adays(1:itarget))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For a particular YEAR 
+      elseif (atime.eq.'Y' .or. atime.eq.'y') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.26) 
+            write(6,*) 'Enter OBJF year ... (1-26)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'YEAR = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF year among (1-26).'
+
+c Set mask 
+         itarget2 = (itarget-1)*12 + 1 
+         tmask = 0.
+         tmask(itarget2:itarget2+11) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2+11))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For another period
+      elseif (atime.eq.'P' .or. atime.eq.'p') then 
+         itarget  = 0
+         itarget2 = 0
+         do while (itarget.lt.1 .or. itarget.gt.312 .or. 
+     $        itarget2.lt.1 .or. itarget2.gt.312 .or.
+     $        itarget2.lt.itarget) 
+            write(6,*) 'Enter first month of OBJF period ... (1-312)?'
+            read(5,*) itarget 
+            write(6,*) 'Enter last month of OBJF period ... (1-312)?'
+            read(5,*) itarget2
+         enddo
+
+         write(6,"(a,i0,1x,i0)") 'PERIOD start & end months = ',
+     $        itarget,itarget2
+         write(51,'("itarget, itarget2 = ",i0,1x,i0)')
+     $        itarget,itarget2
+         write(51,"(a,/)")
+     $        ' --> OBJF start & end months (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget:itarget2) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+      endif
+
+c ----------------------- END different OBJF time periods  
+
+c Convert tmask to weight
+      tmask = tmask * adays
+      tdum = total(tmask) 
+      tmask = tmask/tdum
+
+c Output temporal mask (weight)
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c ----------------
+c Set integration time/period in data and pbs_ad.csh 
+c (data.ecco to be set in main routine.) 
+
+c File data 
+      f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') nTimesteps
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NSTEP_EMU|'//
+     $     trim(fstep) //'|g" data'
+      call execute_command_line(f_command, wait=.true.)
+
+c File pbs_ad.csh
+      f_command = 'cp -f pbs_ad.csh_orig pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      nHours = ceiling(float(nTimesteps)/float(nsteps)
+     $     *float(whours))
+      write(fstep,'(i24)') nHours
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|WHOURS_EMU|'//
+     $     trim(fstep) //'|g" pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      if (nHours .le. 2) then 
+         f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
+     $        'PBS -q devel|g" pbs_ad.csh'
+         call execute_command_line(f_command, wait=.true.)
+      endif
+
+c 
+      write(6,"(/,a,a,/)") '... Program has set computation periods '
+     $    'in files data and pbs_ad.csh accordingly.'
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine objf_var(f1,iobjf)
+c Specifiy OBJF variable(s)  
+
+      character*6 f1
+      integer iobjf
+
+c local variables
+      character*256 f_command
+
+c ------------
+c Specify spatial mask (weight) according to variable
+      if (iobjf .eq. 1 .or. iobjf .eq. 2) then 
+         call objf_var_2d(f1, iobjf)
+      else if (iobjf .eq. 3 .or. iobjf .eq. 4) then
+         call objf_var_3d(f1, iobjf)
+      else 
+         call objf_var_uv(f1, iobjf)
+      endif
+
+c Create time mask for variable (link common time mask) 
+      f_command = 'ln -s objf_mask_T ' //
+     $  'objf_' // trim(f1) // '_mask_T' 
+      call execute_command_line(f_command, wait=.true.)
+
+c Edit data.ecco mask field  
+      f_command = 'sed -i -e ' //
+     $     '"s/mask(' // trim(f1) //
+     $     ').*/mask(' // trim(f1) //
+     $     ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+
+c 
+c ============================================================
+c 
+      subroutine objf_var_2d(f1, iobjf) 
+
+c Update data.ecco OBJF for either SSH or OBP
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+c 
+      character*1 pert_2, c1, c2
+      integer pert_i, pert_j
+      real*4 dum2d(nx,ny)
+      character*256 f_command
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+
+c ------
+c Identify OBJF variable among the two available 
+      if (iobjf.eq.1) then
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_eta_dyn''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else if (iobjf.eq.2) then 
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_obp''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else
+         write(6,*) 'iobjf is NG for objf_var_2d ... ', iobjf
+         write(6,*) 'This should not happen. Aborting ...'
+         stop
+      endif
+
+c ------
+c Select type of spatial mask 
+      ifunc = 0
+      do while (ifunc.ne.1 .and. ifunc.ne.2) 
+         write (6,*) 'Choose either VARIABLE at a point (1) or ',
+     $        ' VARIABLE weighted in space (2) ... (1/2)?'
+         read (5,*) ifunc
+      end do
+
+      write(51,"('ifunc = ',i2)") ifunc
+
+      if (ifunc .eq. 1) then 
+c When OBJF is at a point
+
+         write(6,"(a,/)") '... OBJF will be VARIABLE at a point'
+         write(51,"(a,/)") ' --> OBJF is VARIABLE at a point. '
+
+         call slct_2d_pt(pert_i,pert_j)
+
+         write(51,2002) pert_i,pert_j
+ 2002    format('pert_i, pert_j = ',i2,2x,i4)
+         write(51,"(a,/)") ' --> OBJF model grid location (i,j).'
+
+c Create 2d mask for the point 
+         dum2d = 0.
+         dum2d(pert_i,pert_j) = 1. 
+
+         fmask = 'objf_' // trim(f1) // '_mask_C'
+         INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+         if (f_exist) then
+            f_command = 'rm -f ' // trim(fmask)
+            call execute_command_line(f_command, wait=.true.)
+         endif
+         open(60,file=fmask,form='unformatted',access='stream')
+         write(60) dum2d
+         close(60)
+
+c Save location for naming run directory
+         write(floc,'(i9,"_",i9)') pert_i,pert_j
+         call StripSpaces(floc)
+
+      else
+c When OBJF is VARIABLE weighted in space 
+
+         write(6,*)
+         '... OBJF will be a linear function of selected variable'
+         write(6,"(a)")
+     $        '... i.e., MULT_i * SUM_i( MASK_i * VARIABLE_i )'
+         write(6,"(a,/)") '... MASK_i must be uploaded' //
+     $     ' (binary native format) before proceeding ... '
+
+         write(51,"(a)")
+     $   ' --> OBJF is a linear function of selected variable(s)'
+         write(51,"(a,/)")
+     $     ' --> i.e., MULT_i * SUM_i( MASK_i * VARIABLE_i )'
+
+c Get mask file name 
+         write(6,*) '   Enter MASK_i filename ... ?'  
+         read(5,'(a)') fmask
+
+         write(6,'("fmask = ",a)') trim(fmask)
+         write(51,'("fmask = ",a)') trim(fmask)
+         write(51,"(a,/)") ' --> MASK file. '
+
+c Check mask 
+         call chk_mask2d(fmask,nx,ny,dum2d)
+
+c Link input mask to what model expects 
+         f_command = 'ln -s ' // trim(fmask) //
+     $  'objf_' // trim(f1) // '_mask_C' 
+         call execute_command_line(f_command, wait=.true.)
+
+c Enter scaling factor
+         write(6,*) 'Enter scaling factor MULT_i ... ?'
+         read(5,*) amult
+
+         write(6,'("amult = ",e12.4)') amult 
+         write(51,'("amult = ",e12.4)') amult
+         write(51,"(a,/)") ' --> OBJF Scaling factor. '
+
+         write(fmult,"(e12.4)") amult 
+         f_command = 'sed -i -e ' //
+     $  '"s/gencost(' // trim(f1) //
+     $ ').*/gencost(' // trim(f1) //
+     $ ')= ' // fmult // ',/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+      endif
+
+c Specify variable being NOT 3D      
+      f_command = 'sed -i -e ' //
+     $     '"s/is3d(' // trim(f1) //
+     $     ').*/is3d(' // trim(f1) //
+     $     ')=.FALSE.,/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+c 
+c ============================================================
+c 
+      subroutine objf_var_3d(f1, iobjf) 
+
+c Update data.ecco OBJF for either THETA or SALT
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+
+      real*4 dum2d(nx,ny), dum3d(nx,ny,nr)
+
+c Objective function 
+      integer nvar, ovar    ! number of OBJF variables 
+      parameter (nvar=5)    
+      character*72 f_var(nvar), f_unit(nvar)
+
+c Costfunction (variable, location)
+      character*1 pert_1, pert_2, c1, c2
+      integer pert_v, pert_i, pert_j, pert_k
+
+      character*256 f_command, s_command
+      integer ifunc    ! index for spatial mask 
+c 
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+      integer iuv  ! index for either UVEL or VVEL
+
+      logical :: f_exist
+
+c For different OBJF variables 
+      character*6 f0, f1
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='tool_setup_dir')
+      read (50,'(a)') tooldir
+      close (50)
+      
+c --------------
+c Read model grid
+      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      inquire (file=trim(file_in), EXIST=file_exists)
+      if (.not. file_exists) then
+         write (6,*) ' **** Error: model grid file = ',
+     $        trim(file_in) 
+         write (6,*) '**** does not exist'
+         stop
+      endif
+      open (50, file=file_in, action='read', access='stream')
+      read (50) xc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) yc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) rc
+      close (50)
+      rc = -rc  ! switch sign 
+
+      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) bathy
+      close (50)
+      
+c --------------
+c Variable name
+      f_var(1) = 'SSH'
+      f_var(2) = 'OBP'   
+      f_var(3) = 'THETA'    
+      f_var(4) = 'SALT'     
+      f_var(5) = 'UV'   
+
+      f_unit(1) = '(m)'
+      f_unit(2) = '(equivalent sea level m)'   
+      f_unit(3) = '(deg C)'    
+      f_unit(4) = '(PSU)'     
+      f_unit(5) = '(m/s)'   
+
+c --------------
+c Interactive specification of perturbation 
+
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'ad_objf.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of ad_objf.f'
+      write(51,"(a)")
+     $     'Adjoint Tool objective function (OBJF) specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Set up data.ecco with OBJF specification
+      f_command = 'cp -f data.ecco_ad data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
+c Define OBJF's time-period (common to all variables defining OBJF)
+      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+
+      call objf_time
+
+c --------------
+c Define OBJF's VARIABLE(s) 
+
+      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+
+      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      do i=1,nvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
+
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      wirte(f1,"(i)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. nvar) 
+
+         write (6,"(/,3x,a,i1,a)")
+     $     'Choose OBFJ variable ',nobjf+1,' ... (1-',nvar,')?'
+         write(6,) '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_var(iobjf))
+
+         write(51,"(3x,a,i,a,a)") 'OBJF variable ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,/)")
+     $        ' --> OBJF variable : ', trim(f_var(pert_v))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i)") nobjf-1
+            wirte(f1,"(i)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s}(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         endif
+
+c Define new OBJF variable 
+         call objf_var(f1,iobjf)
+
+      end do 
+
+      stop
+      end
+c 
+c ============================================================
+c 
+      subroutine objf_time
+
+c Specifiy OBJF in time; Output temporal mask (weight) and set
+c model integration time accordingly in files data and pbs_ad.csh. 
+c
+c For this version of the ECCO Modeling Utility, OBJF will be
+c restricted to being a function of monthly averages; i.e., 
+c      gencost_avgperiod(*)='month'
+c
+
+c V4r4 specific 
+      integer nsteps, nyears, nmonths, whours
+      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
+      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
+
+      real*4 tmask(nmonths), tdum 
+      character*12 tmask_type
+
+c Other variables 
+      character*1   atime
+      character*128 atime_desc
+
+      integer itarget, ndays
+      integer itarget2, i
+
+      integer nTimesteps, nHours
+      character*24 fstep
+
+      real*4 tdum 
+      character*256 f_command
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(i)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
+
+c ---------
+c Select OBJF time period 
+      write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+
+      write(6,"(/,3x,a)") 'Select OBJF time-period among ... '
+      write(6,"(3x,a)")
+     $     '... a particular MONTH (m), a particular YEAR (y)'
+      write(6,"(3x,a,/)") '... or another PERIOD (p)'
+      write(6,"(a,/)") '(NOTE: Controls are weekly averages.) '
+
+      atime = 'x' 
+      do while (atime.ne.'M' .and. atime.ne.'m' .and.
+     $       atime.ne.'Y' .and. atime.ne.'y' .and.
+     $       atime.ne.'P' .and. atime.ne.'p' ) 
+         write(6,*) '... Enter (m/y/p) ?'
+         read(5,'(a)') atime
+      enddo
+
+      if (atime .eq. 'M' .or. atime .eq. 'm') then 
+         atime_desc =  'a month'
+      else if (atime .eq. 'Y' .or. atime .eq. 'y') then 
+         atime_desc =  'a year'
+      else
+         atime_desc =  'a period'
+      endif
+
+      write(6,"(3x,a,a,/)") 'OBJF time-period will be '
+     $     , trim(atime_desc)
+
+      write(51,'("atime = ",a)') trim(atime)
+      write(51,"(a,a,/)") ' --> OBJF time-period is '
+     $     , trim(atime_desc)
+
+c ----------------------- For different OBJF time periods  
+c For a particular MONTH
+      if (atime.eq.'M' .or. atime.eq.'m') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.312) 
+            write(6,*) 'Enter OBJF month ... (1-312)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'MONTH = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF month among (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget) = 1.
+
+c Set model integration time steps (nTimesteps)
+         ndays = sum(adays(1:itarget))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For a particular YEAR 
+      elseif (atime.eq.'Y' .or. atime.eq.'y') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.26) 
+            write(6,*) 'Enter OBJF year ... (1-26)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'YEAR = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF year among (1-26).'
+
+c Set mask 
+         itarget2 = (itarget-1)*12 + 1 
+         tmask = 0.
+         tmask(itarget2:itarget2+11) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2+11))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For another period
+      elseif (atime.eq.'P' .or. atime.eq.'p') then 
+         itarget  = 0
+         itarget2 = 0
+         do while (itarget.lt.1 .or. itarget.gt.312 .or. 
+     $        itarget2.lt.1 .or. itarget2.gt.312 .or.
+     $        itarget2.lt.itarget) 
+            write(6,*) 'Enter first month of OBJF period ... (1-312)?'
+            read(5,*) itarget 
+            write(6,*) 'Enter last month of OBJF period ... (1-312)?'
+            read(5,*) itarget2
+         enddo
+
+         write(6,"(a,i0,1x,i0)") 'PERIOD start & end months = ',
+     $        itarget,itarget2
+         write(51,'("itarget, itarget2 = ",i0,1x,i0)')
+     $        itarget,itarget2
+         write(51,"(a,/)")
+     $        ' --> OBJF start & end months (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget:itarget2) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+      endif
+
+c ----------------------- END different OBJF time periods  
+
+c Convert tmask to weight
+      tmask = tmask * adays
+      tdum = total(tmask) 
+      tmask = tmask/tdum
+
+c Output temporal mask (weight)
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c ----------------
+c Set integration time/period in data and pbs_ad.csh 
+c (data.ecco to be set in main routine.) 
+
+c File data 
+      f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') nTimesteps
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NSTEP_EMU|'//
+     $     trim(fstep) //'|g" data'
+      call execute_command_line(f_command, wait=.true.)
+
+c File pbs_ad.csh
+      f_command = 'cp -f pbs_ad.csh_orig pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      nHours = ceiling(float(nTimesteps)/float(nsteps)
+     $     *float(whours))
+      write(fstep,'(i24)') nHours
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|WHOURS_EMU|'//
+     $     trim(fstep) //'|g" pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      if (nHours .le. 2) then 
+         f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
+     $        'PBS -q devel|g" pbs_ad.csh'
+         call execute_command_line(f_command, wait=.true.)
+      endif
+
+c 
+      write(6,"(/,a,a,/)") '... Program has set computation periods '
+     $    'in files data and pbs_ad.csh accordingly.'
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine objf_var(f1,iobjf)
+
+c Specifiy OBJF variable(s)  
+      character*6 f1
+      integer iobjf
+
+c Specify spatial mask (weight) according to variable
+      if (iobjf .eq. 1 .or. iobjf .eq. 2) then 
+         call objf_var_2d(f1, iobjf)
+      else if (iobjf .eq. 3 .or. iobjf .eq. 4) then
+         call objf_var_3d(f1, iobjf)
+      else 
+         call objf_var_uv(f1, iobjf)
+      endif
+
+c Create time mask for variable (link common mask) 
+      f_command = 'ln -s objf_mask_T ' //
+     $  'objf_' // trim(f1) // '_mask_T' 
+      call execute_command_line(f_command, wait=.true.)
+
+c Edit data.ecco mask field  
+      f_command = 'sed -i -e ' //
+     $     '"s/mask(' // trim(f1) //
+     $     ').*/mask(' // trim(f1) //
+     $     ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+
+c 
+c ============================================================
+c 
+      subroutine objf_var_2d(f1, iobjf) 
+
+c Update data.ecco OBJF for either SSH or OBP
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+c 
+      character*1 pert_2, c1, c2
+      integer pert_i, pert_j
+      real*4 dum2d(nx,ny)
+      character*256 f_command
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+
+c ------
+c Identify OBJF variable among the two available 
+      if (iobjf.eq.3) then
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_THETA''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else if (iobjf.eq.4) then 
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_SALT''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else
+         write(6,*) 'iobjf is NG for objf_var_3d ... ', iobjf
+         write(6,*) 'This should not happen. Aborting ...'
+         stop
+      endif
+
+c ------
+c Select type of spatial mask 
+      ifunc = 0
+      do while (ifunc.ne.1 .and. ifunc.ne.2) 
+         write (6,*) 'Choose either VARIABLE at a point (1) or ',
+     $        ' VARIABLE weighted in space (2) ... (1/2)?'
+         read (5,*) ifunc
+      end do
+
+      write(51,"('ifunc = ',i2)") ifunc
+
+      if (ifunc .eq. 1) then 
+c When OBJF is at a point
+
+         write(6,"(a,/)") '... OBJF will be VARIABLE at a point'
+         write(51,"(a,/)") ' --> OBJF is VARIABLE at a point. '
+
+         call slct_3d_pt(pert_i,pert_j,pert_k)
+
+         write(51,2002) pert_i,pert_j,pert_k
+ 2002    format('pert_i, pert_j, pert_k = ',i2,2x,i4,2x,i2)
+         write(51,"(a,/)") ' --> OBJF model grid location (i,j,k).'
+
+c Create 3d mask for the point 
+         dum3d = 0.
+         dum3d(pert_i,pert_j,pert_k) = 1. 
+
+         f_command = 'sed -i -e ' //
+     $  '"s/mask(' // trim(f1) //
+     $ ').*/mask(' // trim(f1) //
+     $ ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+         fmask = 'objf_' // trim(f1) // '_mask_C'
+         INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+         if (f_exist) then
+            f_command = 'rm -f ' // trim(fmask)
+            call execute_command_line(f_command, wait=.true.)
+         endif
+         open(60,file=fmask,form='unformatted',access='stream')
+         write(60) dum3d
+         close(60)
+
+c Save location for naming run directory
+         write(floc,'(i9,"_",i9,"_",i9)') pert_i,pert_j,pert_k
+         call StripSpaces(floc)
+
+      else
+c When OBJF is VARIABLE weighted in space 
+
+         write(6,*)
+         '... OBJF will be a linear function of selected variable'
+         write(6,"(a)")
+     $     '... i.e., SUM_i( MASK_i * VARIABLE_i )'
+         write(6,"(a,/)") '... Upload all MASK_i ' //
+     $     ' (binary native format) before proceeding ... '
+
+         write(51,"(a)")
+     $   ' --> OBJF is a linear function of selected variable(s)'
+         write(51,"(a,/)")
+     $     ' --> i.e., SUM_i( MASK_i * VARIABLE_i )'
+
+c Get mask file name 
+         write(6,*) '   Enter MASK filename ... ?'  
+         read(5,'(a)') fmask
+
+         write(51,'("fmask = ",a)') trim(fmask)
+         write(51,"(a,/)") ' --> MASK file. '
+
+c Check mask 
+         call chk_mask3d(fmask,nx,ny,nr,dum3d)
+
+c Link input mask to what model expects 
+         f_command = 'ln -s ' // trim(fmask) //
+     $  'objf_' // trim(f1) // '_mask_C' 
+         call execute_command_line(f_command, wait=.true.)
+
+c Enter scaling factor
+         write(6,*) 'Enter scaling factor MULT_i ... ?'
+         read(5,*) amult
+
+         write(6,'("amult = ",e12.4)') amult 
+         write(51,'("amult = ",e12.4)') amult
+         write(51,"(a,/)") ' --> OBJF Scaling factor. '
+
+         write(fmult,"(e12.4)") amult 
+         f_command = 'sed -i -e ' //
+     $  '"s/gencost(' // trim(f1) //
+     $ ').*/gencost(' // trim(f1) //
+     $ ')= ' // fmult // ',/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+      endif
+
+c Specify variable is 3D      
+      f_command = 'sed -i -e ' //
+     $     '"s/is3d(' // trim(f1) //
+     $     ').*/is3d(' // trim(f1) //
+     $     ')=.TRUE.,/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+c 
+c ============================================================
+c 
+      subroutine objf_var_UV(f1, iobjf) 
+
+c Update data.ecco OBJF for UV
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+
+      real*4 dum2d(nx,ny), dum3d(nx,ny,nr)
+
+c Objective function 
+      integer nvar, ovar    ! number of OBJF variables 
+      parameter (nvar=5)    
+      character*72 f_var(nvar), f_unit(nvar)
+
+c Costfunction (variable, location)
+      character*1 pert_1, pert_2, c1, c2
+      integer pert_v, pert_i, pert_j, pert_k
+
+      character*256 f_command, s_command
+      integer ifunc    ! index for spatial mask 
+c 
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+      integer iuv  ! index for either UVEL or VVEL
+
+      logical :: f_exist
+
+c For different OBJF variables 
+      character*6 f0, f1
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='tool_setup_dir')
+      read (50,'(a)') tooldir
+      close (50)
+      
+c --------------
+c Read model grid
+      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      inquire (file=trim(file_in), EXIST=file_exists)
+      if (.not. file_exists) then
+         write (6,*) ' **** Error: model grid file = ',
+     $        trim(file_in) 
+         write (6,*) '**** does not exist'
+         stop
+      endif
+      open (50, file=file_in, action='read', access='stream')
+      read (50) xc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) yc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) rc
+      close (50)
+      rc = -rc  ! switch sign 
+
+      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) bathy
+      close (50)
+      
+c --------------
+c Variable name
+      f_var(1) = 'SSH'
+      f_var(2) = 'OBP'   
+      f_var(3) = 'THETA'    
+      f_var(4) = 'SALT'     
+      f_var(5) = 'UV'   
+
+      f_unit(1) = '(m)'
+      f_unit(2) = '(equivalent sea level m)'   
+      f_unit(3) = '(deg C)'    
+      f_unit(4) = '(PSU)'     
+      f_unit(5) = '(m/s)'   
+
+c --------------
+c Interactive specification of perturbation 
+
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'ad_objf.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of ad_objf.f'
+      write(51,"(a)")
+     $     'Adjoint Tool objective function (OBJF) specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Set up data.ecco with OBJF specification
+      f_command = 'cp -f data.ecco_ad data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
+c Define OBJF's time-period (common to all variables defining OBJF)
+      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+
+      call objf_time
+
+c --------------
+c Define OBJF's VARIABLE(s) 
+
+      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+
+      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      do i=1,nvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
+
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      wirte(f1,"(i)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. nvar) 
+
+         write (6,"(/,3x,a,i1,a)")
+     $     'Choose OBFJ variable ',nobjf+1,' ... (1-',nvar,')?'
+         write(6,) '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_var(iobjf))
+
+         write(51,"(3x,a,i,a,a)") 'OBJF variable ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,/)")
+     $        ' --> OBJF variable : ', trim(f_var(pert_v))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i)") nobjf-1
+            wirte(f1,"(i)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s}(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         endif
+
+c Define new OBJF variable 
+         call objf_var(f1,iobjf)
+
+      end do 
+
+      stop
+      end
+c 
+c ============================================================
+c 
+      subroutine objf_time
+
+c Specifiy OBJF in time; Output temporal mask (weight) and set
+c model integration time accordingly in files data and pbs_ad.csh. 
+c
+c For this version of the ECCO Modeling Utility, OBJF will be
+c restricted to being a function of monthly averages; i.e., 
+c      gencost_avgperiod(*)='month'
+c
+
+c V4r4 specific 
+      integer nsteps, nyears, nmonths, whours
+      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
+      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
+
+      real*4 tmask(nmonths), tdum 
+      character*12 tmask_type
+
+c Other variables 
+      character*1   atime
+      character*128 atime_desc
+
+      integer itarget, ndays
+      integer itarget2, i
+
+      integer nTimesteps, nHours
+      character*24 fstep
+
+      real*4 tdum 
+      character*256 f_command
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(i)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
+
+c ---------
+c Select OBJF time period 
+      write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+
+      write(6,"(/,3x,a)") 'Select OBJF time-period among ... '
+      write(6,"(3x,a)")
+     $     '... a particular MONTH (m), a particular YEAR (y)'
+      write(6,"(3x,a,/)") '... or another PERIOD (p)'
+      write(6,"(a,/)") '(NOTE: Controls are weekly averages.) '
+
+      atime = 'x' 
+      do while (atime.ne.'M' .and. atime.ne.'m' .and.
+     $       atime.ne.'Y' .and. atime.ne.'y' .and.
+     $       atime.ne.'P' .and. atime.ne.'p' ) 
+         write(6,*) '... Enter (m/y/p) ?'
+         read(5,'(a)') atime
+      enddo
+
+      if (atime .eq. 'M' .or. atime .eq. 'm') then 
+         atime_desc =  'a month'
+      else if (atime .eq. 'Y' .or. atime .eq. 'y') then 
+         atime_desc =  'a year'
+      else
+         atime_desc =  'a period'
+      endif
+
+      write(6,"(3x,a,a,/)") 'OBJF time-period will be '
+     $     , trim(atime_desc)
+
+      write(51,'("atime = ",a)') trim(atime)
+      write(51,"(a,a,/)") ' --> OBJF time-period is '
+     $     , trim(atime_desc)
+
+c ----------------------- For different OBJF time periods  
+c For a particular MONTH
+      if (atime.eq.'M' .or. atime.eq.'m') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.312) 
+            write(6,*) 'Enter OBJF month ... (1-312)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'MONTH = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF month among (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget) = 1.
+
+c Set model integration time steps (nTimesteps)
+         ndays = sum(adays(1:itarget))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For a particular YEAR 
+      elseif (atime.eq.'Y' .or. atime.eq.'y') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.26) 
+            write(6,*) 'Enter OBJF year ... (1-26)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'YEAR = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF year among (1-26).'
+
+c Set mask 
+         itarget2 = (itarget-1)*12 + 1 
+         tmask = 0.
+         tmask(itarget2:itarget2+11) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2+11))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For another period
+      elseif (atime.eq.'P' .or. atime.eq.'p') then 
+         itarget  = 0
+         itarget2 = 0
+         do while (itarget.lt.1 .or. itarget.gt.312 .or. 
+     $        itarget2.lt.1 .or. itarget2.gt.312 .or.
+     $        itarget2.lt.itarget) 
+            write(6,*) 'Enter first month of OBJF period ... (1-312)?'
+            read(5,*) itarget 
+            write(6,*) 'Enter last month of OBJF period ... (1-312)?'
+            read(5,*) itarget2
+         enddo
+
+         write(6,"(a,i0,1x,i0)") 'PERIOD start & end months = ',
+     $        itarget,itarget2
+         write(51,'("itarget, itarget2 = ",i0,1x,i0)')
+     $        itarget,itarget2
+         write(51,"(a,/)")
+     $        ' --> OBJF start & end months (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget:itarget2) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+      endif
+
+c ----------------------- END different OBJF time periods  
+
+c Convert tmask to weight
+      tmask = tmask * adays
+      tdum = total(tmask) 
+      tmask = tmask/tdum
+
+c Output temporal mask (weight)
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c ----------------
+c Set integration time/period in data and pbs_ad.csh 
+c (data.ecco to be set in main routine.) 
+
+c File data 
+      f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') nTimesteps
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NSTEP_EMU|'//
+     $     trim(fstep) //'|g" data'
+      call execute_command_line(f_command, wait=.true.)
+
+c File pbs_ad.csh
+      f_command = 'cp -f pbs_ad.csh_orig pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      nHours = ceiling(float(nTimesteps)/float(nsteps)
+     $     *float(whours))
+      write(fstep,'(i24)') nHours
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|WHOURS_EMU|'//
+     $     trim(fstep) //'|g" pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      if (nHours .le. 2) then 
+         f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
+     $        'PBS -q devel|g" pbs_ad.csh'
+         call execute_command_line(f_command, wait=.true.)
+      endif
+
+c 
+      write(6,"(/,a,a,/)") '... Program has set computation periods '
+     $    'in files data and pbs_ad.csh accordingly.'
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine objf_var(f1,iobjf)
+
+c Specifiy OBJF variable(s)  
+      character*6 f1
+      integer iobjf
+
+c Specify spatial mask (weight) according to variable
+      if (iobjf .eq. 1 .or. iobjf .eq. 2) then 
+         call objf_var_2d(f1, iobjf)
+      else if (iobjf .eq. 3 .or. iobjf .eq. 4) then
+         call objf_var_3d(f1, iobjf)
+      else 
+         call objf_var_uv(f1, iobjf)
+      endif
+
+c Create time mask for variable (link common mask) 
+      f_command = 'ln -s objf_mask_T ' //
+     $  'objf_' // trim(f1) // '_mask_T' 
+      call execute_command_line(f_command, wait=.true.)
+
+c Edit data.ecco mask field  
+      f_command = 'sed -i -e ' //
+     $     '"s/mask(' // trim(f1) //
+     $     ').*/mask(' // trim(f1) //
+     $     ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+
+c 
+c ============================================================
+c 
+      subroutine objf_var_2d(f1, iobjf) 
+
+c Update data.ecco OBJF for either SSH or OBP
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+c 
+      character*1 pert_2, c1, c2
+      integer pert_i, pert_j
+      real*4 dum2d(nx,ny)
+      character*256 f_command
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+
+c ------
+c Identify OBJF variable among the two available 
+      if (iobjf.eq.1) then
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_eta_dyn''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else if (iobjf.eq.2) then 
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_obp''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else
+         write(6,*) 'iobjf is NG for objf_var_2d ... ', iobjf
+         write(6,*) 'This should not happen. Aborting ...'
+         stop
+      endif
+
+c ------
+c Select type of spatial mask 
+      ifunc = 0
+      do while (ifunc.ne.1 .and. ifunc.ne.2) 
+         write (6,*) 'Choose either VARIABLE at a point (1) or ',
+     $        ' VARIABLE weighted in space (2) ... (1/2)?'
+         read (5,*) ifunc
+      end do
+
+      write(51,"('ifunc = ',i2)") ifunc
+
+      if (ifunc .eq. 1) then 
+c When OBJF is at a point
+
+         write(6,"(a,/)") '... OBJF will be VARIABLE at a point'
+         write(51,"(a,/)") ' --> OBJF is VARIABLE at a point. '
+
+         call slct_2d_pt(pert_i,pert_j)
+
+         write(51,2002) pert_i,pert_j
+ 2002    format('pert_i, pert_j = ',i2,2x,i4)
+         write(51,"(a,/)") ' --> OBJF model grid location (i,j).'
+
+c Create 2d mask for the point 
+         dum2d = 0.
+         dum2d(pert_i,pert_j) = 1. 
+
+         fmask = 'objf_' // trim(f1) // '_mask_C'
+         INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+         if (f_exist) then
+            f_command = 'rm -f ' // trim(fmask)
+            call execute_command_line(f_command, wait=.true.)
+         endif
+         open(60,file=fmask,form='unformatted',access='stream')
+         write(60) dum2d
+         close(60)
+
+c Save location for naming run directory
+         write(floc,'(i9,"_",i9)') pert_i,pert_j
+         call StripSpaces(floc)
+
+      else
+c When OBJF is VARIABLE weighted in space 
+
+         write(6,*)
+         '... OBJF will be a linear function of selected variable'
+         write(6,"(a)")
+     $        '... i.e., MULT_i * SUM_i( MASK_i * VARIABLE_i )'
+         write(6,"(a,/)") '... MASK_i must be uploaded' //
+     $     ' (binary native format) before proceeding ... '
+
+         write(51,"(a)")
+     $   ' --> OBJF is a linear function of selected variable(s)'
+         write(51,"(a,/)")
+     $     ' --> i.e., MULT_i * SUM_i( MASK_i * VARIABLE_i )'
+
+c Get mask file name 
+         write(6,*) '   Enter MASK_i filename ... ?'  
+         read(5,'(a)') fmask
+
+         write(6,'("fmask = ",a)') trim(fmask)
+         write(51,'("fmask = ",a)') trim(fmask)
+         write(51,"(a,/)") ' --> MASK file. '
+
+c Check mask 
+         call chk_mask2d(fmask,nx,ny,dum2d)
+
+c Link input mask to what model expects 
+         f_command = 'ln -s ' // trim(fmask) //
+     $  'objf_' // trim(f1) // '_mask_C' 
+         call execute_command_line(f_command, wait=.true.)
+
+c Enter scaling factor
+         write(6,*) 'Enter scaling factor MULT_i ... ?'
+         read(5,*) amult
+
+         write(6,'("amult = ",e12.4)') amult 
+         write(51,'("amult = ",e12.4)') amult
+         write(51,"(a,/)") ' --> OBJF Scaling factor. '
+
+         write(fmult,"(e12.4)") amult 
+         f_command = 'sed -i -e ' //
+     $  '"s/gencost(' // trim(f1) //
+     $ ').*/gencost(' // trim(f1) //
+     $ ')= ' // fmult // ',/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+      endif
+
+c Specify variable being NOT 3D      
+      f_command = 'sed -i -e ' //
+     $     '"s/is3d(' // trim(f1) //
+     $     ').*/is3d(' // trim(f1) //
+     $     ')=.FALSE.,/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+c 
+c ============================================================
+c 
+      subroutine objf_var_3d(f1, iobjf) 
+
+c Update data.ecco OBJF for either THETA or SALT
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+
+      real*4 dum2d(nx,ny), dum3d(nx,ny,nr)
+
+c Objective function 
+      integer nvar, ovar    ! number of OBJF variables 
+      parameter (nvar=5)    
+      character*72 f_var(nvar), f_unit(nvar)
+
+c Costfunction (variable, location)
+      character*1 pert_1, pert_2, c1, c2
+      integer pert_v, pert_i, pert_j, pert_k
+
+      character*256 f_command, s_command
+      integer ifunc    ! index for spatial mask 
+c 
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+      integer iuv  ! index for either UVEL or VVEL
+
+      logical :: f_exist
+
+c For different OBJF variables 
+      character*6 f0, f1
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='tool_setup_dir')
+      read (50,'(a)') tooldir
+      close (50)
+      
+c --------------
+c Read model grid
+      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      inquire (file=trim(file_in), EXIST=file_exists)
+      if (.not. file_exists) then
+         write (6,*) ' **** Error: model grid file = ',
+     $        trim(file_in) 
+         write (6,*) '**** does not exist'
+         stop
+      endif
+      open (50, file=file_in, action='read', access='stream')
+      read (50) xc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) yc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) rc
+      close (50)
+      rc = -rc  ! switch sign 
+
+      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) bathy
+      close (50)
+      
+c --------------
+c Variable name
+      f_var(1) = 'SSH'
+      f_var(2) = 'OBP'   
+      f_var(3) = 'THETA'    
+      f_var(4) = 'SALT'     
+      f_var(5) = 'UV'   
+
+      f_unit(1) = '(m)'
+      f_unit(2) = '(equivalent sea level m)'   
+      f_unit(3) = '(deg C)'    
+      f_unit(4) = '(PSU)'     
+      f_unit(5) = '(m/s)'   
+
+c --------------
+c Interactive specification of perturbation 
+
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'ad_objf.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of ad_objf.f'
+      write(51,"(a)")
+     $     'Adjoint Tool objective function (OBJF) specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Set up data.ecco with OBJF specification
+      f_command = 'cp -f data.ecco_ad data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
+c Define OBJF's time-period (common to all variables defining OBJF)
+      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+
+      call objf_time
+
+c --------------
+c Define OBJF's VARIABLE(s) 
+
+      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+
+      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      do i=1,nvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
+
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      wirte(f1,"(i)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. nvar) 
+
+         write (6,"(/,3x,a,i1,a)")
+     $     'Choose OBFJ variable ',nobjf+1,' ... (1-',nvar,')?'
+         write(6,) '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_var(iobjf))
+
+         write(51,"(3x,a,i,a,a)") 'OBJF variable ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,/)")
+     $        ' --> OBJF variable : ', trim(f_var(pert_v))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i)") nobjf-1
+            wirte(f1,"(i)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s}(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         endif
+
+c Define new OBJF variable 
+         call objf_var(f1,iobjf)
+
+      end do 
+
+      stop
+      end
+c 
+c ============================================================
+c 
+      subroutine objf_time
+
+c Specifiy OBJF in time; Output temporal mask (weight) and set
+c model integration time accordingly in files data and pbs_ad.csh. 
+c
+c For this version of the ECCO Modeling Utility, OBJF will be
+c restricted to being a function of monthly averages; i.e., 
+c      gencost_avgperiod(*)='month'
+c
+
+c V4r4 specific 
+      integer nsteps, nyears, nmonths, whours
+      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
+      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
+
+      real*4 tmask(nmonths), tdum 
+      character*12 tmask_type
+
+c Other variables 
+      character*1   atime
+      character*128 atime_desc
+
+      integer itarget, ndays
+      integer itarget2, i
+
+      integer nTimesteps, nHours
+      character*24 fstep
+
+      real*4 tdum 
+      character*256 f_command
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(i)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
+
+c ---------
+c Select OBJF time period 
+      write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+
+      write(6,"(/,3x,a)") 'Select OBJF time-period among ... '
+      write(6,"(3x,a)")
+     $     '... a particular MONTH (m), a particular YEAR (y)'
+      write(6,"(3x,a,/)") '... or another PERIOD (p)'
+      write(6,"(a,/)") '(NOTE: Controls are weekly averages.) '
+
+      atime = 'x' 
+      do while (atime.ne.'M' .and. atime.ne.'m' .and.
+     $       atime.ne.'Y' .and. atime.ne.'y' .and.
+     $       atime.ne.'P' .and. atime.ne.'p' ) 
+         write(6,*) '... Enter (m/y/p) ?'
+         read(5,'(a)') atime
+      enddo
+
+      if (atime .eq. 'M' .or. atime .eq. 'm') then 
+         atime_desc =  'a month'
+      else if (atime .eq. 'Y' .or. atime .eq. 'y') then 
+         atime_desc =  'a year'
+      else
+         atime_desc =  'a period'
+      endif
+
+      write(6,"(3x,a,a,/)") 'OBJF time-period will be '
+     $     , trim(atime_desc)
+
+      write(51,'("atime = ",a)') trim(atime)
+      write(51,"(a,a,/)") ' --> OBJF time-period is '
+     $     , trim(atime_desc)
+
+c ----------------------- For different OBJF time periods  
+c For a particular MONTH
+      if (atime.eq.'M' .or. atime.eq.'m') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.312) 
+            write(6,*) 'Enter OBJF month ... (1-312)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'MONTH = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF month among (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget) = 1.
+
+c Set model integration time steps (nTimesteps)
+         ndays = sum(adays(1:itarget))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For a particular YEAR 
+      elseif (atime.eq.'Y' .or. atime.eq.'y') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.26) 
+            write(6,*) 'Enter OBJF year ... (1-26)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'YEAR = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF year among (1-26).'
+
+c Set mask 
+         itarget2 = (itarget-1)*12 + 1 
+         tmask = 0.
+         tmask(itarget2:itarget2+11) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2+11))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For another period
+      elseif (atime.eq.'P' .or. atime.eq.'p') then 
+         itarget  = 0
+         itarget2 = 0
+         do while (itarget.lt.1 .or. itarget.gt.312 .or. 
+     $        itarget2.lt.1 .or. itarget2.gt.312 .or.
+     $        itarget2.lt.itarget) 
+            write(6,*) 'Enter first month of OBJF period ... (1-312)?'
+            read(5,*) itarget 
+            write(6,*) 'Enter last month of OBJF period ... (1-312)?'
+            read(5,*) itarget2
+         enddo
+
+         write(6,"(a,i0,1x,i0)") 'PERIOD start & end months = ',
+     $        itarget,itarget2
+         write(51,'("itarget, itarget2 = ",i0,1x,i0)')
+     $        itarget,itarget2
+         write(51,"(a,/)")
+     $        ' --> OBJF start & end months (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget:itarget2) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+      endif
+
+c ----------------------- END different OBJF time periods  
+
+c Convert tmask to weight
+      tmask = tmask * adays
+      tdum = total(tmask) 
+      tmask = tmask/tdum
+
+c Output temporal mask (weight)
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c ----------------
+c Set integration time/period in data and pbs_ad.csh 
+c (data.ecco to be set in main routine.) 
+
+c File data 
+      f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') nTimesteps
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NSTEP_EMU|'//
+     $     trim(fstep) //'|g" data'
+      call execute_command_line(f_command, wait=.true.)
+
+c File pbs_ad.csh
+      f_command = 'cp -f pbs_ad.csh_orig pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      nHours = ceiling(float(nTimesteps)/float(nsteps)
+     $     *float(whours))
+      write(fstep,'(i24)') nHours
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|WHOURS_EMU|'//
+     $     trim(fstep) //'|g" pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      if (nHours .le. 2) then 
+         f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
+     $        'PBS -q devel|g" pbs_ad.csh'
+         call execute_command_line(f_command, wait=.true.)
+      endif
+
+c 
+      write(6,"(/,a,a,/)") '... Program has set computation periods '
+     $    'in files data and pbs_ad.csh accordingly.'
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine objf_var(f1,iobjf)
+
+c Specifiy OBJF variable(s)  
+      character*6 f1
+      integer iobjf
+
+c Specify spatial mask (weight) according to variable
+      if (iobjf .eq. 1 .or. iobjf .eq. 2) then 
+         call objf_var_2d(f1, iobjf)
+      else if (iobjf .eq. 3 .or. iobjf .eq. 4) then
+         call objf_var_3d(f1, iobjf)
+      else 
+         call objf_var_uv(f1, iobjf)
+      endif
+
+c Create time mask for variable (link common mask) 
+      f_command = 'ln -s objf_mask_T ' //
+     $  'objf_' // trim(f1) // '_mask_T' 
+      call execute_command_line(f_command, wait=.true.)
+
+c Edit data.ecco mask field  
+      f_command = 'sed -i -e ' //
+     $     '"s/mask(' // trim(f1) //
+     $     ').*/mask(' // trim(f1) //
+     $     ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+
+c 
+c ============================================================
+c 
+      subroutine objf_var_2d(f1, iobjf) 
+
+c Update data.ecco OBJF for either SSH or OBP
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+
+c 
+      character*1 pert_2, c1, c2
+      integer pert_i, pert_j
+      real*4 dum2d(nx,ny)
+      character*256 f_command
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+
+c ------
+c Identify OBJF variable among the two available 
+      if (iobjf.eq.5) then
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_horflux_vol''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else
+         write(6,*) 'iobjf is NG for objf_var_UV ... ', iobjf
+         write(6,*) 'This should not happen. Aborting ...'
+         stop
+      endif
+
+c ------
+c Select type of spatial mask 
+      ifunc = 0
+      do while (ifunc.ne.1 .and. ifunc.ne.2) 
+         write (6,*) 'Choose either VARIABLE at a point (1) or ',
+     $        ' VARIABLE weighted in space (2) ... (1/2)?'
+         read (5,*) ifunc
+      end do
+
+      write(51,"('ifunc = ',i2)") ifunc
+
+      if (ifunc .eq. 1) then 
+c When OBJF is at a point
+
+         write(6,"(a,/)") '... OBJF will be VARIABLE at a point'
+         write(51,"(a,/)") ' --> OBJF is VARIABLE at a point. '
+
+         call slct_3d_pt(pert_i,pert_j,pert_k)
+
+         write(51,2002) pert_i,pert_j,pert_k
+ 2002    format('pert_i, pert_j, pert_k = ',i2,2x,i4,2x,i2)
+         write(51,"(a,/)") ' --> OBJF model grid location (i,j,k).'
+
+c Select either UVEL or VVEL
+         iuv = 0
+         do while (iuv.ne.1 .and. iuv.ne.2) 
+            write(6,*) 'Choose either U (1) or V (2) ... (1/2)?'
+            read(5,*) iuv 
+         end do
+
+         write(51,'("iuv = ",i0)') iuv
+
+         if (iuv .eq. 1) then   ! UVEL
+            ov = 'U'
+            m1 = 'W'
+            m0 = 'S'
+         else
+            ov = 'V'
+            m1 = 'S'
+            m0 = 'W'
+         endif
+
+         write(6,*) ' ... OBJF will be ' // ov // 'VEL'
+         write(51,"(a,/)") ' --> OBJF will be ' // ov // 'VEL.'
+
+c Create 3d mask 
+         dum3d = 0.
+
+         fmask='objf_' // trim(f1) // '_mask_' // m0
+         INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+         if (f_exist) then
+            f_command = 'rm -f ' // trim(fmask)
+            call execute_command_line(f_command, wait=.true.)
+         endif
+         open(60,file=fmask,form='unformatted',access='stream')
+         write(60) dum3d
+         close(60)
+
+         dum3d(pert_i,pert_j,pert_k) = 1. 
+
+         fmask='objf_' // trim(f1) // '_mask_' // m1
+         INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+         if (f_exist) then
+            f_command = 'rm -f ' // trim(fmask)
+            call execute_command_line(f_command, wait=.true.)
+         endif
+         open(60,file=fmask,form='unformatted',access='stream')
+         write(60) dum3d
+         close(60)
+
+c Save location for naming run directory
+         write(floc,'(a1,"_",i9,"_",i9,"_",i9)')
+     $        ov,pert_i,pert_j,pert_k
+         call StripSpaces(floc)
+
+      else
+c When OBJF is VARIABLE weighted in space 
+
+         write(6,*)
+         '... OBJF will be a linear function of selected variable'
+         write(6,"(a)")
+     $        '... i.e., MULT * SUM( MASK_W*UVEL + MASK_S*VVEL )'
+         write(6,"(a,/)") '... MASK_W & MASK_S must be uploaded' //
+     $     ' (binary native format) before proceeding ... '
+
+         write(51,"(a)")
+     $   ' --> OBJF is a linear function of selected variable(s)'
+         write(51,"(a,/)")
+     $     ' --> i.e., MULT * SUM( MASK_W*UVEL + MASK_S*VVEL )'
+
+c --------------------
+c UVEL
+
+c Get mask file name 
+         write(6,"(3x,a)") 'Enter MASK_W filename for UVEL ... ?'  
+         read(5,'(a)') fmask
+
+         write(6,'("fmask_W = ",a)') trim(fmask)
+         write(51,'("fmask_W = ",a)') trim(fmask)
+         write(51,"(a,/)") ' --> MASK_W file for UVEL. '
+
+c Check mask 
+         call chk_mask3d(fmask,nx,ny,nr,dum3d)
+
+c Link input mask to what model expects 
+         f_command = 'ln -s ' // trim(fmask) //
+     $  'objf_' // trim(f1) // '_mask_W' 
+         call execute_command_line(f_command, wait=.true.)
+
+c --------------------
+c VVEL
+
+c Get mask file name 
+         write(6,"(3x,a)") 'Enter MASK_S filename for VVEL ... ?'  
+         read(5,'(a)') fmask
+
+         write(6,'("fmask_S = ",a)') trim(fmask)
+         write(51,'("fmask_S = ",a)') trim(fmask)
+         write(51,"(a,/)") ' --> MASK_S file for VVEL. '
+
+c Check mask 
+         call chk_mask3d(fmask,nx,ny,nr,dum3d)
+
+c Link input mask to what model expects 
+         f_command = 'ln -s ' // trim(fmask) //
+     $  'objf_' // trim(f1) // '_mask_S' 
+         call execute_command_line(f_command, wait=.true.)
+
+c --------------------
+c Enter scaling factor
+         write(6,*) 'Enter scaling factor MULT ... ?'
+         read(5,*) amult
+
+         write(6,'("amult = ",e12.4)') amult 
+         write(51,'("amult = ",e12.4)') amult
+         write(51,"(a,/)") ' --> OBJF Scaling factor. '
+
+         write(fmult,"(e12.4)") amult 
+         f_command = 'sed -i -e ' //
+     $  '"s/gencost(' // trim(f1) //
+     $ ').*/gencost(' // trim(f1) //
+     $ ')= ' // fmult // ',/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+      endif
+
+c Specify variable is 3D      
+      f_command = 'sed -i -e ' //
+     $     '"s/is3d(' // trim(f1) //
+     $     ').*/is3d(' // trim(f1) //
+     $     ')=.TRUE.,/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+c 
+c ============================================================
+c 
+      subroutine slct_2d_pt(pert_i,pert_j)
+c Pick 2d model grid point 
+
+c argument 
+      integer pert_i, pert_j
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+
+      real*4 dum2d(nx,ny), dum3d(nx,ny,nr)
+
+c Objective function 
+      integer nvar, ovar    ! number of OBJF variables 
+      parameter (nvar=5)    
+      character*72 f_var(nvar), f_unit(nvar)
+
+c Costfunction (variable, location)
+      character*1 pert_1, pert_2, c1, c2
+      integer pert_v, pert_i, pert_j, pert_k
+
+      character*256 f_command, s_command
+      integer ifunc    ! index for spatial mask 
+c 
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+      integer iuv  ! index for either UVEL or VVEL
+
+      logical :: f_exist
+
+c For different OBJF variables 
+      character*6 f0, f1
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='tool_setup_dir')
+      read (50,'(a)') tooldir
+      close (50)
+      
+c --------------
+c Read model grid
+      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      inquire (file=trim(file_in), EXIST=file_exists)
+      if (.not. file_exists) then
+         write (6,*) ' **** Error: model grid file = ',
+     $        trim(file_in) 
+         write (6,*) '**** does not exist'
+         stop
+      endif
+      open (50, file=file_in, action='read', access='stream')
+      read (50) xc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) yc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) rc
+      close (50)
+      rc = -rc  ! switch sign 
+
+      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) bathy
+      close (50)
+      
+c --------------
+c Variable name
+      f_var(1) = 'SSH'
+      f_var(2) = 'OBP'   
+      f_var(3) = 'THETA'    
+      f_var(4) = 'SALT'     
+      f_var(5) = 'UV'   
+
+      f_unit(1) = '(m)'
+      f_unit(2) = '(equivalent sea level m)'   
+      f_unit(3) = '(deg C)'    
+      f_unit(4) = '(PSU)'     
+      f_unit(5) = '(m/s)'   
+
+c --------------
+c Interactive specification of perturbation 
+
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'ad_objf.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of ad_objf.f'
+      write(51,"(a)")
+     $     'Adjoint Tool objective function (OBJF) specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Set up data.ecco with OBJF specification
+      f_command = 'cp -f data.ecco_ad data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
+c Define OBJF's time-period (common to all variables defining OBJF)
+      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+
+      call objf_time
+
+c --------------
+c Define OBJF's VARIABLE(s) 
+
+      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+
+      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      do i=1,nvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
+
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      wirte(f1,"(i)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. nvar) 
+
+         write (6,"(/,3x,a,i1,a)")
+     $     'Choose OBFJ variable ',nobjf+1,' ... (1-',nvar,')?'
+         write(6,) '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_var(iobjf))
+
+         write(51,"(3x,a,i,a,a)") 'OBJF variable ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,/)")
+     $        ' --> OBJF variable : ', trim(f_var(pert_v))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i)") nobjf-1
+            wirte(f1,"(i)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s}(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         endif
+
+c Define new OBJF variable 
+         call objf_var(f1,iobjf)
+
+      end do 
+
+      stop
+      end
+c 
+c ============================================================
+c 
+      subroutine objf_time
+
+c Specifiy OBJF in time; Output temporal mask (weight) and set
+c model integration time accordingly in files data and pbs_ad.csh. 
+c
+c For this version of the ECCO Modeling Utility, OBJF will be
+c restricted to being a function of monthly averages; i.e., 
+c      gencost_avgperiod(*)='month'
+c
+
+c V4r4 specific 
+      integer nsteps, nyears, nmonths, whours
+      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
+      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
+
+      real*4 tmask(nmonths), tdum 
+      character*12 tmask_type
+
+c Other variables 
+      character*1   atime
+      character*128 atime_desc
+
+      integer itarget, ndays
+      integer itarget2, i
+
+      integer nTimesteps, nHours
+      character*24 fstep
+
+      real*4 tdum 
+      character*256 f_command
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(i)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
+
+c ---------
+c Select OBJF time period 
+      write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+
+      write(6,"(/,3x,a)") 'Select OBJF time-period among ... '
+      write(6,"(3x,a)")
+     $     '... a particular MONTH (m), a particular YEAR (y)'
+      write(6,"(3x,a,/)") '... or another PERIOD (p)'
+      write(6,"(a,/)") '(NOTE: Controls are weekly averages.) '
+
+      atime = 'x' 
+      do while (atime.ne.'M' .and. atime.ne.'m' .and.
+     $       atime.ne.'Y' .and. atime.ne.'y' .and.
+     $       atime.ne.'P' .and. atime.ne.'p' ) 
+         write(6,*) '... Enter (m/y/p) ?'
+         read(5,'(a)') atime
+      enddo
+
+      if (atime .eq. 'M' .or. atime .eq. 'm') then 
+         atime_desc =  'a month'
+      else if (atime .eq. 'Y' .or. atime .eq. 'y') then 
+         atime_desc =  'a year'
+      else
+         atime_desc =  'a period'
+      endif
+
+      write(6,"(3x,a,a,/)") 'OBJF time-period will be '
+     $     , trim(atime_desc)
+
+      write(51,'("atime = ",a)') trim(atime)
+      write(51,"(a,a,/)") ' --> OBJF time-period is '
+     $     , trim(atime_desc)
+
+c ----------------------- For different OBJF time periods  
+c For a particular MONTH
+      if (atime.eq.'M' .or. atime.eq.'m') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.312) 
+            write(6,*) 'Enter OBJF month ... (1-312)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'MONTH = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF month among (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget) = 1.
+
+c Set model integration time steps (nTimesteps)
+         ndays = sum(adays(1:itarget))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For a particular YEAR 
+      elseif (atime.eq.'Y' .or. atime.eq.'y') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.26) 
+            write(6,*) 'Enter OBJF year ... (1-26)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'YEAR = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF year among (1-26).'
+
+c Set mask 
+         itarget2 = (itarget-1)*12 + 1 
+         tmask = 0.
+         tmask(itarget2:itarget2+11) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2+11))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For another period
+      elseif (atime.eq.'P' .or. atime.eq.'p') then 
+         itarget  = 0
+         itarget2 = 0
+         do while (itarget.lt.1 .or. itarget.gt.312 .or. 
+     $        itarget2.lt.1 .or. itarget2.gt.312 .or.
+     $        itarget2.lt.itarget) 
+            write(6,*) 'Enter first month of OBJF period ... (1-312)?'
+            read(5,*) itarget 
+            write(6,*) 'Enter last month of OBJF period ... (1-312)?'
+            read(5,*) itarget2
+         enddo
+
+         write(6,"(a,i0,1x,i0)") 'PERIOD start & end months = ',
+     $        itarget,itarget2
+         write(51,'("itarget, itarget2 = ",i0,1x,i0)')
+     $        itarget,itarget2
+         write(51,"(a,/)")
+     $        ' --> OBJF start & end months (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget:itarget2) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+      endif
+
+c ----------------------- END different OBJF time periods  
+
+c Convert tmask to weight
+      tmask = tmask * adays
+      tdum = total(tmask) 
+      tmask = tmask/tdum
+
+c Output temporal mask (weight)
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c ----------------
+c Set integration time/period in data and pbs_ad.csh 
+c (data.ecco to be set in main routine.) 
+
+c File data 
+      f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') nTimesteps
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NSTEP_EMU|'//
+     $     trim(fstep) //'|g" data'
+      call execute_command_line(f_command, wait=.true.)
+
+c File pbs_ad.csh
+      f_command = 'cp -f pbs_ad.csh_orig pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      nHours = ceiling(float(nTimesteps)/float(nsteps)
+     $     *float(whours))
+      write(fstep,'(i24)') nHours
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|WHOURS_EMU|'//
+     $     trim(fstep) //'|g" pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      if (nHours .le. 2) then 
+         f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
+     $        'PBS -q devel|g" pbs_ad.csh'
+         call execute_command_line(f_command, wait=.true.)
+      endif
+
+c 
+      write(6,"(/,a,a,/)") '... Program has set computation periods '
+     $    'in files data and pbs_ad.csh accordingly.'
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine objf_var(f1,iobjf)
+
+c Specifiy OBJF variable(s)  
+      character*6 f1
+      integer iobjf
+
+c Specify spatial mask (weight) according to variable
+      if (iobjf .eq. 1 .or. iobjf .eq. 2) then 
+         call objf_var_2d(f1, iobjf)
+      else if (iobjf .eq. 3 .or. iobjf .eq. 4) then
+         call objf_var_3d(f1, iobjf)
+      else 
+         call objf_var_uv(f1, iobjf)
+      endif
+
+c Create time mask for variable (link common mask) 
+      f_command = 'ln -s objf_mask_T ' //
+     $  'objf_' // trim(f1) // '_mask_T' 
+      call execute_command_line(f_command, wait=.true.)
+
+c Edit data.ecco mask field  
+      f_command = 'sed -i -e ' //
+     $     '"s/mask(' // trim(f1) //
+     $     ').*/mask(' // trim(f1) //
+     $     ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+
+c 
+c ============================================================
+c 
+      subroutine objf_var_2d(f1, iobjf) 
+
+c Update data.ecco OBJF for either SSH or OBP
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+c 
+      character*1 pert_2, c1, c2
+      integer pert_i, pert_j
+      real*4 dum2d(nx,ny)
+      character*256 f_command
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+
+c ------
+c Identify OBJF variable among the two available 
+      if (iobjf.eq.1) then
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_eta_dyn''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else if (iobjf.eq.2) then 
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_obp''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else
+         write(6,*) 'iobjf is NG for objf_var_2d ... ', iobjf
+         write(6,*) 'This should not happen. Aborting ...'
+         stop
+      endif
+
+c ------
+c Select type of spatial mask 
+      ifunc = 0
+      do while (ifunc.ne.1 .and. ifunc.ne.2) 
+         write (6,*) 'Choose either VARIABLE at a point (1) or ',
+     $        ' VARIABLE weighted in space (2) ... (1/2)?'
+         read (5,*) ifunc
+      end do
+
+      write(51,"('ifunc = ',i2)") ifunc
+
+      if (ifunc .eq. 1) then 
+c When OBJF is at a point
+
+         write(6,"(a,/)") '... OBJF will be VARIABLE at a point'
+         write(51,"(a,/)") ' --> OBJF is VARIABLE at a point. '
+
+         call slct_2d_pt(pert_i,pert_j)
+
+         write(51,2002) pert_i,pert_j
+ 2002    format('pert_i, pert_j = ',i2,2x,i4)
+         write(51,"(a,/)") ' --> OBJF model grid location (i,j).'
+
+c Create 2d mask for the point 
+         dum2d = 0.
+         dum2d(pert_i,pert_j) = 1. 
+
+         fmask = 'objf_' // trim(f1) // '_mask_C'
+         INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+         if (f_exist) then
+            f_command = 'rm -f ' // trim(fmask)
+            call execute_command_line(f_command, wait=.true.)
+         endif
+         open(60,file=fmask,form='unformatted',access='stream')
+         write(60) dum2d
+         close(60)
+
+c Save location for naming run directory
+         write(floc,'(i9,"_",i9)') pert_i,pert_j
+         call StripSpaces(floc)
+
+      else
+c When OBJF is VARIABLE weighted in space 
+
+         write(6,*)
+         '... OBJF will be a linear function of selected variable'
+         write(6,"(a)")
+     $        '... i.e., MULT_i * SUM_i( MASK_i * VARIABLE_i )'
+         write(6,"(a,/)") '... MASK_i must be uploaded' //
+     $     ' (binary native format) before proceeding ... '
+
+         write(51,"(a)")
+     $   ' --> OBJF is a linear function of selected variable(s)'
+         write(51,"(a,/)")
+     $     ' --> i.e., MULT_i * SUM_i( MASK_i * VARIABLE_i )'
+
+c Get mask file name 
+         write(6,*) '   Enter MASK_i filename ... ?'  
+         read(5,'(a)') fmask
+
+         write(6,'("fmask = ",a)') trim(fmask)
+         write(51,'("fmask = ",a)') trim(fmask)
+         write(51,"(a,/)") ' --> MASK file. '
+
+c Check mask 
+         call chk_mask2d(fmask,nx,ny,dum2d)
+
+c Link input mask to what model expects 
+         f_command = 'ln -s ' // trim(fmask) //
+     $  'objf_' // trim(f1) // '_mask_C' 
+         call execute_command_line(f_command, wait=.true.)
+
+c Enter scaling factor
+         write(6,*) 'Enter scaling factor MULT_i ... ?'
+         read(5,*) amult
+
+         write(6,'("amult = ",e12.4)') amult 
+         write(51,'("amult = ",e12.4)') amult
+         write(51,"(a,/)") ' --> OBJF Scaling factor. '
+
+         write(fmult,"(e12.4)") amult 
+         f_command = 'sed -i -e ' //
+     $  '"s/gencost(' // trim(f1) //
+     $ ').*/gencost(' // trim(f1) //
+     $ ')= ' // fmult // ',/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+      endif
+
+c Specify variable being NOT 3D      
+      f_command = 'sed -i -e ' //
+     $     '"s/is3d(' // trim(f1) //
+     $     ').*/is3d(' // trim(f1) //
+     $     ')=.FALSE.,/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+c 
+c ============================================================
+c 
+      subroutine objf_var_3d(f1, iobjf) 
+
+c Update data.ecco OBJF for either THETA or SALT
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+
+      real*4 dum2d(nx,ny), dum3d(nx,ny,nr)
+
+c Objective function 
+      integer nvar, ovar    ! number of OBJF variables 
+      parameter (nvar=5)    
+      character*72 f_var(nvar), f_unit(nvar)
+
+c Costfunction (variable, location)
+      character*1 pert_1, pert_2, c1, c2
+      integer pert_v, pert_i, pert_j, pert_k
+
+      character*256 f_command, s_command
+      integer ifunc    ! index for spatial mask 
+c 
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+      integer iuv  ! index for either UVEL or VVEL
+
+      logical :: f_exist
+
+c For different OBJF variables 
+      character*6 f0, f1
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='tool_setup_dir')
+      read (50,'(a)') tooldir
+      close (50)
+      
+c --------------
+c Read model grid
+      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      inquire (file=trim(file_in), EXIST=file_exists)
+      if (.not. file_exists) then
+         write (6,*) ' **** Error: model grid file = ',
+     $        trim(file_in) 
+         write (6,*) '**** does not exist'
+         stop
+      endif
+      open (50, file=file_in, action='read', access='stream')
+      read (50) xc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) yc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) rc
+      close (50)
+      rc = -rc  ! switch sign 
+
+      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) bathy
+      close (50)
+      
+c --------------
+c Variable name
+      f_var(1) = 'SSH'
+      f_var(2) = 'OBP'   
+      f_var(3) = 'THETA'    
+      f_var(4) = 'SALT'     
+      f_var(5) = 'UV'   
+
+      f_unit(1) = '(m)'
+      f_unit(2) = '(equivalent sea level m)'   
+      f_unit(3) = '(deg C)'    
+      f_unit(4) = '(PSU)'     
+      f_unit(5) = '(m/s)'   
+
+c --------------
+c Interactive specification of perturbation 
+
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'ad_objf.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of ad_objf.f'
+      write(51,"(a)")
+     $     'Adjoint Tool objective function (OBJF) specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Set up data.ecco with OBJF specification
+      f_command = 'cp -f data.ecco_ad data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
+c Define OBJF's time-period (common to all variables defining OBJF)
+      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+
+      call objf_time
+
+c --------------
+c Define OBJF's VARIABLE(s) 
+
+      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+
+      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      do i=1,nvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
+
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      wirte(f1,"(i)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. nvar) 
+
+         write (6,"(/,3x,a,i1,a)")
+     $     'Choose OBFJ variable ',nobjf+1,' ... (1-',nvar,')?'
+         write(6,) '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_var(iobjf))
+
+         write(51,"(3x,a,i,a,a)") 'OBJF variable ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,/)")
+     $        ' --> OBJF variable : ', trim(f_var(pert_v))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i)") nobjf-1
+            wirte(f1,"(i)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s}(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         endif
+
+c Define new OBJF variable 
+         call objf_var(f1,iobjf)
+
+      end do 
+
+      stop
+      end
+c 
+c ============================================================
+c 
+      subroutine objf_time
+
+c Specifiy OBJF in time; Output temporal mask (weight) and set
+c model integration time accordingly in files data and pbs_ad.csh. 
+c
+c For this version of the ECCO Modeling Utility, OBJF will be
+c restricted to being a function of monthly averages; i.e., 
+c      gencost_avgperiod(*)='month'
+c
+
+c V4r4 specific 
+      integer nsteps, nyears, nmonths, whours
+      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
+      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
+
+      real*4 tmask(nmonths), tdum 
+      character*12 tmask_type
+
+c Other variables 
+      character*1   atime
+      character*128 atime_desc
+
+      integer itarget, ndays
+      integer itarget2, i
+
+      integer nTimesteps, nHours
+      character*24 fstep
+
+      real*4 tdum 
+      character*256 f_command
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(i)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
+
+c ---------
+c Select OBJF time period 
+      write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+
+      write(6,"(/,3x,a)") 'Select OBJF time-period among ... '
+      write(6,"(3x,a)")
+     $     '... a particular MONTH (m), a particular YEAR (y)'
+      write(6,"(3x,a,/)") '... or another PERIOD (p)'
+      write(6,"(a,/)") '(NOTE: Controls are weekly averages.) '
+
+      atime = 'x' 
+      do while (atime.ne.'M' .and. atime.ne.'m' .and.
+     $       atime.ne.'Y' .and. atime.ne.'y' .and.
+     $       atime.ne.'P' .and. atime.ne.'p' ) 
+         write(6,*) '... Enter (m/y/p) ?'
+         read(5,'(a)') atime
+      enddo
+
+      if (atime .eq. 'M' .or. atime .eq. 'm') then 
+         atime_desc =  'a month'
+      else if (atime .eq. 'Y' .or. atime .eq. 'y') then 
+         atime_desc =  'a year'
+      else
+         atime_desc =  'a period'
+      endif
+
+      write(6,"(3x,a,a,/)") 'OBJF time-period will be '
+     $     , trim(atime_desc)
+
+      write(51,'("atime = ",a)') trim(atime)
+      write(51,"(a,a,/)") ' --> OBJF time-period is '
+     $     , trim(atime_desc)
+
+c ----------------------- For different OBJF time periods  
+c For a particular MONTH
+      if (atime.eq.'M' .or. atime.eq.'m') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.312) 
+            write(6,*) 'Enter OBJF month ... (1-312)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'MONTH = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF month among (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget) = 1.
+
+c Set model integration time steps (nTimesteps)
+         ndays = sum(adays(1:itarget))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For a particular YEAR 
+      elseif (atime.eq.'Y' .or. atime.eq.'y') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.26) 
+            write(6,*) 'Enter OBJF year ... (1-26)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'YEAR = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF year among (1-26).'
+
+c Set mask 
+         itarget2 = (itarget-1)*12 + 1 
+         tmask = 0.
+         tmask(itarget2:itarget2+11) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2+11))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For another period
+      elseif (atime.eq.'P' .or. atime.eq.'p') then 
+         itarget  = 0
+         itarget2 = 0
+         do while (itarget.lt.1 .or. itarget.gt.312 .or. 
+     $        itarget2.lt.1 .or. itarget2.gt.312 .or.
+     $        itarget2.lt.itarget) 
+            write(6,*) 'Enter first month of OBJF period ... (1-312)?'
+            read(5,*) itarget 
+            write(6,*) 'Enter last month of OBJF period ... (1-312)?'
+            read(5,*) itarget2
+         enddo
+
+         write(6,"(a,i0,1x,i0)") 'PERIOD start & end months = ',
+     $        itarget,itarget2
+         write(51,'("itarget, itarget2 = ",i0,1x,i0)')
+     $        itarget,itarget2
+         write(51,"(a,/)")
+     $        ' --> OBJF start & end months (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget:itarget2) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+      endif
+
+c ----------------------- END different OBJF time periods  
+
+c Convert tmask to weight
+      tmask = tmask * adays
+      tdum = total(tmask) 
+      tmask = tmask/tdum
+
+c Output temporal mask (weight)
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c ----------------
+c Set integration time/period in data and pbs_ad.csh 
+c (data.ecco to be set in main routine.) 
+
+c File data 
+      f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') nTimesteps
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NSTEP_EMU|'//
+     $     trim(fstep) //'|g" data'
+      call execute_command_line(f_command, wait=.true.)
+
+c File pbs_ad.csh
+      f_command = 'cp -f pbs_ad.csh_orig pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      nHours = ceiling(float(nTimesteps)/float(nsteps)
+     $     *float(whours))
+      write(fstep,'(i24)') nHours
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|WHOURS_EMU|'//
+     $     trim(fstep) //'|g" pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      if (nHours .le. 2) then 
+         f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
+     $        'PBS -q devel|g" pbs_ad.csh'
+         call execute_command_line(f_command, wait=.true.)
+      endif
+
+c 
+      write(6,"(/,a,a,/)") '... Program has set computation periods '
+     $    'in files data and pbs_ad.csh accordingly.'
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine objf_var(f1,iobjf)
+
+c Specifiy OBJF variable(s)  
+      character*6 f1
+      integer iobjf
+
+c Specify spatial mask (weight) according to variable
+      if (iobjf .eq. 1 .or. iobjf .eq. 2) then 
+         call objf_var_2d(f1, iobjf)
+      else if (iobjf .eq. 3 .or. iobjf .eq. 4) then
+         call objf_var_3d(f1, iobjf)
+      else 
+         call objf_var_uv(f1, iobjf)
+      endif
+
+c Create time mask for variable (link common mask) 
+      f_command = 'ln -s objf_mask_T ' //
+     $  'objf_' // trim(f1) // '_mask_T' 
+      call execute_command_line(f_command, wait=.true.)
+
+c Edit data.ecco mask field  
+      f_command = 'sed -i -e ' //
+     $     '"s/mask(' // trim(f1) //
+     $     ').*/mask(' // trim(f1) //
+     $     ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+
+c 
+c ============================================================
+c 
+      subroutine objf_var_2d(f1, iobjf) 
+
+c Update data.ecco OBJF for either SSH or OBP
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+c 
+      character*1 pert_2, c1, c2
+      integer pert_i, pert_j
+      real*4 dum2d(nx,ny)
+      character*256 f_command
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+
+c ------
+c Identify OBJF variable among the two available 
+      if (iobjf.eq.3) then
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_THETA''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else if (iobjf.eq.4) then 
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_SALT''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else
+         write(6,*) 'iobjf is NG for objf_var_3d ... ', iobjf
+         write(6,*) 'This should not happen. Aborting ...'
+         stop
+      endif
+
+c ------
+c Select type of spatial mask 
+      ifunc = 0
+      do while (ifunc.ne.1 .and. ifunc.ne.2) 
+         write (6,*) 'Choose either VARIABLE at a point (1) or ',
+     $        ' VARIABLE weighted in space (2) ... (1/2)?'
+         read (5,*) ifunc
+      end do
+
+      write(51,"('ifunc = ',i2)") ifunc
+
+      if (ifunc .eq. 1) then 
+c When OBJF is at a point
+
+         write(6,"(a,/)") '... OBJF will be VARIABLE at a point'
+         write(51,"(a,/)") ' --> OBJF is VARIABLE at a point. '
+
+         call slct_3d_pt(pert_i,pert_j,pert_k)
+
+         write(51,2002) pert_i,pert_j,pert_k
+ 2002    format('pert_i, pert_j, pert_k = ',i2,2x,i4,2x,i2)
+         write(51,"(a,/)") ' --> OBJF model grid location (i,j,k).'
+
+c Create 3d mask for the point 
+         dum3d = 0.
+         dum3d(pert_i,pert_j,pert_k) = 1. 
+
+         f_command = 'sed -i -e ' //
+     $  '"s/mask(' // trim(f1) //
+     $ ').*/mask(' // trim(f1) //
+     $ ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+         fmask = 'objf_' // trim(f1) // '_mask_C'
+         INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+         if (f_exist) then
+            f_command = 'rm -f ' // trim(fmask)
+            call execute_command_line(f_command, wait=.true.)
+         endif
+         open(60,file=fmask,form='unformatted',access='stream')
+         write(60) dum3d
+         close(60)
+
+c Save location for naming run directory
+         write(floc,'(i9,"_",i9,"_",i9)') pert_i,pert_j,pert_k
+         call StripSpaces(floc)
+
+      else
+c When OBJF is VARIABLE weighted in space 
+
+         write(6,*)
+         '... OBJF will be a linear function of selected variable'
+         write(6,"(a)")
+     $     '... i.e., SUM_i( MASK_i * VARIABLE_i )'
+         write(6,"(a,/)") '... Upload all MASK_i ' //
+     $     ' (binary native format) before proceeding ... '
+
+         write(51,"(a)")
+     $   ' --> OBJF is a linear function of selected variable(s)'
+         write(51,"(a,/)")
+     $     ' --> i.e., SUM_i( MASK_i * VARIABLE_i )'
+
+c Get mask file name 
+         write(6,*) '   Enter MASK filename ... ?'  
+         read(5,'(a)') fmask
+
+         write(51,'("fmask = ",a)') trim(fmask)
+         write(51,"(a,/)") ' --> MASK file. '
+
+c Check mask 
+         call chk_mask3d(fmask,nx,ny,nr,dum3d)
+
+c Link input mask to what model expects 
+         f_command = 'ln -s ' // trim(fmask) //
+     $  'objf_' // trim(f1) // '_mask_C' 
+         call execute_command_line(f_command, wait=.true.)
+
+c Enter scaling factor
+         write(6,*) 'Enter scaling factor MULT_i ... ?'
+         read(5,*) amult
+
+         write(6,'("amult = ",e12.4)') amult 
+         write(51,'("amult = ",e12.4)') amult
+         write(51,"(a,/)") ' --> OBJF Scaling factor. '
+
+         write(fmult,"(e12.4)") amult 
+         f_command = 'sed -i -e ' //
+     $  '"s/gencost(' // trim(f1) //
+     $ ').*/gencost(' // trim(f1) //
+     $ ')= ' // fmult // ',/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+      endif
+
+c Specify variable is 3D      
+      f_command = 'sed -i -e ' //
+     $     '"s/is3d(' // trim(f1) //
+     $     ').*/is3d(' // trim(f1) //
+     $     ')=.TRUE.,/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+c 
+c ============================================================
+c 
+      subroutine objf_var_UV(f1, iobjf) 
+
+c Update data.ecco OBJF for UV
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+
+      real*4 dum2d(nx,ny), dum3d(nx,ny,nr)
+
+c Objective function 
+      integer nvar, ovar    ! number of OBJF variables 
+      parameter (nvar=5)    
+      character*72 f_var(nvar), f_unit(nvar)
+
+c Costfunction (variable, location)
+      character*1 pert_1, pert_2, c1, c2
+      integer pert_v, pert_i, pert_j, pert_k
+
+      character*256 f_command, s_command
+      integer ifunc    ! index for spatial mask 
+c 
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+      integer iuv  ! index for either UVEL or VVEL
+
+      logical :: f_exist
+
+c For different OBJF variables 
+      character*6 f0, f1
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='tool_setup_dir')
+      read (50,'(a)') tooldir
+      close (50)
+      
+c --------------
+c Read model grid
+      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      inquire (file=trim(file_in), EXIST=file_exists)
+      if (.not. file_exists) then
+         write (6,*) ' **** Error: model grid file = ',
+     $        trim(file_in) 
+         write (6,*) '**** does not exist'
+         stop
+      endif
+      open (50, file=file_in, action='read', access='stream')
+      read (50) xc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) yc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) rc
+      close (50)
+      rc = -rc  ! switch sign 
+
+      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) bathy
+      close (50)
+      
+c --------------
+c Variable name
+      f_var(1) = 'SSH'
+      f_var(2) = 'OBP'   
+      f_var(3) = 'THETA'    
+      f_var(4) = 'SALT'     
+      f_var(5) = 'UV'   
+
+      f_unit(1) = '(m)'
+      f_unit(2) = '(equivalent sea level m)'   
+      f_unit(3) = '(deg C)'    
+      f_unit(4) = '(PSU)'     
+      f_unit(5) = '(m/s)'   
+
+c --------------
+c Interactive specification of perturbation 
+
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'ad_objf.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of ad_objf.f'
+      write(51,"(a)")
+     $     'Adjoint Tool objective function (OBJF) specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Set up data.ecco with OBJF specification
+      f_command = 'cp -f data.ecco_ad data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
+c Define OBJF's time-period (common to all variables defining OBJF)
+      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+
+      call objf_time
+
+c --------------
+c Define OBJF's VARIABLE(s) 
+
+      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+
+      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      do i=1,nvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
+
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      wirte(f1,"(i)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. nvar) 
+
+         write (6,"(/,3x,a,i1,a)")
+     $     'Choose OBFJ variable ',nobjf+1,' ... (1-',nvar,')?'
+         write(6,) '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_var(iobjf))
+
+         write(51,"(3x,a,i,a,a)") 'OBJF variable ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,/)")
+     $        ' --> OBJF variable : ', trim(f_var(pert_v))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i)") nobjf-1
+            wirte(f1,"(i)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s}(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         endif
+
+c Define new OBJF variable 
+         call objf_var(f1,iobjf)
+
+      end do 
+
+      stop
+      end
+c 
+c ============================================================
+c 
+      subroutine objf_time
+
+c Specifiy OBJF in time; Output temporal mask (weight) and set
+c model integration time accordingly in files data and pbs_ad.csh. 
+c
+c For this version of the ECCO Modeling Utility, OBJF will be
+c restricted to being a function of monthly averages; i.e., 
+c      gencost_avgperiod(*)='month'
+c
+
+c V4r4 specific 
+      integer nsteps, nyears, nmonths, whours
+      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
+      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
+
+      real*4 tmask(nmonths), tdum 
+      character*12 tmask_type
+
+c Other variables 
+      character*1   atime
+      character*128 atime_desc
+
+      integer itarget, ndays
+      integer itarget2, i
+
+      integer nTimesteps, nHours
+      character*24 fstep
+
+      real*4 tdum 
+      character*256 f_command
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(i)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
+
+c ---------
+c Select OBJF time period 
+      write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+
+      write(6,"(/,3x,a)") 'Select OBJF time-period among ... '
+      write(6,"(3x,a)")
+     $     '... a particular MONTH (m), a particular YEAR (y)'
+      write(6,"(3x,a,/)") '... or another PERIOD (p)'
+      write(6,"(a,/)") '(NOTE: Controls are weekly averages.) '
+
+      atime = 'x' 
+      do while (atime.ne.'M' .and. atime.ne.'m' .and.
+     $       atime.ne.'Y' .and. atime.ne.'y' .and.
+     $       atime.ne.'P' .and. atime.ne.'p' ) 
+         write(6,*) '... Enter (m/y/p) ?'
+         read(5,'(a)') atime
+      enddo
+
+      if (atime .eq. 'M' .or. atime .eq. 'm') then 
+         atime_desc =  'a month'
+      else if (atime .eq. 'Y' .or. atime .eq. 'y') then 
+         atime_desc =  'a year'
+      else
+         atime_desc =  'a period'
+      endif
+
+      write(6,"(3x,a,a,/)") 'OBJF time-period will be '
+     $     , trim(atime_desc)
+
+      write(51,'("atime = ",a)') trim(atime)
+      write(51,"(a,a,/)") ' --> OBJF time-period is '
+     $     , trim(atime_desc)
+
+c ----------------------- For different OBJF time periods  
+c For a particular MONTH
+      if (atime.eq.'M' .or. atime.eq.'m') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.312) 
+            write(6,*) 'Enter OBJF month ... (1-312)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'MONTH = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF month among (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget) = 1.
+
+c Set model integration time steps (nTimesteps)
+         ndays = sum(adays(1:itarget))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For a particular YEAR 
+      elseif (atime.eq.'Y' .or. atime.eq.'y') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.26) 
+            write(6,*) 'Enter OBJF year ... (1-26)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'YEAR = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF year among (1-26).'
+
+c Set mask 
+         itarget2 = (itarget-1)*12 + 1 
+         tmask = 0.
+         tmask(itarget2:itarget2+11) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2+11))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For another period
+      elseif (atime.eq.'P' .or. atime.eq.'p') then 
+         itarget  = 0
+         itarget2 = 0
+         do while (itarget.lt.1 .or. itarget.gt.312 .or. 
+     $        itarget2.lt.1 .or. itarget2.gt.312 .or.
+     $        itarget2.lt.itarget) 
+            write(6,*) 'Enter first month of OBJF period ... (1-312)?'
+            read(5,*) itarget 
+            write(6,*) 'Enter last month of OBJF period ... (1-312)?'
+            read(5,*) itarget2
+         enddo
+
+         write(6,"(a,i0,1x,i0)") 'PERIOD start & end months = ',
+     $        itarget,itarget2
+         write(51,'("itarget, itarget2 = ",i0,1x,i0)')
+     $        itarget,itarget2
+         write(51,"(a,/)")
+     $        ' --> OBJF start & end months (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget:itarget2) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+      endif
+
+c ----------------------- END different OBJF time periods  
+
+c Convert tmask to weight
+      tmask = tmask * adays
+      tdum = total(tmask) 
+      tmask = tmask/tdum
+
+c Output temporal mask (weight)
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c ----------------
+c Set integration time/period in data and pbs_ad.csh 
+c (data.ecco to be set in main routine.) 
+
+c File data 
+      f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') nTimesteps
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NSTEP_EMU|'//
+     $     trim(fstep) //'|g" data'
+      call execute_command_line(f_command, wait=.true.)
+
+c File pbs_ad.csh
+      f_command = 'cp -f pbs_ad.csh_orig pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      nHours = ceiling(float(nTimesteps)/float(nsteps)
+     $     *float(whours))
+      write(fstep,'(i24)') nHours
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|WHOURS_EMU|'//
+     $     trim(fstep) //'|g" pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      if (nHours .le. 2) then 
+         f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
+     $        'PBS -q devel|g" pbs_ad.csh'
+         call execute_command_line(f_command, wait=.true.)
+      endif
+
+c 
+      write(6,"(/,a,a,/)") '... Program has set computation periods '
+     $    'in files data and pbs_ad.csh accordingly.'
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine objf_var(f1,iobjf)
+
+c Specifiy OBJF variable(s)  
+      character*6 f1
+      integer iobjf
+
+c Specify spatial mask (weight) according to variable
+      if (iobjf .eq. 1 .or. iobjf .eq. 2) then 
+         call objf_var_2d(f1, iobjf)
+      else if (iobjf .eq. 3 .or. iobjf .eq. 4) then
+         call objf_var_3d(f1, iobjf)
+      else 
+         call objf_var_uv(f1, iobjf)
+      endif
+
+c Create time mask for variable (link common mask) 
+      f_command = 'ln -s objf_mask_T ' //
+     $  'objf_' // trim(f1) // '_mask_T' 
+      call execute_command_line(f_command, wait=.true.)
+
+c Edit data.ecco mask field  
+      f_command = 'sed -i -e ' //
+     $     '"s/mask(' // trim(f1) //
+     $     ').*/mask(' // trim(f1) //
+     $     ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+
+c 
+c ============================================================
+c 
+      subroutine objf_var_2d(f1, iobjf) 
+
+c Update data.ecco OBJF for either SSH or OBP
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+c 
+      character*1 pert_2, c1, c2
+      integer pert_i, pert_j
+      real*4 dum2d(nx,ny)
+      character*256 f_command
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+
+c ------
+c Identify OBJF variable among the two available 
+      if (iobjf.eq.1) then
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_eta_dyn''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else if (iobjf.eq.2) then 
+         f_command = 'sed -i -e ' //
+     $  '"s/barfile(' // trim(f1) //
+     $ ').*/barfile(' // trim(f1) //
+     $ ')=''m_boxmean_obp''/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+      else
+         write(6,*) 'iobjf is NG for objf_var_2d ... ', iobjf
+         write(6,*) 'This should not happen. Aborting ...'
+         stop
+      endif
+
+c ------
+c Select type of spatial mask 
+      ifunc = 0
+      do while (ifunc.ne.1 .and. ifunc.ne.2) 
+         write (6,*) 'Choose either VARIABLE at a point (1) or ',
+     $        ' VARIABLE weighted in space (2) ... (1/2)?'
+         read (5,*) ifunc
+      end do
+
+      write(51,"('ifunc = ',i2)") ifunc
+
+      if (ifunc .eq. 1) then 
+c When OBJF is at a point
+
+         write(6,"(a,/)") '... OBJF will be VARIABLE at a point'
+         write(51,"(a,/)") ' --> OBJF is VARIABLE at a point. '
+
+         call slct_2d_pt(pert_i,pert_j)
+
+         write(51,2002) pert_i,pert_j
+ 2002    format('pert_i, pert_j = ',i2,2x,i4)
+         write(51,"(a,/)") ' --> OBJF model grid location (i,j).'
+
+c Create 2d mask for the point 
+         dum2d = 0.
+         dum2d(pert_i,pert_j) = 1. 
+
+         fmask = 'objf_' // trim(f1) // '_mask_C'
+         INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+         if (f_exist) then
+            f_command = 'rm -f ' // trim(fmask)
+            call execute_command_line(f_command, wait=.true.)
+         endif
+         open(60,file=fmask,form='unformatted',access='stream')
+         write(60) dum2d
+         close(60)
+
+c Save location for naming run directory
+         write(floc,'(i9,"_",i9)') pert_i,pert_j
+         call StripSpaces(floc)
+
+      else
+c When OBJF is VARIABLE weighted in space 
+
+         write(6,*)
+         '... OBJF will be a linear function of selected variable'
+         write(6,"(a)")
+     $        '... i.e., MULT_i * SUM_i( MASK_i * VARIABLE_i )'
+         write(6,"(a,/)") '... MASK_i must be uploaded' //
+     $     ' (binary native format) before proceeding ... '
+
+         write(51,"(a)")
+     $   ' --> OBJF is a linear function of selected variable(s)'
+         write(51,"(a,/)")
+     $     ' --> i.e., MULT_i * SUM_i( MASK_i * VARIABLE_i )'
+
+c Get mask file name 
+         write(6,*) '   Enter MASK_i filename ... ?'  
+         read(5,'(a)') fmask
+
+         write(6,'("fmask = ",a)') trim(fmask)
+         write(51,'("fmask = ",a)') trim(fmask)
+         write(51,"(a,/)") ' --> MASK file. '
+
+c Check mask 
+         call chk_mask2d(fmask,nx,ny,dum2d)
+
+c Link input mask to what model expects 
+         f_command = 'ln -s ' // trim(fmask) //
+     $  'objf_' // trim(f1) // '_mask_C' 
+         call execute_command_line(f_command, wait=.true.)
+
+c Enter scaling factor
+         write(6,*) 'Enter scaling factor MULT_i ... ?'
+         read(5,*) amult
+
+         write(6,'("amult = ",e12.4)') amult 
+         write(51,'("amult = ",e12.4)') amult
+         write(51,"(a,/)") ' --> OBJF Scaling factor. '
+
+         write(fmult,"(e12.4)") amult 
+         f_command = 'sed -i -e ' //
+     $  '"s/gencost(' // trim(f1) //
+     $ ').*/gencost(' // trim(f1) //
+     $ ')= ' // fmult // ',/g" data.ecco'
+         call execute_command_line(f_command, wait=.true.)
+
+      endif
+
+c Specify variable being NOT 3D      
+      f_command = 'sed -i -e ' //
+     $     '"s/is3d(' // trim(f1) //
+     $     ').*/is3d(' // trim(f1) //
+     $     ')=.FALSE.,/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+c 
+c ============================================================
+c 
+      subroutine objf_var_3d(f1, iobjf) 
+
+c Update data.ecco OBJF for either THETA or SALT
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+
+      real*4 dum2d(nx,ny), dum3d(nx,ny,nr)
+
+c Objective function 
+      integer nvar, ovar    ! number of OBJF variables 
+      parameter (nvar=5)    
+      character*72 f_var(nvar), f_unit(nvar)
+
+c Costfunction (variable, location)
+      character*1 pert_1, pert_2, c1, c2
+      integer pert_v, pert_i, pert_j, pert_k
+
+      character*256 f_command, s_command
+      integer ifunc    ! index for spatial mask 
+c 
+      character*256 fmask  ! name of mask file 
+      character*256 floc   ! ID location/mask 
+      integer iuv  ! index for either UVEL or VVEL
+
+      logical :: f_exist
+
+c For different OBJF variables 
+      character*6 f0, f1
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='tool_setup_dir')
+      read (50,'(a)') tooldir
+      close (50)
+      
+c --------------
+c Read model grid
+      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      inquire (file=trim(file_in), EXIST=file_exists)
+      if (.not. file_exists) then
+         write (6,*) ' **** Error: model grid file = ',
+     $        trim(file_in) 
+         write (6,*) '**** does not exist'
+         stop
+      endif
+      open (50, file=file_in, action='read', access='stream')
+      read (50) xc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) yc
+      close (50)
+
+      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) rc
+      close (50)
+      rc = -rc  ! switch sign 
+
+      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      open (50, file=file_in, action='read', access='stream')
+      read (50) bathy
+      close (50)
+      
+c --------------
+c Variable name
+      f_var(1) = 'SSH'
+      f_var(2) = 'OBP'   
+      f_var(3) = 'THETA'    
+      f_var(4) = 'SALT'     
+      f_var(5) = 'UV'   
+
+      f_unit(1) = '(m)'
+      f_unit(2) = '(equivalent sea level m)'   
+      f_unit(3) = '(deg C)'    
+      f_unit(4) = '(PSU)'     
+      f_unit(5) = '(m/s)'   
+
+c --------------
+c Interactive specification of perturbation 
+
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'ad_objf.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of ad_objf.f'
+      write(51,"(a)")
+     $     'Adjoint Tool objective function (OBJF) specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Set up data.ecco with OBJF specification
+      f_command = 'cp -f data.ecco_ad data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
+c Define OBJF's time-period (common to all variables defining OBJF)
+      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+
+      call objf_time
+
+c --------------
+c Define OBJF's VARIABLE(s) 
+
+      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+
+      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      do i=1,nvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
+
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      wirte(f1,"(i)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. nvar) 
+
+         write (6,"(/,3x,a,i1,a)")
+     $     'Choose OBFJ variable ',nobjf+1,' ... (1-',nvar,')?'
+         write(6,) '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_var(iobjf))
+
+         write(51,"(3x,a,i,a,a)") 'OBJF variable ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,/)")
+     $        ' --> OBJF variable : ', trim(f_var(pert_v))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i)") nobjf-1
+            wirte(f1,"(i)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s}(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         endif
+
+c Define new OBJF variable 
+         call objf_var(f1,iobjf)
+
+      end do 
+
+      stop
+      end
+c 
+c ============================================================
+c 
+      subroutine objf_time
+
+c Specifiy OBJF in time; Output temporal mask (weight) and set
+c model integration time accordingly in files data and pbs_ad.csh. 
+c
+c For this version of the ECCO Modeling Utility, OBJF will be
+c restricted to being a function of monthly averages; i.e., 
+c      gencost_avgperiod(*)='month'
+c
+
+c V4r4 specific 
+      integer nsteps, nyears, nmonths, whours
+      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
+      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
+
+      real*4 tmask(nmonths), tdum 
+      character*12 tmask_type
+
+c Other variables 
+      character*1   atime
+      character*128 atime_desc
+
+      integer itarget, ndays
+      integer itarget2, i
+
+      integer nTimesteps, nHours
+      character*24 fstep
+
+      real*4 tdum 
+      character*256 f_command
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(i)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
+
+c ---------
+c Select OBJF time period 
+      write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+
+      write(6,"(/,3x,a)") 'Select OBJF time-period among ... '
+      write(6,"(3x,a)")
+     $     '... a particular MONTH (m), a particular YEAR (y)'
+      write(6,"(3x,a,/)") '... or another PERIOD (p)'
+      write(6,"(a,/)") '(NOTE: Controls are weekly averages.) '
+
+      atime = 'x' 
+      do while (atime.ne.'M' .and. atime.ne.'m' .and.
+     $       atime.ne.'Y' .and. atime.ne.'y' .and.
+     $       atime.ne.'P' .and. atime.ne.'p' ) 
+         write(6,*) '... Enter (m/y/p) ?'
+         read(5,'(a)') atime
+      enddo
+
+      if (atime .eq. 'M' .or. atime .eq. 'm') then 
+         atime_desc =  'a month'
+      else if (atime .eq. 'Y' .or. atime .eq. 'y') then 
+         atime_desc =  'a year'
+      else
+         atime_desc =  'a period'
+      endif
+
+      write(6,"(3x,a,a,/)") 'OBJF time-period will be '
+     $     , trim(atime_desc)
+
+      write(51,'("atime = ",a)') trim(atime)
+      write(51,"(a,a,/)") ' --> OBJF time-period is '
+     $     , trim(atime_desc)
+
+c ----------------------- For different OBJF time periods  
+c For a particular MONTH
+      if (atime.eq.'M' .or. atime.eq.'m') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.312) 
+            write(6,*) 'Enter OBJF month ... (1-312)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'MONTH = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF month among (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget) = 1.
+
+c Set model integration time steps (nTimesteps)
+         ndays = sum(adays(1:itarget))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For a particular YEAR 
+      elseif (atime.eq.'Y' .or. atime.eq.'y') then 
+         itarget = 0
+         do while (itarget.lt.1 .or. itarget.gt.26) 
+            write(6,*) 'Enter OBJF year ... (1-26)?'
+            read(5,*) itarget 
+         enddo
+
+         write(6,"(a,i0)") 'YEAR = ',itarget
+         write(51,'("itarget = ",i0)') itarget 
+         write(51,"(a,/)")
+     $        ' --> OBJF year among (1-26).'
+
+c Set mask 
+         itarget2 = (itarget-1)*12 + 1 
+         tmask = 0.
+         tmask(itarget2:itarget2+11) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2+11))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+c -----------------------
+c For another period
+      elseif (atime.eq.'P' .or. atime.eq.'p') then 
+         itarget  = 0
+         itarget2 = 0
+         do while (itarget.lt.1 .or. itarget.gt.312 .or. 
+     $        itarget2.lt.1 .or. itarget2.gt.312 .or.
+     $        itarget2.lt.itarget) 
+            write(6,*) 'Enter first month of OBJF period ... (1-312)?'
+            read(5,*) itarget 
+            write(6,*) 'Enter last month of OBJF period ... (1-312)?'
+            read(5,*) itarget2
+         enddo
+
+         write(6,"(a,i0,1x,i0)") 'PERIOD start & end months = ',
+     $        itarget,itarget2
+         write(51,'("itarget, itarget2 = ",i0,1x,i0)')
+     $        itarget,itarget2
+         write(51,"(a,/)")
+     $        ' --> OBJF start & end months (1-312).'
+
+c Set mask 
+         tmask = 0.
+         tmask(itarget:itarget2) = 1.
+
+c Set model integration time steps (nTimesteps).
+         ndays = sum(adays(1:itarget2))
+         nTimesteps = ndays*24
+         if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+
+      endif
+
+c ----------------------- END different OBJF time periods  
+
+c Convert tmask to weight
+      tmask = tmask * adays
+      tdum = total(tmask) 
+      tmask = tmask/tdum
+
+c Output temporal mask (weight)
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c ----------------
+c Set integration time/period in data and pbs_ad.csh 
+c (data.ecco to be set in main routine.) 
+
+c File data 
+      f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') nTimesteps
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NSTEP_EMU|'//
+     $     trim(fstep) //'|g" data'
+      call execute_command_line(f_command, wait=.true.)
+
+c File pbs_ad.csh
+      f_command = 'cp -f pbs_ad.csh_orig pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      nHours = ceiling(float(nTimesteps)/float(nsteps)
+     $     *float(whours))
+      write(fstep,'(i24)') nHours
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|WHOURS_EMU|'//
+     $     trim(fstep) //'|g" pbs_ad.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      if (nHours .le. 2) then 
+         f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
+     $        'PBS -q devel|g" pbs_ad.csh'
+         call execute_command_line(f_command, wait=.true.)
+      endif
+
+c 
+      write(6,"(/,a,a,/)") '... Program has set computation periods '
+     $    'in files data and pbs_ad.csh accordingly.'
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine objf_var(f1,iobjf)
+
+c Specifiy OBJF variable(s)  
+      character*6 f1
+      integer iobjf
+
+c Specify spatial mask (weight) according to variable
+      if (iobjf .eq. 1 .or. iobjf .eq. 2) then 
+         call objf_var_2d(f1, iobjf)
+      else if (iobjf .eq. 3 .or. iobjf .eq. 4) then
+         call objf_var_3d(f1, iobjf)
+      else 
+         call objf_var_uv(f1, iobjf)
+      endif
+
+c Create time mask for variable (link common mask) 
+      f_command = 'ln -s objf_mask_T ' //
+     $  'objf_' // trim(f1) // '_mask_T' 
+      call execute_command_line(f_command, wait=.true.)
+
+c Edit data.ecco mask field  
+      f_command = 'sed -i -e ' //
+     $     '"s/mask(' // trim(f1) //
+     $     ').*/mask(' // trim(f1) //
+     $     ')=''objf_' // trim(f1) // '_mask_''/g" data.ecco'
+      call execute_command_line(f_command, wait=.true.)
+
+      return
+      end subroutine
+
+c 
+c ============================================================
+c 
+      subroutine objf_var_2d(f1, iobjf) 
+
+c Update data.ecco OBJF for either SSH or OBP
+      character*6 f1
+      integer iobjf
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+
+c local variables
+      integer iloc, check_d
+      real*4 pert_x, pert_y
+
+c -------------
+c Choose method of selecting point 
+      write (6,*) 'Choose hotizontal location ... '
+      write (6,"(3x,a)")
+     $     'Enter 1 to select native grid location (i,j),  '
+      write (6,"(6x,a)")
+     $     'or 9 to select by longitude/latitude ... (1 or 9)? '
+      read (5,*) iloc
+
+      if (iloc .ne. 9) then 
+
+c By native grid point 
+         pert_i = 0
+         pert_j = 0
+
+         write(6,"(/,3x,a)") 'Identify point in native grid ... '
+         do while (pert_i.lt.1 .or. pert_i.gt.nx) 
+            write (6,"(3x,'i ... (1-',i2,') ?')") nx
+            read (5,*) pert_i
+         end do
+         do while (pert_j.lt.1 .or. pert_j.gt.ny) 
+            write (6,"(3x,'j ... (1-',i4,') ?')") ny
+            read (5,*) pert_j
+         end do
+
+      else 
+
+c By long/lat 
+         check_d = 0
+         write (6,"(/,3x,a)")
+     $        'Enter location''s lon/lat (x,y) ... '
+         do while (check_d .eq. 0) 
+            write (6,"(6x,a)") 'longitude ... (E)?'
+            read (5,*) pert_x
+
+            write (6,"(6x,a)") 'latitude ... (N)?'
+            read (5,*) pert_y
+
+            call ijloc(pert_x,pert_y,pert_i,pert_j)
+
+c Make sure point is wet      
+            if (bathy(pert_i,pert_j) .le. 0.) then
+               write (6,1007) pert_i,pert_j
+ 1007          format(/,6x,'Closest C-grid (',i2,1x,i4,') is dry.')
+               write (6,"(6x,a,f7.1)") 'Depth (m)= ',
+     $            bathy(pert_i,pert_j)
+               write (6,"(6x,a)")'Select another point ... '
+            else
+               check_d = 1
+            endif
+         end do
+
+      endif
+
+c Confirm location 
+      write(6,"(/,a,i2,2x,i4)")
+     $     ' ...... Chosen point is (i,j) = ',pert_i,pert_j
+      write(6,"(9x,a,f6.1,1x,f5.1)") 
+     $    'C-grid is (long E, lat N) = ',
+     $     xc(pert_i,pert_j),yc(pert_i,pert_j)
+      write (6,"(6x,a,f7.1,/)") 'Depth (m)= ',
+     $     bathy(pert_i,pert_j)
+
+      return
+      end subroutine 
+c 
+c ============================================================
+c 
+      subroutine slct_3d_pt(pert_i,pert_j,pert_k)
+c Pick 3d model grid point 
+
+c argument 
+      integer pert_i, pert_j, pert_k
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
+      common /grid/xc, yc, rc, bathy
+
+c local variables
+      integer iloc, k
+      real*4 pert_z
+      real*4 dum1d(nr)
+c -------------
+
+c Choose horizontal location 
+      call slct_2d_pt(pert_i,pert_j)
+
+c Choose depth 
+      write (6,*) 'Choose depth ... '
+      write (6,"(3x,a)")
+     $     'Enter 1 to select native vertical level (k),  '
+      write (6,"(6x,a)")
+     $     'or 9 to select by meters ... (1 or 9)? '
+      read (5,*) iloc
+
+      if (iloc .ne. 9) then 
+
+c By native vertical level 
+         pert_k = 0
+
+         write(6,"(/,3x,a)")
+     $        'Identify point in native vertical level ... '
+         do while (pert_k.lt.1 .or. pert_k.gt.nr) 
+            write (6,"(3x,'k ... (1-',i2,') ?')") nr
+            read (5,*) pert_k
+         end do
+
+      else 
+
+c By depth in meters
+         write (6,"(/,3x,a)")
+     $        'Enter location''s distance from surface ... (m)?'
+         read (5,*) pert_z
+
+         pert_k = 0
+         do k=1,nr
+            if (bathy(pert_i,pert_j) .gt. rc(k)) pert_k = k
+         end do
+
+         dum1d = abs(rc-pert_z)
+         pert_k = min(minloc(dum1d), pert_k)
+
+      endif
+
+c Confirm location 
+      write(6,"(/,a,i2,2x,i4)")
+     $     ' ...... closest wet level is (k) = ',pert_k
+      write(6,"(9x,a,2x,i2)") 
+     $    '  at depth (m) = ',rc(pert_k)
+
+      return
+      end subroutine 
+
