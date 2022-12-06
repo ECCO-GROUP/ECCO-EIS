@@ -1,9 +1,12 @@
-all: samp pert_all adj 
+all: samp do_samp pert_all adj 
 
 pert_all: pert pert_xx pert_grad 
 
-samp: samp.f emu_sub.f samp_sub.f adj_sub.f 
-	f95 -fconvert=swap -o samp.x samp.f emu_sub.f samp_sub.f adj_sub.f 
+samp: samp.f emu_sub.f adj_sub.f 
+	f95 -fconvert=swap -o samp.x samp.f emu_sub.f adj_sub.f 
+
+do_samp: do_samp.f emu_sub.f 
+	f95 -fconvert=swap -o do_samp.x do_samp.f emu_sub.f
 
 adj: adj.f adj_sub.f emu_sub.f
 	f95 -fconvert=swap -o adj.x adj.f adj_sub.f emu_sub.f

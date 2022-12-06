@@ -12,8 +12,9 @@ echo " "
 # Set directory names for the tool. 
 set tooldir = SETUPDIR
 
-# Set up sampling program (samp.x)
+# Set up sampling programs (samp.x, do_samp.x)
 /bin/cp -fp ${tooldir}/emu/samp.x .
+/bin/cp -fp ${tooldir}/emu/do_samp.x .
 echo ${tooldir} > tool_setup_dir
 
 # Set up data.ecco namelist file 

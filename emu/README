@@ -1,76 +1,121 @@
 Files of the ECCO Modeling Utilities (EMU).
 
-08 July 2022, Ichiro Fukumori
+05 December 2022, Ichiro Fukumori
 
-  -rwxr-xr-x 1 ifukumor g26113 202780 Jul  8 23:38 Installation_and_Use.pdf
-  -rw-r--r-- 1 ifukumor g26113    266 Jun 27 14:36 Makefile
-  -rw-r--r-- 1 ifukumor g26113   2810 Jul  8 15:28 README
-  -rw-r--r-- 1 ifukumor g26113   8539 Jul  8 15:26 README_pert
-  -rw-r--r-- 1 ifukumor g26113   3447 Jun 23 10:12 data
-  -rw-r--r-- 1 ifukumor g26113   3447 Jul  3 18:42 data.18mo
-  -rw-r--r-- 1 ifukumor g26113   2819 Jul  1 16:03 data.diagnostics
-  -rw-r--r-- 1 ifukumor g26113    406 Jun 15 17:49 data.pkg
-  -rwxr-xr-x 1 ifukumor g26113   2390 Jul  8 21:26 gen_pert_ref.csh
-  -rw-r--r-- 1 ifukumor g26113   7669 Jul  8 15:41 pert_nml.f
-  -rw-r--r-- 1 ifukumor g26113   8765 Jul  8 15:42 pert_result.f
-  -rw-r--r-- 1 ifukumor g26113   2625 Jun 28 09:58 pert_xx.f
-  -rwxr-xr-x 1 ifukumor g26113   1067 Jul  8 16:08 setup.csh
-  -rwxr-xr-x 1 ifukumor g26113   2689 Jul  9 00:26 emu_pert.csh
-  -rw-r--r-- 1 ifukumor g26113   2163 Jun 28 09:51 emu_sub.f
+  -rwxrwxr-x 1 ifukumor g26113 640694 Dec  5 21:06 Guide_ECCO_Modeling_Utilities.pdf
+  -rw-r--r-- 1 ifukumor g26113    539 Dec  1 16:52 Makefile
+  drwxr-xr-x 2 ifukumor g26113   4096 Sep 21 13:48 NG
+  -rw-r--r-- 1 ifukumor g26113   2791 Dec  5 21:14 README
+  -rw-r--r-- 1 ifukumor g26113  10214 Nov 11 18:11 README_adj
+  -rw-r--r-- 1 ifukumor g26113   7857 Nov 11 18:12 README_pert
+  -rw-r--r-- 1 ifukumor g26113   6390 Dec  5 20:48 README_samp
+  -rw-r--r-- 1 ifukumor g26113   6307 Nov 11 18:13 adj.f
+  -rw-r--r-- 1 ifukumor g26113  27579 Nov 11 18:14 adj_sub.f
+  -rw-r--r-- 1 ifukumor g26113   3447 Sep 21 16:18 data
+  -rw-r--r-- 1 ifukumor g26113   2811 Sep 21 16:18 data.diagnostics
+  -rw-r--r-- 1 ifukumor g26113    307 Sep 22 21:19 data.ecco_adj
+  -rw-r--r-- 1 ifukumor g26113    118 Sep 21 16:18 data.ecco_pert
+  -rw-r--r-- 1 ifukumor g26113    406 Sep 21 16:18 data.pkg
+  -rw-r--r-- 1 ifukumor g26113   3470 Sep 21 16:18 data_emu
+  -rw-rw-r-- 1 ifukumor g26113   7959 Dec  1 19:09 do_samp.f
+  -rw-rw-r-- 1 ifukumor g26113  12364 Dec  1 19:04 emu_sub.f
+  -rw-r--r-- 1 ifukumor g26113    158 Nov 10 22:33 install_10.csh
+  -rw-r--r-- 1 ifukumor g26113    276 Nov 11 20:17 install_11.csh
+  -rw-r--r-- 1 ifukumor g26113    609 Nov 11 18:17 install_12_14.csh
+  -rw-r--r-- 1 ifukumor g26113    428 Nov 11 20:14 install_15.csh
+  -rw-r--r-- 1 ifukumor g26113    479 Nov 10 22:28 install_2_5.csh
+  -rw-r--r-- 1 ifukumor g26113    393 Nov 11 20:17 install_6.csh
+  -rw-r--r-- 1 ifukumor g26113    435 Nov 10 22:28 install_7_8.csh
+  -rw-r--r-- 1 ifukumor g26113    336 Nov 10 22:31 install_9.csh
+  -rw-r--r-- 1 ifukumor g26113   3154 Nov 11 20:18 install_cheatsheet.txt
+  -rwxr-xr-x 1 ifukumor g26113   2717 Nov 11 18:18 pbs_adj.csh
+  -rwxr-xr-x 1 ifukumor g26113   2758 Sep 21 16:18 pbs_pert.csh
+  -rwxr-xr-x 1 ifukumor g26113   1925 Sep 21 16:18 pbs_pert_ref.csh
+  -rw-r--r-- 1 ifukumor g26113  10327 Nov 11 18:20 pert.f
+  -rw-r--r-- 1 ifukumor g26113   9585 Sep 21 16:18 pert_grad.f
+  -rw-r--r-- 1 ifukumor g26113   2621 Nov 11 18:21 pert_xx.f
+  -rw-rw-r-- 1 ifukumor g26113   7564 Dec  1 16:47 samp.f
+  -rwxr-xr-x 1 ifukumor g26113    830 Nov 11 18:23 setup_adj.csh
+  -rwxr-xr-x 1 ifukumor g26113    790 Nov 11 18:27 setup_pert.csh
+  -rwxr-xr-x 1 ifukumor g26113    587 Dec  5 20:59 setup_samp.csh
 
 ------------------------------------------------------------------------
 
-Installation_and_Use.pdf
-    Description of EMU. 
+Guide_ECCO_Modeling_Utilities.pdf
+    User description of EMU. 
 
 Makefile
     Makefile for EMU programs.
 
 README
-    This file. 
+    This file. User readme file for EMU. 
 
-README_ad
+README_adj
     User readme file for Adjoint Tool. 
 
 README_pert
     User readme file for Perturbation Tool. 
 
-data
-data.18mo
+README_samp
+    User readme file for Sampling Tool. 
+
+adj.f 
+    User program to create namelist file for Adjoint Tool. 
+    
+adj_sub.f
+    Subroutines for EMU (Sampling and Adjoint). 
+
 data.diagnostic
+data.ecco_adj
+data.ecco_pert
 data.pkg
-    Namelist files for MITgcm tailored for Perturbation Tool. 
-    File data is set to run the model for only 18-months for test
-    purposes; see README_pert and/or Installation Guide for
-    details. File data.18mo is identical with data but for user
-    testing. 
+data_emu
+    Namelist files for MITgcm tailored for EMU. File data_emu is
+    modified into file data. Files data.ecco_adj and data.ecco_pert
+    are modified into data.ecco.
 
-gen_pert_ref.csh
-    Example PBS script for generating reference model result
-    (integration without perturbation). Configured to run for only
-    2-hours walltime for testing purpose; see README_pert and/or
-    Installation Guide for details.
+do_samp.f 
+    User program to extract time-series of Objective Function
+    specified by samp.f (Sampling Tool). 
 
-pert_nml.f
-tool_sub.f
-    Creates namelist file for perturbation of control read by
-    pert_xx.f 
+emu_sub.f 
+    Subroutines for EMU.
+
+install_2_5.csh
+install_6.csh
+install_7_8.csh
+install_9.csh
+install_10.csh
+install_11.csh
+install_12_14.csh
+install_15.csh
+    Scripts for Installation steps 2 to 15. See Guide. 
+
+install_cheatsheet.txt
+    Summary of Installation steps.  See Guide. 
+
+pbs_adj.csh
+    User PBS script for Adjoint Tool.
+
+pbs_pert.csh
+    User PBS script for Perturbation Tool.
+
+pbs_pert_ref.csh
+    PBS script for Perturbation Tool's reference run. See Guide.  
+
+pert.f
+    User program to create namelist file for Perturbation Tool. 
+    
+pert_grad.f
+    Computes forward gradient in Perturbation Tool.
 
 pert_xx.f
-    Creates perturbed control file. Reads files pert_xx.grid and
-    pert_xx.scale to be downloaded from ECCO Drive; these input files
-    contain V4r4 grid information and default perturbation amplitude.
+    Perturbs control in Perturbation Tool. 
 
-pert_result.f 
-    Computes difference between model state with and without the
-    contol perturbation, normalized by the magnitude of the
-    perturbation (i.e., forward sensitivity). 
+samp.f	
+    User program to create namelist file for Sampling Tool. 
 
-setup.csh
-    User script to setup tools to run run the Perturbation Tool. 
-
-tool_pert.csh
-    Example PBS script for users to run the perturbation tool with
-    perturbation specified by running pert_nml.f. Configured to run
-    for only 2-hours walltime for testing purpose; see README_pert
-    and/or Installation Guide for details.
+setup_adj.csh
+setup_pert.csh
+setup_samp.csh
+    User script to setup EMU tools (Adjoint, Perturbation, Sampling).
