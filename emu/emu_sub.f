@@ -301,7 +301,7 @@ c
 c ============================================================
 c 
       subroutine samp_2d_r8_wgtd(tooldir,ffile,irec,
-     $     wgt2d,objf,nrec,mobjf)
+     $     wgt2d,objf,nrec,mobjf,istep)
 c Sample native 2d real*8 file 
 
       integer nx, ny
@@ -312,11 +312,13 @@ c Sample native 2d real*8 file
       real*4 :: wgt2d(nx,ny)
       real*4 :: objf(*), mobjf
       integer :: nrec
+      integer :: istep(*)
 
 c 
       real*8 dum2d(nx,ny), dref(nx,ny)
       character*256 f_file
       character*256 f_command 
+      integer ip1, ip2
 
 
 c List input file 
@@ -340,6 +342,13 @@ c Read first file as reference
          dref = dum2d
          objf(nrec) = 0.
          close(52)
+
+c Read corresponding time-step
+         ip1 = index(f_file,trim(ffile)) + len(trim(ffile))
+         ip2 = index(f_file,'.data')
+         f_command = trim(f_file(ip1+1:ip2-1))
+         read(f_command,*) istep(nrec)
+
 c Read rest of the files 
       do 
 c read state of particular instant 
@@ -351,6 +360,10 @@ c read state of particular instant
          nrec = nrec + 1
          objf(nrec) = sum( wgt2d * (dum2d-dref) ) 
          close(52)
+
+c Read corresponding time-step
+         f_command = trim(f_file(ip1+1:ip2-1))
+         read(f_command,*) istep(nrec)
 
       enddo
 
@@ -368,7 +381,7 @@ c
 c ============================================================
 c 
       subroutine samp_3d_wgtd(tooldir,ffile,irec,
-     $     wgt3d,objf,nrec,mobjf)
+     $     wgt3d,objf,nrec,mobjf,istep)
 c Sample native 3d file 
 
       integer nx, ny, nr
@@ -380,11 +393,13 @@ c Strip spaces from string
       real*4 :: wgt3d(nx,ny,nr)
       real*4 :: objf(*), mobjf
       integer :: nrec
+      integer :: istep(*)
 
 c 
       real*4 dum3d(nx,ny,nr), dref(nx,ny,nr)
       character*256 f_file
       character*256 f_command 
+      integer ip1, ip2
 
 
 c List input file 
@@ -408,6 +423,13 @@ c Read first file as reference
          dref = dum3d
          objf(nrec) = 0.
          close(52)
+
+c Read corresponding time-step
+         ip1 = index(f_file,trim(ffile)) + len(trim(ffile))
+         ip2 = index(f_file,'.data')
+         f_command = trim(f_file(ip1+1:ip2-1))
+         read(f_command,*) istep(nrec)
+
 c Read rest of the files 
       do 
 c read state of particular instant 
@@ -419,6 +441,10 @@ c read state of particular instant
          nrec = nrec + 1
          objf(nrec) = sum( wgt3d * (dum3d-dref) ) 
          close(52)
+
+c Read corresponding time-step
+         f_command = trim(f_file(ip1+1:ip2-1))
+         read(f_command,*) istep(nrec)
 
       enddo
 

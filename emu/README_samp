@@ -1,12 +1,12 @@
 This README file describes the ECCO Sampling Tool, set up on
-Pleiades. (09 August 2022. Ichiro Fukumori; fukumori@jpl.nasa.gov)
+Pleiades. (05 December 2022. Ichiro Fukumori; fukumori@jpl.nasa.gov)
 
 =========================================
 Quick guide to run the Sampling Tool
 =========================================
 
-Skip to step c) if you have already run setup_ad.csh. "pfe25>" denotes
-the Unix prompt on Pleiades.
+Skip to step c) if you have already run setup_samp.csh. "pfe25>"
+denotes the Unix prompt on Pleiades.
 
 a) Create and cd to some work directory (USRDIR, change as preferred).
 
@@ -18,11 +18,15 @@ b) Set up Sampling Tool.
 
     pfe25>source PUBLICDIR/setup_samp.csh
 
-c) Run Sampling Tool (follow the prompt). 
+c) Specify Objective Function (follow the prompt). 
 
     pfe25>samp.x 
 
-d) Results will be generated in subdirectory emu_samp_*****
+d) Run Sampling Tool's computation.
+
+    pfe25>do_samp.x 
+
+e) Results will be generated in subdirectory emu_samp_*****
 
 
 ============
@@ -50,8 +54,8 @@ comparison to observations.
 
 To run the tool, do the following.  
 
-Skip to step 3 if you have already run setup_samp.csh. "pfe25>" denotes the
-Unix prompt on Pleiades. 
+Skip to step 3 if you have already run setup_samp.csh. "pfe25>"
+denotes the Unix prompt on Pleiades.
 
 1) Create and cd to some work directory. Results and pertinent files
    will be created under this directory.
@@ -60,12 +64,12 @@ Unix prompt on Pleiades.
 
     pfe25>cd USRDIR
 
-2) Set up Samplint Tool.
+2) Set up Sampling Tool.
 
     pfe25>source PUBLICDIR/setup_samp.csh
 
-3) Extract time-series of the quantity of interest (Objective
-   Function) by running program samp.x and responding to its prompts.
+3) Specify quantity of interest (Objective Function) by running
+   program samp.x and responding to its prompts.
 
    The example below extracts monthly-mean time-series of dynamic sea
    level at a model grid point closest to 148W 73.1N, which is model
@@ -128,17 +132,27 @@ Unix prompt on Pleiades.
 
    Sampling Tool output will be in : emu_samp_m_1_85_604_1.    
 
-   Sampling MONTHLY means ...  
+   ... Done samp setup of data.ecco
 
-    nobjf =            1. 
+4) Run executable do_samp.x to extract time-series of the Objective
+   Function specified in 3). (Sampling Tool does not require a PBS
+   job.)
 
-      Mask file : objf_1_mask_C.  
-      Masks maximum absolute value =   1.0000E+00
-   	    at (i,j) =   85   604  
+    pfe20>do_samp.x
 
-   ... Done.
+    Sampling Tool output will be in : emu_samp_m_2_85_604_1
 
-4) The Sampling Tool creates output in a directory bearing
+    nobjf = 1
+    Sampling MONTHLY means ...
+
+
+     Mask file : objf_1_mask_C 
+     Masks maximum absolute value =   1.0000E+00
+	at (i,j) =   85   604
+
+     ... Done.
+
+5) The Sampling Tool creates output in a directory bearing
    specification of the extracted variable (Objective Function) in its
    name, which is emu_samp_m_1_85_604_1 for the case above. Here
    "emu_samp" indicates output from the Sampling Tool, "m" for monthly
@@ -149,17 +163,23 @@ Unix prompt on Pleiades.
    The files in this directory for the example above are.  
 
    pfe24>ls -l emu_samp_m_85_604_1
-   total 5
-   -rw-r--r-- 1 ifukumor g26113  335 Nov  3 10:21 data.ecco
-   -rw-r--r-- 1 ifukumor g26113  465 Nov  3 10:21 samp.info
-   -rw-r--r-- 1 ifukumor g26113 1252 Nov  3 10:21 samp.out_312
+   total 16
+   -rw-r--r-- 1 ifukumor g26113  332 Dec  1 19:13 data.ecco
+   -rw-r--r-- 1 ifukumor g26113  465 Dec  1 19:13 samp.info
+   -rw-r--r-- 1 ifukumor g26113 1252 Dec  1 19:13 samp.out_312
+   -rw-r--r-- 1 ifukumor g26113 1248 Dec  1 19:13 samp.step_312
 
    The sampled variable is in file samp.out_312 as an anomaly
    time-series from its time-mean in binary format; The last number
-   after "_" indicates the number of records in the time-series, which
-   in this case is 312 monthly mean values from 1992 to 2017 of V4r4's
-   analysis period. An example FORTRAN code to read this output file
-   is given below.
+   after "_" indicates the number of records in the anomaly
+   time-series, which in this case is 312 monthly mean values from
+   1992 to 2017 of V4r4's analysis period. The time-mean reference
+   value is given as the last variable in the file (313th in the
+   example above.) File samp.step_312 has the time record of the
+   time-series, defined as the end instant of each averaging period
+   (e.g., end of the month), in terms of the model's time-step (1-hour
+   time-step from 12Z January 1, 1992.) An example FORTRAN code to
+   read this output file is given below.
 
    File samp.info is a text file summarizing the user-defined
    Objective Function and file data.ecco is an ECCO MITgcm input file
@@ -170,12 +190,20 @@ FORTRAN
       parameter (nrec=312)
       real*4 anom(nrec), ref
       character*256 f_in
+      integer istep(nrec)
 
       f_in = 'samp.out _312'
-      open(60, file=trim(f_in), action=?read?, access=?stream?)
+      open(60, file=trim(f_in), action='read', access='stream')
       read(60) anom       !  Anomaly time-series of the Objective Function.
       read(60) ref        !  Time-mean reference of the anomaly. 
       close(60)
+
+      f_in = 'samp.step _312'
+      open(61, file=trim(f_in), action='read', access='stream')
+      read(61) istep      !  Time of variable "anom" read above.
+      close(61)
+
+
 
 
 
