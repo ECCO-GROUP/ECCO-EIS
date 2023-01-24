@@ -34,6 +34,12 @@ c Strings for naming output directory
       character*256 dir_out   ! output directory
       common /floc/floc_time, floc_var, floc_loc, dir_out
 
+      character*256 dir_run   ! run directory
+      character*256 fcwd      ! current working directory
+
+      integer date_time(8)  ! arrrays for date 
+      character*10 bb(3)
+      character*256 fdate 
 c 
       character*1 fmd ! Monthly or Daily time-series 
 
@@ -42,6 +48,10 @@ c OBJF
       real*4 objf(ndays)
       real*4 mobjf
       integer nrec
+
+      parameter(nmonths=312) ! max number of months of V4r4
+      real*4 tmask(nmonths)
+      character*256 fmask
 
 c --------------
 c Set directory where tool files exist
@@ -114,6 +124,9 @@ c Set up data.ecco with OBJF specification
       f_command = 'cp -f data.ecco_adj data.ecco'
       call execute_command_line(f_command, wait=.true.)
 
+      f_command = 'cp -f do_samp.csh_orig do_samp.csh'
+      call execute_command_line(f_command, wait=.true.)
+
 c --------------
 c Define OBJF's VARIABLE 
       write (6,*) 'Available VARIABLES are ... '
@@ -155,6 +168,17 @@ c Monthly mean or daily mean
       endif
       call execute_command_line(f_command, wait=.true.)
 
+c Create dummy temporal mask
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file=fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
 c Loop among OBJF variables 
       nobjf = 0 ! number of OBJF variables 
       iobjf = 1
@@ -165,7 +189,8 @@ c Loop among OBJF variables
 
          write (6,"(/,a)") '------------------'
          write (6,"(3x,a,i1,a,i1,a,i1,a)")
-     $     'Choose OBFJ variable # ',nobjf+1,' ... (1-',mvar,')?'
+     $     'Choose OBFJ variable (v in Eq 1 of Guide) # ',
+     $        nobjf+1,' ... (1-',mvar,')?'
          write(6,"(3x,a)") '(Enter 0 to end variable selection)'
 
          read (5,*) iobjf
@@ -180,8 +205,8 @@ c Process OBJF variable
          write(51,"(/,a)") '------------------'
          write(51,"(a,i2,a,a)") 'OBJF variable # ',nobjf
          write(51,"(3x,'iobjf = ',i2)") iobjf
-         write(51,"(3x,a,a,/)")
-     $        ' --> OBJF variable : ', trim(f_var(iobjf))
+         write(51,"(3x,a,a,1x,a/)") ' --> OBJF variable : ',
+     $        trim(f_var(iobjf)),trim(f_unit(iobjf))
 
 c Create data.ecco entries for new variable, if not the first
          if (nobjf .ne. 1) then 
@@ -226,21 +251,58 @@ c Create output directory before sampling
 
       inquire (file=trim(dir_out), EXIST=f_exist)
       if (f_exist) then
-         write (6,*) '**** Error: Directory exists already : ',
+         write (6,*) '**** WARNING: Directory exists already : ',
      $        trim(dir_out) 
-         write (6,*) '**** Rename existing directory and try again. '
-         stop
+         call date_and_time(bb(1), bb(2), bb(3), date_time)
+         write(fdate,"('_',i4.4,2i2.2,'_',3i2.2)")
+     $     date_time(1:3),date_time(5:7)
+         dir_out = trim(dir_out) // trim(fdate)
+         write(6,"(/,a,a,/)")
+     $        '**** Renaming output directory to :',trim(dir_out)
       endif
 
       f_command = 'mkdir ' // dir_out
+      call execute_command_line(f_command, wait=.true.)
+      call getcwd(fcwd)
+      dir_run = trim(fcwd) // '/' // trim(dir_out) // '/temp'
+      f_command = 'mkdir ' // dir_run
       call execute_command_line(f_command, wait=.true.)
 
       file_out = 'samp.dir_out'
       open (52, file=file_out, action='write')
       write(52,"(a)") trim(dir_out)
+      write(52,"(a)") trim(dir_run)
+      write(52,"(a)") trim(dir_out) // '/output'
       close(52)
 
       write(6,"(a,/)") '... Done samp setup of data.ecco'
+
+c Move all needed files into run directory
+      f_command = 'sed -i -e "s|YOURDIR|'//
+     $     trim(dir_run) //'|g" do_samp.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv samp.info ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv data.ecco ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv samp.dir_out ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'cp -p tool_setup_dir ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'cp -p objf_*_mask* ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+c Wrapup 
+      write(6,"(/,a)") '*********************************'
+      f_command = 'do_samp.csh'
+      write(6,"(4x,a)") 'Run "' // trim(f_command) //
+     $     '" to conduct sampling.'
+      write(6,"(a,/)") '*********************************'
 
       stop
       end

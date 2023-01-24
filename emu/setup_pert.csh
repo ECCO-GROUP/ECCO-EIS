@@ -7,7 +7,6 @@
 echo " "
 echo "... Setting up ECCO V4r4 Perturbation Tool ..."
 echo "    See PUBLICDIR/README_pert "
-echo " "
 
 # Set directory names for the tool. 
 set userdir=`pwd`
@@ -23,7 +22,13 @@ echo $tooldir > tool_setup_dir
 
 # Set up Tool's PBS script (pbs_pert.csh) 
 # The script will be modified by pert.x
+/bin/cp -fp ${tooldir}/emu/do_pert.csh . 
 /bin/cp -fp ${tooldir}/emu/pbs_pert.csh pbs_pert.csh_orig
-sed -i -e "s|YOURDIR|${userdir}|g" pbs_pert.csh_orig
 
+# 
+echo " "
+echo '********************************************'
+echo '    Run pert.x to specify computation.'
+echo '********************************************'
+echo " "
 exit

@@ -1,0 +1,14 @@
+ nDims = [   3 ];
+ dimList = [
+    90,    1,   90,
+  1170,    1, 1170,
+    50,    1,   50
+ ];
+ dataprec = [ 'float64' ];
+ nrecords = [      1 ];
+ timeStepNumber = [   nIter0     ];
+ timeInterval = [  nIter0_SEC  ];
+ nFlds = [    1 ];
+ fldList = {
+ 'pTr01   '
+ };

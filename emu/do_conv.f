@@ -15,8 +15,8 @@ c model arrays
       parameter (nx=90, ny=1170, nr=50)
 
 c EMU general 
-      character*256 tooldir   ! directory where tool files are 
-      common /tool/tooldir
+cif      character*256 tooldir   ! directory where tool files are 
+cif      common /tool/tooldir
       character*256 file_in, file_out  ! file names 
 c
       character*256 f_command
@@ -80,15 +80,15 @@ c Repeat setup
          write(6,"(a,i0)") 'number of adxx records = ',nadxx
          write(6,"(a,i0)") 'Zero lag at (weeks) = ',lag0 
          write(6,"(a,i0)") 'maximum lag (weeks) = ',nlag
-         write(6,"(a,a,/)")
-     $        'Output will be in : ',trim(dir_out)
+c         write(6,"(a,a,/)")
+c     $        'Output will be in : ',trim(dir_out)
       endif
 
 c --------------
 c Set directory where tool files exist
-      open (50, file='tool_setup_dir')
-      read (50,'(a)') tooldir
-      close (50)
+cif      open (50, file='tool_setup_dir')
+cif      read (50,'(a)') tooldir
+cif      close (50)
 
 c --------------
 c forcing (control) name
@@ -235,21 +235,24 @@ c Sum to scalar time-series at this lag
 c ------------------
 c Save result
          junit = 60 + i
-         file_out = trim(dir_out) // '/recon2d_' // trim(f_xx(i))
+c         file_out = trim(dir_out) // '/recon2d_' // trim(f_xx(i))
+         file_out = 'recon2d_' // trim(f_xx(i))
      $        // '.data'
          open (junit, file=trim(file_out), action='write',
      $        access='stream')
          write(junit) recon2d(:,:,1:nfrc)
          close(junit)
 
-         file_out = trim(dir_out) // '/recon1d_' // trim(f_xx(i))
+c         file_out = trim(dir_out) // '/recon1d_' // trim(f_xx(i))
+         file_out = 'recon1d_' // trim(f_xx(i))
      $        // '.data'
          open (junit, file=trim(file_out), action='write',
      $        access='stream')
          write(junit) recon1d(1:nfrc,1:nlag+1)
          close(junit)
 
-         file_out = trim(dir_out) // '/istep_' // trim(f_xx(i))
+c         file_out = trim(dir_out) // '/istep_' // trim(f_xx(i))
+         file_out = 'istep_' // trim(f_xx(i))
      $        // '.data'
          open (junit, file=trim(file_out), action='write',
      $        access='stream')

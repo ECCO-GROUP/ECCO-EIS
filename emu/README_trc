@@ -1,0 +1,23 @@
+
+======================================
+ECCO Tracer Tool: A Brief Description
+======================================
+
+What the Tool does: 
+   The Tool computes the temporal evolution of a user-specified tracer
+   and its adjoint. The Tool is useful for analyzing the origin and
+   fate of water masses and for identifying pathways of ocean
+   circulation.  See
+   PUBLICDIR/README
+   for additional ECCO Modeling Utilities (EMU). 
+
+How to run the Tool:
+   Execute shell script emu_trc.csh and follow its prompt; e.g., 
+   source PUBLICDIR/emu_trc.csh
+
+For detailed description: 
+   See Sections 1, 2.5, and 3.5 of the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+========================================
+

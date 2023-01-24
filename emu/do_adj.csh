@@ -1,22 +1,22 @@
 #!/bin/tcsh
 
 #=================================
-# Shell script for conducting convolution in V4r4 Convolution Tool
+# Shell script for computing adjoint gradient in V4r4 Adjoint Tool
 #=================================
 
-qsub pbs_conv.csh
+qsub pbs_adj.csh
 
 echo " "
-echo "... Batch job pbs_conv.csh has been submitted "
-echo "    to compute adjoint gradient convolution with control."
+echo "... Batch job pbs_adj.csh has been submitted "
+echo "    to compute the adjoint gradients."
 
 echo " "
 echo "    Estimated wallclock time:"
-sed -n '3p' pbs_conv.csh
-/bin/rm -f pbs_conv.csh
+sed -n '3p' pbs_adj.csh
+/bin/rm -f pbs_adj.csh
 
 echo " " 
-set dum = `tail -n 1 conv.dir_out`
+set dum = `tail -n 1 adj.dir_out`
 echo '********************************************'
 echo "    Results will be in" $dum
 echo '********************************************'

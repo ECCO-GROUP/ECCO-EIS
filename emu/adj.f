@@ -34,6 +34,15 @@ c Strings for naming output directory
       character*256 floc_var  ! first variable defined as OBJF 
       character*256 floc_loc  ! location (mask) of first OBJF variable
 
+c directories
+      character*256 dir_out   ! output directory
+      character*256 dir_run   ! run directory
+      character*256 fcwd      ! current working directory
+
+      integer date_time(8)  ! arrrays for date 
+      character*10 bb(3)
+      character*256 fdate 
+
 c --------------
 c Set directory where tool files exist
       open (50, file='tool_setup_dir')
@@ -87,7 +96,8 @@ c Variable name
 c --------------
 c Interactive specification of perturbation 
 
-      write (6,"(/,a)") 'Define objective function (OBJF) ... '
+      write (6,"(/,a)") 'Define objective function (OBJF; '//
+     $     'J^bar in Eq 5 of Guide) ... '
 
 c --------------
 c Save OBJF information for reference. 
@@ -108,7 +118,8 @@ c Set up data.ecco with OBJF specification
 c --------------
 c Define OBJF's time-period (common to all variables defining OBJF)
 
-      write(6,"(/,a,/)") 'First define OBJF time-period ... '
+      write(6,"(/,a)") 'First define OBJF time-period '//
+     $     '(t_start and t_g in Eq 6 of Guide) ... '
       
       f_command = 'sed -i -e '//
      $     '"s|OBJF_PRD|month|g" data.ecco'
@@ -119,9 +130,10 @@ c Define OBJF's time-period (common to all variables defining OBJF)
 c --------------
 c Define OBJF's VARIABLE(s) 
 
-      write(6,"(/,a,/)") 'Next define OBJF variable(s) ... '
+      write(6,"(/,a)") 'Next define OBJF variable(s) '//
+     $     '(v in Eq 1 of Guide) ... '
 
-      write (6,"(3x,a)") 'Available VARIABLES are ... '
+      write (6,"(/,3x,a)") 'Available VARIABLES are ... '
       do i=1,nvar
          write (6,"(3x,i2,') ',a,1x,a)")
      $        i,trim(f_var(i)),trim(f_unit(i))
@@ -136,7 +148,8 @@ c Define OBJF's VARIABLE(s)
 
          write (6,"(/,a)") '------------------'
          write (6,"(3x,a,i1,a,i1,a)")
-     $     'Choose OBFJ variable # ',nobjf+1,' ... (1-',nvar,')?'
+     $     'Choose OBFJ variable (v in Eq 1 of Guide) # ',
+     $        nobjf+1,' ... (1-',nvar,')?'
          write(6,"(3x,a)") '(Enter 0 to end variable selection)'
 
          read (5,*) iobjf
@@ -189,23 +202,67 @@ c Create concatenated string for naming run directory
  1001 format(a,"_",a,"_",a,"_",i2)
       call StripSpaces(f_command)
 
-      file_out = 'emu_adj_' // trim(f_command)
-      write(6,"(/,a,a,/)")
-     $     'Adjoint Tool output will be in : ',trim(file_out)
+      dir_out = 'emu_adj_' // trim(f_command)
+      write(6,"(/,a,a)")
+     $     'Adjoint Tool output will be in : ',trim(dir_out)
 
-      inquire (FILE=trim(file_out), EXIST=f_exist)
+      inquire (FILE=trim(dir_out), EXIST=f_exist)
       if (f_exist) then
-         write (6,*) '**** OUTPUT DIRECTORY ALREADY EXISTS **** '
-         write (6,*) '**** RENAME EXISTING DIRECTORY ********** '
-         write (6,*) '**** PBS JOB WILL FAIL OTHERWISE ******** '
+         write (6,*) '**** WARNING: Directory exists already : ',
+     $        trim(dir_out) 
+         call date_and_time(bb(1), bb(2), bb(3), date_time)
+         write(fdate,"('_',i4.4,2i2.2,'_',3i2.2)")
+     $     date_time(1:3),date_time(5:7)
+         dir_out = trim(dir_out) // trim(fdate)
+         write(6,"(/,a,a,/)")
+     $        '**** Renaming output directory to :',trim(dir_out)
       endif
 
-      file_out = 'adj.str'
+      f_command = 'mkdir ' // trim(dir_out)
+      call execute_command_line(f_command, wait=.true.)
+      call getcwd(fcwd)
+      dir_run = trim(fcwd) // '/' // trim(dir_out) // '/temp'
+      f_command = 'mkdir ' // dir_run
+      call execute_command_line(f_command, wait=.true.)
+
+      file_out = 'adj.dir_out'
       open (50, file=file_out, action='write')
-      write(50,'(a)') trim(f_command)
+      write(50,"(a)") trim(dir_out)
+      write(50,"(a)") trim(dir_run)
+      write(50,"(a)") trim(dir_out) // '/output'
       close(50)
 
-      write(6,"(/,a,a,/)") 'Wrote ',trim(file_out)
+      write(6,"(/,a,a)") 'Wrote ',trim(file_out)
+
+c Move all needed files into run directory
+      f_command = 'sed -i -e "s|YOURDIR|'//
+     $     trim(dir_run) //'|g" pbs_adj.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv pbs_adj.csh ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'ln -s ' // trim(dir_run) // '/pbs_adj.csh .'
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'mv data ' // trim(dir_run) // '/data_adj'
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'mv data.ecco ' // trim(dir_run) // '/data.ecco_adj'
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'mv adj.info ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'cp -p objf_*_mask* ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+c Wrapup 
+      write(6,"(/,a)") '*********************************'
+      f_command = 'do_adj.csh'
+      write(6,"(4x,a)") 'Run "' // trim(f_command) //
+     $     '" to compute adjoint gradients.'
+      write(6,"(a,/)") '*********************************'
 
       stop
       end

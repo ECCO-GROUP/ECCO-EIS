@@ -55,43 +55,58 @@ make adtaf
 make adall
 cd ..
 
-10) Download EMU scripts and programs and compile.
+10) Compile off-line passive tracer version of MITgcm (generates
+    executable "mitgcmuv" in directory build_trc)
+mkdir build_trc
+cd build_trc
+/bin/cp -f ../code_offline_ptracer/OFFLINE_OPTIONS.h.fwd ../code_offline_ptracer/OFFLINE_OPTIONS.h 
+../../../../tools/genmake2 -mods=../code_offline_ptracer -optfile=../../../../tools/build_options/linux_amd64_ifort+mpi_ice_nas -mpi
+make depend
+make all
+cd ..
+
+11) Compile off-line adjoint passive tracer version of MITgcm
+    (generates executable "mitgcmuv" in directory build_trc_adj)
+mkdir build_trc_adj
+cd build_trc_adj
+/bin/cp -f ../code_offline_ptracer/OFFLINE_OPTIONS.h.adj ../code_offline_ptracer/OFFLINE_OPTIONS.h 
+../../../../tools/genmake2 -mods=../code_offline_ptracer -optfile=../../../../tools/build_options/linux_amd64_ifort+mpi_ice_nas -mpi
+make depend
+make all
+cd ..
+
+12) Prepare circulation fields for off-line adjoint passive tracer
+    version of MITgcm
+cd forcing/other/flux-forced
+cp -p ../../../scripts/* .
+sh -xv reverseintime_all.sh
+cd ../../..
+
+13) Download EMU scripts and programs and compile.
 git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
 mv ECCO-EIS/emu .
 rm -rf ECCO-EIS
 cd emu
 make all
 
-11) Download data files needed by the Tools (pert_xx.scale).  
+14) Download data files needed by the Tools (pert_xx.scale).  
     Substitute username "fukumori" with your own. 
 wget -r --no-parent --user fukumori --ask-password -nH --cut-dirs=7 https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced/tool_pert_data
 
-12) Copy files that will be modified, just in case. (optional)
-cp -p pbs_pert_ref.csh pbs_pert_ref.csh_orig
-cp -p pbs_pert.csh pbs_pert.csh_orig
-cp -p setup_pert.csh setup_pert.csh_orig
-cp -p README_pert README_pert_orig
-cp -p setup_adj.csh setup_adj.csh_orig
-cp -p README_adj README_adj_orig
-cp -p pbs_adj.csh pbs_adj.csh_orig
-cp -p setup_samp.csh setup_samp.csh_orig
-cp -p README_samp README_samp_orig
-mkdir orig
-mv *_orig orig 
-
-13) Modify scripts. 
+15) Modify scripts. (Specify EMU directory. cf step 5)
 sed -i -e "s|SETUPDIR|${basedir}|g" *.csh
 
-14) Run Perturbation Tool without perturbation to obtain reference
+16) Run Perturbation Tool without perturbation to obtain reference
     results.  
 qsub pbs_pert_ref.csh
 
-15) Copy tools (setup_*.csh, README_*) for user access. Replace
+17) Copy tools (setup_*.csh, README_*) for user access. Replace
     FORUSERDIR below to a user-accessible directory.
 set useraccessdir=FORUSERDIR
 if (! -d ${useraccessdir}) mkdir ${useraccessdir}
 sed -i -e "s|PUBLICDIR|${useraccessdir}|g" setup_*.csh
-sed -i -e "s|PUBLICDIR|${useraccessdir}|g" README_*
-cp -p ${basedir}/emu/setup_*.csh ${useraccessdir}
-cp -p ${basedir}/emu/README_* ${useraccessdir}
+sed -i -e "s|PUBLICDIR|${useraccessdir}|g" README*
+cp -p emu_*.csh ${useraccessdir}
+cp -p README* ${useraccessdir}
+cp -p Guide*.pdf ${useraccessdir}
 

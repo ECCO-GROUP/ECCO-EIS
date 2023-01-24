@@ -81,6 +81,7 @@ c Check mask file is native 2d
       integer :: nx, ny
       real*4 :: dum2d(nx,ny)
       integer :: ij(2)
+      real*8 sum8
 
       character*256 :: f_command
       logical :: f_exist
@@ -115,7 +116,16 @@ c Check mask file is native 2d
       write(6,1001) dum2d(ij(1),ij(2))
  1001 format(3x,'Masks maximum absolute value = ',1pe12.4)
       write(6,1002) ij
- 1002 format(3x,6x,'at (i,j) =',i5,1x,i5,/)
+ 1002 format(3x,6x,'at (i,j) =',i5,1x,i5)
+
+      sum8 = 0.d0
+      do i=1,nx
+         do j=1,ny
+            sum8 = sum8 + dble(dum2d(i,j))
+         enddo
+      enddo
+      write(6,1003) sum8
+ 1003 format(3x,'Masks sum = ',1pe12.4)
 
       return
       end
@@ -129,6 +139,7 @@ c Check mask file is native 3d
       integer :: nx, ny, nr
       real*4 :: dum3d(nx,ny,nr)
       integer :: ijk(3)
+      real*8 sum8
 
       character*256 :: f_command
       logical :: f_exist
@@ -146,7 +157,7 @@ c Check mask file is native 3d
       
       f_target = long(nx)*long(ny)*long(nr)*4
       if (file_size .ne.  f_target) then
-         write(6,*) 'File size ',f_target
+         write(6,*) 'File size ',file_size
          write(6,*) 'does not match native grid'
          write(6,*) 'Is input mask on native 3D grid?'
          write(6,*) '... aborting'
@@ -163,7 +174,18 @@ c Check mask file is native 3d
       write(6,1001) dum3d(ijk(1),ijk(2),ijk(3))
  1001 format(3x,'Masks maximum absolute value = ',1pe12.4)
       write(6,1002) ijk
- 1002 format(3x,6x,'at (i,j,k) =',i5,1x,i5,1x,i5,/)
+ 1002 format(3x,6x,'at (i,j,k) =',i5,1x,i5,1x,i5)
+
+      sum8 = 0.d0
+      do i=1,nx
+         do j=1,ny
+            do k=1,nr
+               sum8 = sum8 + dble(dum3d(i,j,k))
+            enddo
+         enddo
+      enddo
+      write(6,1003) sum8
+ 1003 format(3x,'Masks sum = ',1pe12.4)
 
       return
       end

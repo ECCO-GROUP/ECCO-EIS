@@ -35,17 +35,15 @@ c Set directory where tool files exist
 
 c --------------
 c Read output directory 
-      file_out = 'samp.dir_out'
-      open (52, file=file_out, action='read')
-      read(52,"(a)") dir_out
-      close(52)
-
-      write(6,"(/,a,a,/)")
-     $     'Sampling Tool output will be in : ',trim(dir_out)
+cif      file_out = 'samp.dir_out'
+cif      open (52, file=file_out, action='read')
+cif      read(52,"(a)") dir_out
+cif      close(52)
 
 c --------------
 c Sample state
-
+      objf(:) = 0.
+      mobjf = 0.
       call samp_objf(objf, mobjf, nrec, istep)
 
 c --------------
@@ -54,31 +52,40 @@ c Output sampled state
       write(f_command,'("_",i5)') nrec
       call StripSpaces(f_command)
 
-      file_out = trim(dir_out) // '/samp.out' // trim(f_command)
+      file_out = 'samp.out' // trim(f_command)
       open (51, file=file_out, action='write', access='stream')
       write(51) objf(1:nrec)
       write(51) mobjf 
       close(51)
 
-      file_out = trim(dir_out) // '/samp.step' // trim(f_command)
+      file_out = 'samp.step' // trim(f_command)
       open (51, file=file_out, action='write', access='stream')
       write(51) istep(1:nrec)
       close(51)
 
-      f_command = 'mv samp.info ' // trim(dir_out)
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'mv data.ecco ' // trim(dir_out)
-      call execute_command_line(f_command, wait=.true.)
+      file_out = 'samp.txt'
+      open (51, file=file_out, action='write')
+      write(51,1501) 'time(hr)', 'sample'
+ 1501 format(a10,3x,a20)
+      do i=1,nrec
+         write(51,1502) istep(i), objf(i)+mobjf
+      enddo
+ 1502 format(i10,3x,1pe20.12)
+      close(51)
 
 c --------------
 c Delete objf_*_mask* files. 
 c Can otherwise cause an error message if samp.x is run again, 
 c because INQUIRE returns EXIST=.false. for dangling symbolic links. 
-      f_command = 'rm -f objf_*_mask*'
-      call execute_command_line(f_command, wait=.true.)
-
-      write(6,"(a,/)") '... Done.'
+cif      f_command = 'rm -f objf_*_mask*'
+cif     call execute_command_line(f_command, wait=.true.)
+cif
+cif      write(6,"(a,/)") '... Done.'
+cif
+cif      write(6,"(/,a)") '*********************************'
+cif      write(6,"(a,a)")
+cif     $     'Sampling Tool output is in : ',trim(dir_out)
+cif      write(6,"(a,/)") '*********************************'
 
       stop
       end

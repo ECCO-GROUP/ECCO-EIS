@@ -1,5 +1,9 @@
 # EMU 
-all: samp_all pert_all adj conv_all
+all: samp_all pert_all adj conv_all trc
+
+# Tracer Tool 
+trc: trc.f emu_sub.f adj_sub.f
+	f95 -fconvert=swap -o trc.x trc.f emu_sub.f adj_sub.f
 
 # Convolution Tool 
 conv_all: conv do_conv 
