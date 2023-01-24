@@ -35,22 +35,11 @@ set inputdir = ${tooldir}/forcing
 set emudir  = ${tooldir}/emu
 set refdir   = ${tooldir}/emu_pert_ref
 
-set basedir = YOURDIR
+set rundir = YOURDIR
 
 #=================================
-# Create and cd to directory to run (rundir) under basedir 
-set rundir_spec = `cat ${basedir}/pert_xx.str`
-set rundir = 'emu_pert_'${rundir_spec}
-
-if ( -d ${basedir}/${rundir}) then
-echo 'Directory ' ${basedir}/${rundir} ' exists.'
-echo 'Please rename/remove it and re-submit the job.'
-exit 1
-endif
-mkdir ${basedir}/${rundir}
-# Ran under temp. Results will be moved to ${rundir} 
-mkdir ${basedir}/${rundir}/temp
-cd ${basedir}/${rundir}/temp
+# cd to directory to run rundir
+cd ${rundir}
  
 #=================================
 # Link all files needed to run flux-forced V4r4 
@@ -68,12 +57,12 @@ ln -s ${inputdir}/input_init/tools/* .
 /bin/rm -f data.pkg
 /bin/rm -f data.ecco
 
-if ( -f ${basedir}/data  ) then 
-/bin/rm -f data
-cp -p ${basedir}/data .
+if ( -f data_pert  ) then 
+mv -f data_pert data
 else
 ln -s ${emudir}/data .
 endif
+
 ln -s ${emudir}/data.diagnostics .
 ln -s ${emudir}/data.pkg .
 ln -s ${emudir}/data.ecco_pert data.ecco
@@ -81,10 +70,9 @@ ln -s ${emudir}/data.ecco_pert data.ecco
 #=================================
 # Perturb (change) control file by pert_xx.f
 # Perturbation specified in pert_xx.nml, created by 
-# mk_pert_nml.f or equivalent.
+# pert.f or equivalent.
 
 ln -s ${emudir}/pert_xx.x .
-cp ${basedir}/pert_xx.nml .
 
 pert_xx.x ${inputdir}
 
@@ -96,16 +84,15 @@ ln -s ${tooldir}/build/mitgcmuv .
 mpiexec -np ${nprocs} /u/scicon/tools/bin/mbind.x ./mitgcmuv
 
 #=================================
-# If this is not a reference run, 
-# compute gradient (weighted difference from the reference run).
-
-if ( ${rundir_spec} != 'ref') then
+# Compute gradient (weighted difference from the reference run).
 
 ln -s ${emudir}/pert_grad.x .
 
 pert_grad.x ${refdir}
 
-# Move result to parent directory
-mv pert_result ..
+#=================================
+# Move result to output dirctory 
+mv pert_result ../output
+mv pbs_pert.csh ../output
+mv pert.info ../output
 
-endif

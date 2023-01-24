@@ -58,7 +58,7 @@ c ---------
 c Select OBJF time period 
       write(6,"(/,3x,a)") 'V4r4 can integrate from ' //
      $     '1/1/1992 12Z to 12/31/2017 12Z'
-      write(6,"(7x,a,/)") 'which is 26-years (312-months).'
+      write(6,"(7x,a)") 'which is 26-years (312-months).'
 
       write(6,"(/,3x,a)")
      $   'Select FIRST and LAST month of OBJF averaging period.'
@@ -68,11 +68,11 @@ c Select OBJF time period
       do while (itarget1.lt.1 .or. itarget1.gt.312 .or. 
      $     itarget2.lt.1 .or. itarget2.gt.312 .or.
      $     itarget2.lt.itarget1) 
-         write(6,"(3x,a)")
-     $        'Enter FIRST month of OBJF period ... (1-312)?'
+         write(6,"(3x,a)") 'Enter FIRST month of OBJF period '//
+     $        '(t_start in Eq 6 of Guide) ... (1-312)?'
          read(5,*) itarget1 
-         write(6,"(3x,a)")
-     $        'Enter LAST month of OBJF period ... (1-312)?'
+         write(6,"(3x,a)") 'Enter LAST month of OBJF period '//
+     $        '(t_g in Eq 6 of Guide) ... (1-312)?'
          read(5,*) itarget2
       enddo
 
@@ -146,7 +146,7 @@ c File pbs_adj.csh
 c 
       write(6,"(/,3x,a)") '... Program has set computation periods '
      $    // 'in files data and pbs_adj.csh accordingly.'
-      write(6,"(3x,a,i4,/)") '... Estimated wallclock hours is '
+      write(6,"(3x,a,i4)") '... Estimated wallclock hours is '
      $     ,nHours
 
       return
@@ -205,6 +205,7 @@ c Update data.ecco OBJF for either SSH or OBP
       character*6 f1
       integer iobjf
       character*256 floc_loc  ! location (mask) of first OBJF variable
+      integer ip1,ip2
 
 c model arrays
       integer nx, ny, nr
@@ -307,7 +308,7 @@ c When OBJF is VARIABLE weighted in space
      $     ' --> i.e., MULT * SUM( MASK * VARIABLE )'
 
 c Get mask file name 
-         write(6,*) '   Enter MASK filename ... ?'  
+         write(6,*) '   Enter MASK filename (T in Eq 1 of Guide) ... ?'  
          read(5,'(a)') fmask
 
          write(6,'(/,3x,"fmask = ",a)') trim(fmask)
@@ -315,7 +316,9 @@ c Get mask file name
          write(51,"(3x,a,/)") ' --> MASK file. '
 
 c Save mask file name for naming run directory
-         floc_loc = trim(fmask)
+         ip1 = index(fmask,'/',.TRUE.)
+         ip2 = len(fmask)
+         floc_loc = trim(fmask(ip1+1:ip2))
          call StripSpaces(floc_loc)
 
 c Check mask 
@@ -336,7 +339,8 @@ c Link input mask to what model expects
       endif
 
 c Enter scaling factor
-      write(6,"(3x,a)") 'Enter scaling factor MULT ... ?'
+      write(6,"(/,3x,a)") 'Enter scaling factor ' //
+     $     '(alpha in Eq 1 of Guide)... ?'
       read(5,*) amult
 
       write(6,'(3x,"amult = ",1pe12.4)') amult 
@@ -368,6 +372,7 @@ c Update data.ecco OBJF for either THETA or SALT
       character*6 f1
       integer iobjf
       character*256 floc_loc  ! location (mask) of first OBJF variable
+      integer ip1,ip2
 
 c model arrays
       integer nx, ny, nr
@@ -475,14 +480,16 @@ c When OBJF is VARIABLE weighted in space
      $     ' --> i.e., MULT * SUM( MASK * VARIABLE )'
 
 c Get mask file name 
-         write(6,*) '   Enter MASK filename ... ?'  
+         write(6,*) '   Enter MASK filename (T in Eq 1 of Guide) ... ?'  
          read(5,'(a)') fmask
 
          write(51,'(3x,"fmask = ",a)') trim(fmask)
          write(51,"(3x,a,/)") ' --> MASK file. '
 
 c Save mask file name for naming run directory
-         floc_loc = trim(fmask)
+         ip1 = index(fmask,'/',.TRUE.)
+         ip2 = len(fmask)
+         floc_loc = trim(fmask(ip1+1:ip2))
          call StripSpaces(floc_loc)
 
 c Check mask 
@@ -503,7 +510,8 @@ c Link input mask to what model expects
       endif
 
 c Enter scaling factor
-      write(6,"(/,3x,a)") 'Enter scaling factor MULT ... ?'
+      write(6,"(3x,a)") 'Enter scaling factor ' //
+     $     '(alpha in Eq 1 of Guide)... ?'
       read(5,*) amult
 
       write(6,'("amult = ",1pe12.4)') amult 
@@ -535,6 +543,7 @@ c Update data.ecco OBJF for UV
       character*6 f1
       integer iobjf
       character*256 floc_loc  ! location (mask) of first OBJF variable
+      integer ip1,ip2
 
 c model arrays
       integer nx, ny, nr
@@ -670,7 +679,8 @@ c --------------------
 c UVEL
 
 c Get mask file name 
-         write(6,"(3x,a)") 'Enter MASK_W filename for UVEL ... ?'  
+         write(6,"(3x,a)") 'Enter MASK_W filename for UVEL '
+     $        // '(T in Eq 1 of Guide) ... ?'  
          read(5,'(a)') fmask
 
          write(6,'("fmask_W = ",a)') trim(fmask)
@@ -678,7 +688,9 @@ c Get mask file name
          write(51,"(3x,a,/)") ' --> MASK_W file for UVEL. '
 
 c Save mask file name for naming run directory
-         floc_loc = trim(fmask)
+         ip1 = index(fmask,'/',.TRUE.)
+         ip2 = len(fmask)
+         floc_loc = trim(fmask(ip1+1:ip2))
          call StripSpaces(floc_loc)
 
 c Check mask 
@@ -700,7 +712,8 @@ c --------------------
 c VVEL
 
 c Get mask file name 
-         write(6,"(3x,a)") 'Enter MASK_S filename for VVEL ... ?'  
+         write(6,"(3x,a)") 'Enter MASK_W filename for VVEL '
+     $        // '(T in Eq 1 of Guide) ... ?'  
          read(5,'(a)') fmask
 
          write(6,'("fmask_S = ",a)') trim(fmask)
@@ -726,7 +739,8 @@ c Link input mask to what model expects
 
 c --------------------
 c Enter scaling factor
-      write(6,"(/,3x,a)") 'Enter scaling factor MULT ... ?'
+      write(6,"(3x,a)") 'Enter scaling factor ' //
+     $     '(alpha in Eq 1 of Guide)... ?'
       read(5,*) amult
 
       write(6,'("amult = ",1pe12.4)') amult 
@@ -911,4 +925,3 @@ c Confirm location
 
       return
       end subroutine 
-

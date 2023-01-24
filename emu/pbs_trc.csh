@@ -1,5 +1,5 @@
 #PBS -S /bin/csh
-#PBS -l select=5:ncpus=40:model=sky_ele
+#PBS -l select=3:ncpus=40:model=sky_ele
 #PBS -l walltime=WHOURS_EMU:00:00
 #PBS -j oe
 #PBS -o ./
@@ -7,7 +7,7 @@
 #CHOOSE_DEVEL
 
 #=================================
-# Shell script for V4r4 Adjoint Tool
+# Shell script for V4r4 Tracer Tool
 #=================================
 
 #=================================
@@ -39,52 +39,39 @@ set rundir = YOURDIR
 #=================================
 # cd to directory to run rundir
 cd ${rundir}
-
+ 
 #=================================
 # Link all files needed to run flux-forced V4r4 
-ln -s ${tooldir}/namelist/* . 
-ln -s ${inputdir}/other/flux-forced/*/* .
+ln -s ${tooldir}/namelist_offline_ptracer/* . 
+
+set state = STATE_DIR
+ln -s ${inputdir}/other/flux-forced/${state}/* .
+#ln -s ${inputdir}/other/flux-forced/forcing_weekly/* .
+#ln -s ${inputdir}/other/flux-forced/*/* .
 
 ln -s ${inputdir}/input_init/error_weight/ctrl_weight/* .
 ln -s ${inputdir}/input_init/* .
 ln -s ${inputdir}/input_init/tools/* .
 
+# BANDAID_PICKUP
+
 #=================================
 # Over-ride runtime namelist files. 
-# (integration duration and output precision) 
-
-if ( -f data_adj  ) then 
-mv -f data_adj data 
-endif
-
-if ( -f data.ecco_adj ) then 
-mv -f data.ecco_adj data.ecco
-endif
+# (data_trc integration time set by trc.f)
+mv -f data_trc data
 
 #=================================
-# Run flux-forced V4r4 adjoint 
+# Run flux-forced V4r4
 python mkdir_subdir_diags.py
 
-ln -s ${tooldir}/build_ad/mitgcmuv_ad .
-mpiexec -np ${nprocs} /u/scicon/tools/bin/mbind.x ./mitgcmuv_ad
+set trc_drct = FRW_OR_ADJ
+
+ln -s ${tooldir}/${trc_drct}/mitgcmuv .
+mpiexec -np ${nprocs} /u/scicon/tools/bin/mbind.x ./mitgcmuv
 
 #=================================
-# Save adjoint gradients 
-
-set adoutdir = ../output
-mkdir ${adoutdir}
-
-cp -p adxx_empmr.0*.* ${adoutdir}
-cp -p adxx_pload.0*.* ${adoutdir}
-cp -p adxx_qnet.0*.* ${adoutdir}
-cp -p adxx_qsw.0*.* ${adoutdir}
-cp -p adxx_saltflux.0*.* ${adoutdir}
-cp -p adxx_spflx.0*.* ${adoutdir}
-cp -p adxx_tauu.0*.* ${adoutdir}
-cp -p adxx_tauv.0*.* ${adoutdir}
-
-cp -p `realpath objf_*_mask*` ${adoutdir}
-cp -p data.ecco ${adoutdir}
-cp -p data ${adoutdir}
-cp -p adj.info ${adoutdir}
+# Move result to output dirctory 
+mv diags ../output
+mv pbs_trc.csh ../output
+mv trc.info ../output
 

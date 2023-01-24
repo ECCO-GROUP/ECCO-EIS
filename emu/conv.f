@@ -32,6 +32,13 @@ c Strings for adxx
       integer ip1, ip2
       character*256 fdum1, fdum2
 
+c directories
+      character*256 dir_run   ! run directory
+      character*256 fcwd      ! current working directory
+
+      integer date_time(8)  ! arrrays for date 
+      character*10 bb(3)
+      character*256 fdate 
 c --------------
 c Specifying adjoint gradient convolution with forcing. 
       write (6,"(a,/)") 'Convolution Tool ... '
@@ -64,7 +71,8 @@ c Specify forcing, if not V4r4's (its directory)
       write(6,"(a)") 'V4r4 weekly forcing is in directory '
       write(6,"(5x,a,/)") file_in
 
-      write(6,"(a)") 'Use V4r4''s weekly forcing  ... (Y/N)? '
+      write(6,"(a)") 'Use V4r4''s weekly forcing for convolution'//
+     $     ' (phi in Eq 7 of Guide) ... (Y/N)? '
       read(5,"(a)") fcheck
       
       if (fcheck.eq.'N' .or. fcheck.eq.'n') then 
@@ -93,7 +101,7 @@ c (e.g., directory where output of Adjoint Tool is located.)
       write(6,"(3x,a)") 'Gradient files must be named '
      $     // 'adxx_***CTRL***..0000000129.data etc'
       write(6,"(3x,a)") 'and be present in a directory '
-     $     // 'named ''adj_result'' '
+     $     // 'named ''output'' '
       write(6,"(3x,a)") 'under a parent directory ' 
      $     // 'prefixed ''emu_adj_'' '
 
@@ -101,14 +109,15 @@ c (e.g., directory where output of Adjoint Tool is located.)
      $     // 'or its equivalent ... ?'
       read (5,'(a)') f_adxx
 
-c check name 
+c check adxx files
       fdum1 = 'emu_adj_'
-      fdum2 = '/adj_result'
+      fdum2 = '/output'
       ip1 = index(f_adxx,trim(fdum1)) 
       ip2 = index(f_adxx,trim(fdum2)) 
       if (ip1.eq.0 .or. ip2.eq.0 .or. ip1.gt.ip2) then
+         write(6,"(3x,a)") 'Directory name does not conform to Tool.'
          write(6,"(3x,a,/)") 'Directory name must include '//
-     $        '''emu_adj_'' and end ''/adj_result''.'
+     $        '''emu_adj_'' and end ''/output''.'
          write(6,"(3x,a,/)") 'Try again.'
          stop
       endif
@@ -162,8 +171,9 @@ c Identify record that is 0-lag
 
 c --------------
 c Define maximum lag in convolution
-      write(6,"(a,/)")
-     $     'Enter maximum lag (weeks) to use in convolution ... (0-'
+      write(6,"(a)")
+     $     'Enter maximum lag (weeks) to use in convolution '
+     $     //'(delta_t_max in Eq 7 of Guide) ... (0-'
      $     // trim(f_lag0) // ')?'
       read (5,*) nlag
       write(6,"(5x,a,1x,i0)") 'nlag = ',nlag
@@ -185,6 +195,13 @@ c Define maximum lag in convolution
       call StripSpaces(f_lag)
 
 c --------------
+c set pbs script (walltime for computation)
+      f_command = 'cp -f pbs_conv.csh_orig pbs_conv.csh'
+      call execute_command_line(f_command, wait=.true.)
+      f_command = 'cp -f do_conv_int.csh_orig do_conv_int.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+c --------------
 c Create output directory for convolution
       dir_out = 'emu_conv_' // trim(f_adxx(ip1:ip2))
      $     // '_' // trim(f_lag)
@@ -193,14 +210,29 @@ c Create output directory for convolution
 
       inquire (file=trim(dir_out), EXIST=f_exist)
       if (f_exist) then
-         write (6,*) '**** Error: Directory exists already : ',
+         write (6,*) '**** WARNING: Directory exists already : ',
      $        trim(dir_out) 
-         write (6,*) '**** Rename existing directory and try again. '
-         stop
+         call date_and_time(bb(1), bb(2), bb(3), date_time)
+         write(fdate,"('_',i4.4,2i2.2,'_',3i2.2)")
+     $     date_time(1:3),date_time(5:7)
+         dir_out = trim(dir_out) // trim(fdate)
+         write(6,"(/,a,a,/)")
+     $        '**** Renaming output directory to :',trim(dir_out)
       endif
 
       f_command = 'mkdir ' // dir_out
       call execute_command_line(f_command, wait=.true.)
+      call getcwd(fcwd)
+      dir_run = trim(fcwd) // '/' // trim(dir_out) // '/temp'
+      f_command = 'mkdir ' // dir_run
+      call execute_command_line(f_command, wait=.true.)
+
+      file_out = 'conv.dir_out'
+      open (53, file=file_out, action='write')
+      write(53,"(a)") trim(dir_out)
+      write(53,"(a)") trim(dir_run)
+      write(53,"(a)") trim(dir_out) // '/output'
+      close(53)
 
       write(51,"(a,1x,a,/)") 'Output directory : ',trim(dir_out)
       close(51)
@@ -208,9 +240,38 @@ c Create output directory for convolution
       write(52,"(a)") trim(dir_out)
       close(52)
 
-c --------------
-c Define maximum lag in convolution
-      write(6,"(a,/)") '... Done conv setup (conv.out)'
+      write(6,"(a)") '... Done conv setup (conv.out)'
+
+c Move all needed files into run directory
+      f_command = 'sed -i -e "s|YOURDIR|'//
+     $     trim(dir_run) //'|g" pbs_conv.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'sed -i -e "s|YOURDIR|'//
+     $     trim(dir_run) //'|g" do_conv_int.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv pbs_conv.csh ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'ln -s ' // trim(dir_run) // '/pbs_conv.csh .'
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'mv conv.info ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv conv.out ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'cp -p conv.dir_out ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+c Wrapup 
+      write(6,"(/,a)") '*********************************'
+      f_command = 'do_conv.csh'
+      write(6,"(4x,a)") 'Run "' // trim(f_command) //
+     $     '" to conduct convolution.'
+      write(6,"(a,/)") '*********************************'
 
       stop
       end

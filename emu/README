@@ -1,121 +1,30 @@
-Files of the ECCO Modeling Utilities (EMU).
 
-05 December 2022, Ichiro Fukumori
+===================================================
+ECCO Modeling Utilities (EMU): A Brief Description
+===================================================
 
-  -rwxrwxr-x 1 ifukumor g26113 640694 Dec  5 21:06 Guide_ECCO_Modeling_Utilities.pdf
-  -rw-r--r-- 1 ifukumor g26113    539 Dec  1 16:52 Makefile
-  drwxr-xr-x 2 ifukumor g26113   4096 Sep 21 13:48 NG
-  -rw-r--r-- 1 ifukumor g26113   2791 Dec  5 21:14 README
-  -rw-r--r-- 1 ifukumor g26113  10214 Nov 11 18:11 README_adj
-  -rw-r--r-- 1 ifukumor g26113   7857 Nov 11 18:12 README_pert
-  -rw-r--r-- 1 ifukumor g26113   6390 Dec  5 20:48 README_samp
-  -rw-r--r-- 1 ifukumor g26113   6307 Nov 11 18:13 adj.f
-  -rw-r--r-- 1 ifukumor g26113  27579 Nov 11 18:14 adj_sub.f
-  -rw-r--r-- 1 ifukumor g26113   3447 Sep 21 16:18 data
-  -rw-r--r-- 1 ifukumor g26113   2811 Sep 21 16:18 data.diagnostics
-  -rw-r--r-- 1 ifukumor g26113    307 Sep 22 21:19 data.ecco_adj
-  -rw-r--r-- 1 ifukumor g26113    118 Sep 21 16:18 data.ecco_pert
-  -rw-r--r-- 1 ifukumor g26113    406 Sep 21 16:18 data.pkg
-  -rw-r--r-- 1 ifukumor g26113   3470 Sep 21 16:18 data_emu
-  -rw-rw-r-- 1 ifukumor g26113   7959 Dec  1 19:09 do_samp.f
-  -rw-rw-r-- 1 ifukumor g26113  12364 Dec  1 19:04 emu_sub.f
-  -rw-r--r-- 1 ifukumor g26113    158 Nov 10 22:33 install_10.csh
-  -rw-r--r-- 1 ifukumor g26113    276 Nov 11 20:17 install_11.csh
-  -rw-r--r-- 1 ifukumor g26113    609 Nov 11 18:17 install_12_14.csh
-  -rw-r--r-- 1 ifukumor g26113    428 Nov 11 20:14 install_15.csh
-  -rw-r--r-- 1 ifukumor g26113    479 Nov 10 22:28 install_2_5.csh
-  -rw-r--r-- 1 ifukumor g26113    393 Nov 11 20:17 install_6.csh
-  -rw-r--r-- 1 ifukumor g26113    435 Nov 10 22:28 install_7_8.csh
-  -rw-r--r-- 1 ifukumor g26113    336 Nov 10 22:31 install_9.csh
-  -rw-r--r-- 1 ifukumor g26113   3154 Nov 11 20:18 install_cheatsheet.txt
-  -rwxr-xr-x 1 ifukumor g26113   2717 Nov 11 18:18 pbs_adj.csh
-  -rwxr-xr-x 1 ifukumor g26113   2758 Sep 21 16:18 pbs_pert.csh
-  -rwxr-xr-x 1 ifukumor g26113   1925 Sep 21 16:18 pbs_pert_ref.csh
-  -rw-r--r-- 1 ifukumor g26113  10327 Nov 11 18:20 pert.f
-  -rw-r--r-- 1 ifukumor g26113   9585 Sep 21 16:18 pert_grad.f
-  -rw-r--r-- 1 ifukumor g26113   2621 Nov 11 18:21 pert_xx.f
-  -rw-rw-r-- 1 ifukumor g26113   7564 Dec  1 16:47 samp.f
-  -rwxr-xr-x 1 ifukumor g26113    830 Nov 11 18:23 setup_adj.csh
-  -rwxr-xr-x 1 ifukumor g26113    790 Nov 11 18:27 setup_pert.csh
-  -rwxr-xr-x 1 ifukumor g26113    587 Dec  5 20:59 setup_samp.csh
+What EMU does: 
+   EMU consists of computational tools to analyze the ECCO model in
+   addition to its state. The tools include the following; 
 
-------------------------------------------------------------------------
+   1) Sampling Tool (samp); Extracts time-series from the model. 
+   2) Perturbation Tool (pert); Computes forward gradient. 
+   3) Adjoint Tool (adj); Computes adjoint gradient. 
+   4) Convolution Tool (conv); Computes adjoint gradient decomposition.
+   5) Tracer Tool (trc); Computes passive tracer integration. 
 
-Guide_ECCO_Modeling_Utilities.pdf
-    User description of EMU. 
+   For brief descriptions of each, see individual README files, 
+   PUBLICDIR/README_***
+   where *** is the tools' abreviation in parentheses () above.
 
-Makefile
-    Makefile for EMU programs.
+How to run the Tool:
+   For each tool, execute shell script emu_***.csh and follow its
+   prompt, where *** is the tools' abreviation in parentheses ()
+   above; e.g., source PUBLICDIR/emu_***.csh
 
-README
-    This file. User readme file for EMU. 
+For detailed description: 
+   See the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
 
-README_adj
-    User readme file for Adjoint Tool. 
+========================================
 
-README_pert
-    User readme file for Perturbation Tool. 
-
-README_samp
-    User readme file for Sampling Tool. 
-
-adj.f 
-    User program to create namelist file for Adjoint Tool. 
-    
-adj_sub.f
-    Subroutines for EMU (Sampling and Adjoint). 
-
-data.diagnostic
-data.ecco_adj
-data.ecco_pert
-data.pkg
-data_emu
-    Namelist files for MITgcm tailored for EMU. File data_emu is
-    modified into file data. Files data.ecco_adj and data.ecco_pert
-    are modified into data.ecco.
-
-do_samp.f 
-    User program to extract time-series of Objective Function
-    specified by samp.f (Sampling Tool). 
-
-emu_sub.f 
-    Subroutines for EMU.
-
-install_2_5.csh
-install_6.csh
-install_7_8.csh
-install_9.csh
-install_10.csh
-install_11.csh
-install_12_14.csh
-install_15.csh
-    Scripts for Installation steps 2 to 15. See Guide. 
-
-install_cheatsheet.txt
-    Summary of Installation steps.  See Guide. 
-
-pbs_adj.csh
-    User PBS script for Adjoint Tool.
-
-pbs_pert.csh
-    User PBS script for Perturbation Tool.
-
-pbs_pert_ref.csh
-    PBS script for Perturbation Tool's reference run. See Guide.  
-
-pert.f
-    User program to create namelist file for Perturbation Tool. 
-    
-pert_grad.f
-    Computes forward gradient in Perturbation Tool.
-
-pert_xx.f
-    Perturbs control in Perturbation Tool. 
-
-samp.f	
-    User program to create namelist file for Sampling Tool. 
-
-setup_adj.csh
-setup_pert.csh
-setup_samp.csh
-    User script to setup EMU tools (Adjoint, Perturbation, Sampling).

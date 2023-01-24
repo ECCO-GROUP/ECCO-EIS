@@ -51,6 +51,16 @@ c Integration time
       parameter(hour26yr=12) ! wallclock hours for nsteps 
       character*24 fstep 
 
+c directories
+      logical f_exist
+      character*256 dir_out   ! output directory
+      character*256 dir_run   ! run directory
+      character*256 fcwd      ! current working directory
+
+      integer date_time(8)  ! arrrays for date 
+      character*10 bb(3)
+      character*256 fdate 
+
 c --------------
 c Set directory where tool files exist
       open (50, file='tool_setup_dir')
@@ -82,6 +92,22 @@ c Read model grid
       close (50)
       
 c --------------
+c Interactive specification of Tracer
+      write (6,"(/,a,/)") 'Perturbation Tool ... '
+      write (6,*) 'Define control perturbation ' //
+     $     '(denominator in Eq 2 of Guide) ... '
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'pert.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of pert.f'
+      write(51,"(a)")
+     $     'Perturbation specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
 c xx variable name, unit and description
       f_xx(1) = 'empmr'
       f_xx(2) = 'pload'   
@@ -112,20 +138,25 @@ c control variable
          write (6,"('   ',i2,') ',a)") i,trim(f_xx(i))
       enddo
       do while (check_v .eq. 0) 
-         write (6,"('   Enter control ... (1-',i2,') ?')") nctrl
+         write (6,"(3x,a,i2,a)")
+     $     'Enter control (phi in Eq 2 of Guide) ... (1-',nctrl,') ?'
          read (5,*) pert_v
          if (pert_v .ge. 1 .and. pert_v .le. nctrl) check_v = 1
       end do
       write (6,*) ' ..... perturbing ',trim(f_xx(pert_v))
       write (6,*) 
 
+      write (51,*) ' ..... perturbing ',trim(f_xx(pert_v))
 
 c Select spatial location (native or lat/lon)
-      write (6,*) 'Choose location for perturbation ... '
+      write (6,*) 'Choose location for perturbation ' //
+     $     '(r in Eq 2 of Guide) ... '
       write (6,*) '   Enter 1 to choose native grid location (i,j),  '
       write (6,*)
      $     '         9 to select by longitude/latitude ... (1 or 9)? '
       read (5,*) iloc
+
+      write(51,"(3x,'iloc = ',i2)") iloc 
 
       if (iloc .ne. 9) then 
 
@@ -194,15 +225,26 @@ c make sure point is wet
  1005 format(a,1x,f7.1)
       write (6,*) 
 
+      write(51,*) ' ...... perturbation at (i,j) = ',pert_i,pert_j
+      write(51,1004) 
+     $           '        C-grid is (long E, lat N) = ',
+     $     xc(pert_i,pert_j),yc(pert_i,pert_j)
+      write(51,1005) 
+     $           '        Depth (m) = ',
+     $     bathy(pert_i,pert_j)
+
 c time (week)
       check_t = 0
       do while (check_t .eq. 0) 
-         write (6,"('Enter week to perturb ... (1-',i4,') ?')") nwk 
+         write (6,"(a,i4,a)")
+     $    'Enter week to perturb (s in Eq 2) ... (1-',nwk,') ?'
          read (5,*) pert_t
          if (pert_t .ge. 1 .and. pert_t .le. nwk) check_t = 1
       end do
       write(6,*) ' ...... perturbing week = ',pert_t
       write (6,*) 
+
+      write(51,*) ' ...... perturbing week = ',pert_t
 
 c amplitude
       file_in = trim(tooldir) // '/emu/pert_xx.scale'
@@ -220,8 +262,9 @@ c amplitude
       close (50)
 
       pert_a = scale(pert_i,pert_j)
-      write(6,"(a,1x,e12.4)") 'Default perturbation = ',pert_a
-      write(6,"(8x,'in unit ',a)") f_xx_unit(pert_v)
+      write(6,"(a,1x,e12.4)")
+     $     'Default perturbation (delta_phi in Eq 4 of Guide) : '
+      write(6,"(8x,e12.4,1x,'in unit ',a)") pert_a, f_xx_unit(pert_v)
 
       write (6,*) 'Enter 1 to keep, 9 to change ... ?'
       read (5,*) check_a
@@ -233,12 +276,16 @@ c amplitude
       write(6,"(a,1x,e12.4)") 'Perturbation amplitude = ',pert_a
       write(6,"(8x,'in unit ',a,/)") f_xx_unit(pert_v)
 
+      write(51,"(a,1x,e12.4)") 'Perturbation amplitude = ',pert_a
+      write(51,"(8x,'in unit ',a,/)") f_xx_unit(pert_v)
+
 c --------------
 c Set integration time 
       write(6,*) 'V4r4 integrates 312-months from ' //
      $     '1/1/1992 12Z to 12/31/2017 12Z'
       write(6,*) 'which requires 10-hours wallclock time.'
-      write(6,*) 'Enter how many months to integrate here ... (1-312)?'
+      write(6,*) 'Enter months to integrate (Max t in Eq 2)'
+     $     //'... (1-312)?'
       read(5,*) iend
       if (iend .gt. 312) then 
          iend = 312
@@ -246,6 +293,9 @@ c Set integration time
          iend = 1
       endif
       write(6,'(a,i3,a,/)') 'Will integrate model over ',
+     $     iend,' months'
+
+      write(51,'(a,i3,a,/)') 'Will integrate model over ',
      $     iend,' months'
 
 c set nTimesteps in data to 1-month beyond iend
@@ -282,7 +332,7 @@ c set walltime for computation
       endif
 
 c 
-      write(6,"(/,3x,a)") '... Program has set computation periods '
+      write(6,"(3x,a)") '... Program has set computation periods '
      $    // 'in files data and pbs_pert.csh accordingly.'
       write(6,"(3x,a,i4,/)") '... Estimated wallclock hours is '
      $     ,nHours
@@ -321,6 +371,69 @@ c Also create concatenated string for creating run director
       close(50)
 
       write (6,*) 'Wrote ',trim(file_out)
+
+      close (51)
+
+c Setup run directory
+      dir_out = 'emu_pert_' // trim(f_command)
+      write(6,"(/,a,a,/)")
+     $     'Perturbation Tool output will be in : ',trim(dir_out)
+
+      inquire (file=trim(dir_out), EXIST=f_exist)
+      if (f_exist) then
+         write (6,*) '**** WARNING: Directory exists already : ',
+     $        trim(dir_out) 
+         call date_and_time(bb(1), bb(2), bb(3), date_time)
+         write(fdate,"('_',i4.4,2i2.2,'_',3i2.2)")
+     $     date_time(1:3),date_time(5:7)
+         dir_out = trim(dir_out) // trim(fdate)
+         write(6,"(/,a,a,/)")
+     $        '**** Renaming output directory to :',trim(dir_out)
+      endif
+
+      f_command = 'mkdir ' // trim(dir_out)
+      call execute_command_line(f_command, wait=.true.)
+      call getcwd(fcwd)
+      dir_run = trim(fcwd) // '/' // trim(dir_out) // '/temp'
+      f_command = 'mkdir ' // dir_run
+      call execute_command_line(f_command, wait=.true.)
+      
+      file_out = 'pert.dir_out'
+      open (52, file=file_out, action='write')
+      write(52,"(a)") trim(dir_out)
+      write(52,"(a)") trim(dir_run)
+      write(52,"(a)") trim(dir_out) // '/output'
+      close(52)
+
+c Move all needed files into run directory
+      f_command = 'sed -i -e "s|YOURDIR|'//
+     $     trim(dir_run) //'|g" pbs_pert.csh'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv pbs_pert.csh ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'ln -s ' // trim(dir_run) // '/pbs_pert.csh .'
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'mv data ' // trim(dir_run) // '/data_pert'
+      call execute_command_line(f_command, wait=.true.)
+      
+      f_command = 'mv pert.info ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv pert_xx.nml ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+      f_command = 'mv pert_xx.str ' // trim(dir_run)
+      call execute_command_line(f_command, wait=.true.)
+
+c Wrapup 
+      write(6,"(/,a)") '*********************************'
+      f_command = 'do_pert.csh'
+      write(6,"(4x,a)") 'Run "' // trim(f_command) //
+     $     '" to compute model response.'
+      write(6,"(a,/)") '*********************************'
 
       stop
       end

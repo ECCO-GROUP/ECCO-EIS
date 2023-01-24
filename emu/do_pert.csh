@@ -1,22 +1,22 @@
 #!/bin/tcsh
 
 #=================================
-# Shell script for conducting convolution in V4r4 Convolution Tool
+# Shell script for computing model response in V4r4 Perturbation Tool
 #=================================
 
-qsub pbs_conv.csh
+qsub pbs_pert.csh
 
 echo " "
-echo "... Batch job pbs_conv.csh has been submitted "
-echo "    to compute adjoint gradient convolution with control."
+echo "... Batch job pbs_pert.csh has been submitted "
+echo "    to compute the model's response to perturbation." 
 
 echo " "
 echo "    Estimated wallclock time:"
-sed -n '3p' pbs_conv.csh
-/bin/rm -f pbs_conv.csh
+sed -n '3p' pbs_pert.csh
+/bin/rm -f pbs_pert.csh
 
 echo " " 
-set dum = `tail -n 1 conv.dir_out`
+set dum = `tail -n 1 pert.dir_out`
 echo '********************************************'
 echo "    Results will be in" $dum
 echo '********************************************'

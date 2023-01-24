@@ -1,22 +1,22 @@
 #!/bin/tcsh
 
 #=================================
-# Shell script for conducting convolution in V4r4 Convolution Tool
+# Shell script for conducting tracer integration in V4r4 Tracer Tool
 #=================================
 
-qsub pbs_conv.csh
+qsub pbs_trc.csh
 
 echo " "
-echo "... Batch job pbs_conv.csh has been submitted "
-echo "    to compute adjoint gradient convolution with control."
+echo "... Batch job pbs_trc.csh has been submitted "
+echo "    to compute the tracer evolution. " 
 
 echo " "
 echo "    Estimated wallclock time:"
-sed -n '3p' pbs_conv.csh
-/bin/rm -f pbs_conv.csh
+sed -n '3p' pbs_trc.csh
+/bin/rm -f pbs_trc.csh
 
 echo " " 
-set dum = `tail -n 1 conv.dir_out`
+set dum = `tail -n 1 trc.dir_out`
 echo '********************************************'
 echo "    Results will be in" $dum
 echo '********************************************'

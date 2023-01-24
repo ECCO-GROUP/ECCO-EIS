@@ -7,7 +7,6 @@
 echo " "
 echo "... Setting up ECCO V4r4 Adjoint Tool ..."
 echo "    See PUBLICDIR/README_adj "
-echo " "
 
 # Set directory names for the tool. 
 set userdir=`pwd`
@@ -24,7 +23,13 @@ echo $tooldir > tool_setup_dir
 
 # Set up Tool's PBS script (pbs_adj.csh) 
 # The script will be modified by adj.x
+/bin/cp -fp ${tooldir}/emu/do_adj.csh . 
 /bin/cp -fp ${tooldir}/emu/pbs_adj.csh pbs_adj.csh_orig
-sed -i -e "s|YOURDIR|${userdir}|g" pbs_adj.csh_orig
 
+# 
+echo " "
+echo '********************************************'
+echo '    Run adj.x to specify computation.'
+echo '********************************************'
+echo " "
 exit
