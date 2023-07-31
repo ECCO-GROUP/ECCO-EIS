@@ -1,0 +1,177 @@
+# Diagnostic Package Choices
+#-----------------
+# for each output-stream:
+#  filename(n) : prefix of the output file name (only 8.c long) for outp.stream n
+#  frequency(n):< 0 : write snap-shot output every multiple of |frequency| (iter)
+#               > 0 : write time-average output every multiple of frequency (iter)
+#  levels(:,n) : list of levels to write to file (Notes: declared as REAL)
+#                 when this entry is missing, select all common levels of this list
+#  fields(:,n) : list of diagnostics fields (8.c) (see "available_diagnostics" file
+#                 for the list of all available diag. in this particular config)
+#--------------------------------------------------------------------
+#
+ &diagnostics_list
+#
+    dumpatlast = .TRUE.,
+#---
+frequency(1) = 2635200.0,
+fields(1,1) = 'ADVr_SLT',
+filename(1) = 'diags/ADVr_SLT_mon_mean/ADVr_SLT_mon_mean',
+#---
+frequency(2) = 2635200.0,
+fields(1,2) = 'ADVr_TH',
+filename(2) = 'diags/ADVr_TH_mon_mean/ADVr_TH_mon_mean',
+#---
+frequency(4) = 2635200.0,
+fields(1,4) = 'ADVx_SLT',
+filename(4) = 'diags/ADVx_SLT_mon_mean/ADVx_SLT_mon_mean',
+#---
+frequency(6) = 2635200.0,
+fields(1,6) = 'ADVx_TH',
+filename(6) = 'diags/ADVx_TH_mon_mean/ADVx_TH_mon_mean',
+#---
+frequency(8) = 2635200.0,
+fields(1,8) = 'ADVy_SLT',
+filename(8) = 'diags/ADVy_SLT_mon_mean/ADVy_SLT_mon_mean',
+#---
+frequency(10) = 2635200.0,
+fields(1,10) = 'ADVy_TH',
+filename(10) = 'diags/ADVy_TH_mon_mean/ADVy_TH_mon_mean',
+#---
+frequency(11) = 2635200.0,
+fields(1,11) = 'DFrE_SLT',
+filename(11) = 'diags/DFrE_SLT_mon_mean/DFrE_SLT_mon_mean',
+#---
+frequency(12) = 2635200.0,
+fields(1,12) = 'DFrE_TH',
+filename(12) = 'diags/DFrE_TH_mon_mean/DFrE_TH_mon_mean',
+#---
+frequency(13) = 2635200.0,
+fields(1,13) = 'DFrI_SLT',
+filename(13) = 'diags/DFrI_SLT_mon_mean/DFrI_SLT_mon_mean',
+#---
+frequency(14) = 2635200.0,
+fields(1,14) = 'DFrI_TH',
+filename(14) = 'diags/DFrI_TH_mon_mean/DFrI_TH_mon_mean',
+#---
+frequency(16) = 2635200.0,
+fields(1,16) = 'DFxE_SLT',
+filename(16) = 'diags/DFxE_SLT_mon_mean/DFxE_SLT_mon_mean',
+#---
+frequency(18) = 2635200.0,
+fields(1,18) = 'DFxE_TH',
+filename(18) = 'diags/DFxE_TH_mon_mean/DFxE_TH_mon_mean',
+#---
+frequency(20) = 2635200.0,
+fields(1,20) = 'DFyE_SLT',
+filename(20) = 'diags/DFyE_SLT_mon_mean/DFyE_SLT_mon_mean',
+#---
+frequency(22) = 2635200.0,
+fields(1,22) = 'DFyE_TH',
+filename(22) = 'diags/DFyE_TH_mon_mean/DFyE_TH_mon_mean',
+#---
+frequency(24) = 2635200.0,
+fields(1,24) = 'ETAN',
+filename(24) = 'diags/ETAN_mon_mean/ETAN_mon_mean',
+#---
+frequency(46) = 2635200.0,
+fields(1,46) = 'oceFWflx',
+filename(46) = 'diags/oceFWflx_mon_mean/oceFWflx_mon_mean',
+#---
+frequency(48) = 2635200.0,
+fields(1,48) = 'oceQsw',
+filename(48) = 'diags/oceQsw_mon_mean/oceQsw_mon_mean',
+#---
+frequency(51) = 2635200.0,
+fields(1,51) = 'oceSPtnd',
+filename(51) = 'diags/oceSPtnd_mon_mean/oceSPtnd_mon_mean',
+#---
+frequency(59) = 2635200.0,
+fields(1,59) = 'SFLUX',
+filename(59) = 'diags/SFLUX_mon_mean/SFLUX_mon_mean',
+#---
+frequency(69) = 2635200.0,
+fields(1,69) = 'TFLUX',
+filename(69) = 'diags/TFLUX_mon_mean/TFLUX_mon_mean',
+#---
+frequency(73) = 2635200.0,
+fields(1,73) = 'UVELMASS',
+filename(73) = 'diags/UVELMASS_mon_mean/UVELMASS_mon_mean',
+#---
+frequency(76) = 2635200.0,
+fields(1,76) = 'VVELMASS',
+filename(76) = 'diags/VVELMASS_mon_mean/VVELMASS_mon_mean',
+#---
+frequency(77) = 2635200.0,
+fields(1,77) = 'WVELMASS',
+filename(77) = 'diags/WVELMASS_mon_mean/WVELMASS_mon_mean',
+#---
+frequency(86) = -2635200.0,
+fields(1,86) = 'ETAN',
+timePhase(86) = 0,
+filename(86) = 'diags/ETAN_mon_inst/ETAN_mon_inst',
+#---
+frequency(87) = -2635200.0,
+fields(1,87) = 'SALT',
+timePhase(87) = 0,
+filename(87) = 'diags/SALT_mon_inst/SALT_mon_inst',
+#---
+frequency(88) = -2635200.0,
+fields(1,88) = 'THETA',
+timePhase(88) = 0,
+filename(88) = 'diags/THETA_mon_inst/THETA_mon_inst',
+#---
+frequency(89) = 2635200.0,
+fields(1:4,89) = 'THETA   ','SALT    ','UVEL','VVEL'
+filename(89) = 'diags/state_3d_set1_mon',
+#---
+frequency(90) = 2635200.0,
+fields(1:2,90) = 'SSH','OBP',
+filename(90) = 'diags/state_2d_set1_mon',
+fileFlags(90) = 'D       ',
+#---
+frequency(91) = 86400.0,
+fields(1:2,91) = 'SSH','OBP',
+timePhase(91) = 42300.,
+filename(91) = 'diags/state_2d_set1_day',
+fileFlags(91) = 'D   
+#---
+  /
+#
+#
+# Parameter for Diagnostics of per level statistics:
+#-----------------
+# for each output-stream:
+#  stat_fname(n) : prefix of the output file name (only 8.c long) for outp.stream n
+#  stat_freq(n):< 0 : write snap-shot output every |stat_freq| seconds
+#               > 0 : write time-average output every stat_freq seconds
+#  stat_phase(n)    : write at time = stat_phase + multiple of |stat_freq|
+#  stat_region(:,n) : list of "regions" (default: 1 region only=global)
+#  stat_fields(:,n) : list of diagnostics fields (8.c) (see "available_diagnostics.log"
+#                 file for the list of all available diag. in this particular config)
+#-----------------
+ &DIAG_STATIS_PARMS
+# diagSt_regMaskFile='basin_masks_eccollc_90x50.bin',
+# nSetRegMskFile=1,
+# set_regMask(1)= 1,  1,  1,  1,  1,  1,  1,  1,  1,
+#                 1,  1,  1,  1,  1,  1,  1,  1
+# val_regMask(1)= 1., 2., 3., 4., 5., 6., 7., 8., 9.,
+#                10.,11.,12.,13.,14.,15.,16.,17.
+##---
+# stat_fields(1,1)= 'ETAN    ','ETANSQ  ','DETADT2 ',
+#                   'UVEL    ','VVEL    ','WVEL    ',
+#                   'THETA   ','SALT    ',
+#    stat_fname(1)= 'dynStDiag',
+#     stat_freq(1)= 3153600.,
+# stat_region(1,1)=  1, 2, 3, 4, 5, 6, 7, 8, 9,
+#                   10,11,12,13,14,15,16,17
+##---
+# stat_fields(1,2)= 'oceTAUX ','oceTAUY ',
+#                   'surForcT','surForcS','TFLUX   ','SFLUX   ',
+#                   'oceQnet ','oceSflux','oceFWflx',
+#    stat_fname(2)= 'surfStDiag',
+#     stat_freq(2)= 3153600.,
+# stat_region(1,2)=  1, 2, 3, 4, 5, 6, 7, 8, 9,
+#                   10,11,12,13,14,15,16,17
+  /
+
