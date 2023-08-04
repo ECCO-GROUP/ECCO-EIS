@@ -134,7 +134,7 @@ frequency(91) = 86400.0,
 fields(1:2,91) = 'SSH','OBP',
 timePhase(91) = 42300.,
 filename(91) = 'diags/state_2d_set1_day',
-fileFlags(91) = 'D   
+fileFlags(91) = 'D       ',
 #---
   /
 #
