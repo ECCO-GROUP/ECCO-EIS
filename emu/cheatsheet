@@ -1,0 +1,41 @@
+Create emu_input subdirectory with
+  XC.data 
+  YC.data
+  RC.data
+  Depth.data
+  pert_xx.scale 
+
+#15) Modify scripts. (Specify EMU directory. cf step 5)
+sed -i -e "s|SETUPDIR|${basedir}|g" *.csh
+sed -i -e "s|SETUPDIR|${basedir}|g" *.sh
+sed -i -e "s|SETUPDIR|${basedir}|g" */*.sh
+
+
+In doin #9)
+
+pfe23>singularity shell --writable --bind ${PWD}:/inside_out test3
+Singularity> cd /inside_out
+Singularity> mkdir build_from_singularity
+Singularity> mkdir build_ad
+Singularity> ln -s /ecco/MITgcm/ECCOV4/release4/flux-forced/code . 
+Singularity> cd build_ad
+Singularity> /ecco/MITgcm/tools/genmake2 -mods=../code  -optfile=/ecco/MITgcm/tools/build_options/linux_amd64_gfortran -mpi
+
+
+
+For installing
+----------------
+install_access.sh
+emu_env.sh
+
+
+Testing
+--------
+singularity in temp50 w/ temp48/emu_access
+native in temp51/emu_access
+
+
+
+
+
+

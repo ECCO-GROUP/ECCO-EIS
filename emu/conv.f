@@ -9,7 +9,7 @@ c 07 December 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 c files
-      character*256 tooldir   ! directory where tool files are 
+      character*256 f_inputdir  ! directory where native forcing is 
       character*130 file_in, file_out  ! file names 
       character*1  fcheck 
 c
@@ -46,10 +46,8 @@ c Specifying adjoint gradient convolution with forcing.
      $     // 'and maximum lag below ... '
 
 c --------------
-c Set directory where tool files exist
-      open (50, file='tool_setup_dir')
-      read (50,'(a)') tooldir
-      close (50)
+      call getarg(1,f_inputdir)
+      write(6,*) 'inputdir read : ',trim(f_inputdir)
 
 c --------------
 c Save Convolution information
@@ -66,7 +64,7 @@ c Save Convolution information
 
 c --------------
 c Specify forcing, if not V4r4's (its directory)
-      file_in = trim(tooldir) //
+      file_in = trim(f_inputdir) //
      $     '/forcing/other/flux-forced/forcing_weekly'
       write(6,"(a)") 'V4r4 weekly forcing is in directory '
       write(6,"(5x,a,/)") file_in
@@ -196,10 +194,10 @@ c Define maximum lag in convolution
 
 c --------------
 c set pbs script (walltime for computation)
-      f_command = 'cp -f pbs_conv.csh_orig pbs_conv.csh'
+      f_command = 'cp -f pbs_conv.sh_orig pbs_conv.sh'
       call execute_command_line(f_command, wait=.true.)
-      f_command = 'cp -f do_conv_int.csh_orig do_conv_int.csh'
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'cp -f do_conv_int.sh_orig do_conv_int.sh'
+cif      call execute_command_line(f_command, wait=.true.)
 
 c --------------
 c Create output directory for convolution
@@ -243,32 +241,29 @@ c Create output directory for convolution
       write(6,"(a)") '... Done conv setup (conv.out)'
 
 c Move all needed files into run directory
-      f_command = 'sed -i -e "s|YOURDIR|'//
-     $     trim(dir_run) //'|g" pbs_conv.csh'
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'sed -i -e "s|YOURDIR|'//
-     $     trim(dir_run) //'|g" do_conv_int.csh'
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'mv pbs_conv.csh ' // trim(dir_run)
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'sed -i -e "s|YOURDIR|'//
+cif     $     trim(dir_run) //'|g" pbs_conv.sh'
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'sed -i -e "s|YOURDIR|'//
+cif     $     trim(dir_run) //'|g" do_conv_int.sh'
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'cp -f pbs_conv.sh ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
       
-      f_command = 'ln -s ' // trim(dir_run) // '/pbs_conv.csh .'
-      call execute_command_line(f_command, wait=.true.)
-      
-      f_command = 'mv conv.info ' // trim(dir_run)
+      f_command = 'mv -f conv.info ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
 
-      f_command = 'mv conv.out ' // trim(dir_run)
+      f_command = 'mv -f conv.out ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
 
-      f_command = 'cp -p conv.dir_out ' // trim(dir_run)
+      f_command = 'cp -f conv.dir_out ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
 
 c Wrapup 
       write(6,"(/,a)") '*********************************'
-      f_command = 'do_conv.csh'
+      f_command = 'do_conv.x'
       write(6,"(4x,a)") 'Run "' // trim(f_command) //
      $     '" to conduct convolution.'
       write(6,"(a,/)") '*********************************'

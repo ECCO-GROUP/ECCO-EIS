@@ -7,8 +7,8 @@ c 30 November 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 c files
-      character*256 tooldir   ! directory where tool files are 
-      common /tool/tooldir
+      character*256 setup   ! directory where tool files are 
+      common /tool/setup
       character*130 file_in, file_out  ! file names 
 c
       character*256 f_command
@@ -56,12 +56,12 @@ c OBJF
 c --------------
 c Set directory where tool files exist
       open (50, file='tool_setup_dir')
-      read (50,'(a)') tooldir
+      read (50,'(a)') setup
       close (50)
 
 c --------------
 c Read model grid
-      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      file_in = trim(setup) // '/emu/emu_input/XC.data'
       inquire (file=trim(file_in), EXIST=f_exist)
       if (.not. f_exist) then
          write (6,*) ' **** Error: model grid file = ',
@@ -73,18 +73,18 @@ c Read model grid
       read (50) xc
       close (50)
 
-      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      file_in = trim(setup) // '/emu/emu_input/YC.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) yc
       close (50)
 
-      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      file_in = trim(setup) // '/emu/emu_input/RC.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) rc
       close (50)
       rc = -rc  ! switch sign 
 
-      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      file_in = trim(setup) // '/emu/emu_input/Depth.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) bathy
       close (50)
@@ -124,8 +124,8 @@ c Set up data.ecco with OBJF specification
       f_command = 'cp -f data.ecco_adj data.ecco'
       call execute_command_line(f_command, wait=.true.)
 
-      f_command = 'cp -f do_samp.csh_orig do_samp.csh'
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'cp -f do_samp.csh_orig do_samp.csh'
+cif      call execute_command_line(f_command, wait=.true.)
 
 c --------------
 c Define OBJF's VARIABLE 
@@ -278,9 +278,9 @@ c Create output directory before sampling
       write(6,"(a,/)") '... Done samp setup of data.ecco'
 
 c Move all needed files into run directory
-      f_command = 'sed -i -e "s|YOURDIR|'//
-     $     trim(dir_run) //'|g" do_samp.csh'
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'sed -i -e "s|YOURDIR|'//
+cif     $     trim(dir_run) //'|g" do_samp.csh'
+cif      call execute_command_line(f_command, wait=.true.)
 
       f_command = 'mv samp.info ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
@@ -288,7 +288,7 @@ c Move all needed files into run directory
       f_command = 'mv data.ecco ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
 
-      f_command = 'mv samp.dir_out ' // trim(dir_run)
+      f_command = 'cp -p samp.dir_out ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
 
       f_command = 'cp -p tool_setup_dir ' // trim(dir_run)
@@ -297,12 +297,12 @@ c Move all needed files into run directory
       f_command = 'cp -p objf_*_mask* ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
 
-c Wrapup 
-      write(6,"(/,a)") '*********************************'
-      f_command = 'do_samp.csh'
-      write(6,"(4x,a)") 'Run "' // trim(f_command) //
-     $     '" to conduct sampling.'
-      write(6,"(a,/)") '*********************************'
+cifc Wrapup 
+cif      write(6,"(/,a)") '*********************************'
+cif      f_command = 'do_samp.csh'
+cif      write(6,"(4x,a)") 'Run "' // trim(f_command) //
+cif     $     '" to conduct sampling.'
+cif      write(6,"(a,/)") '*********************************'
 
       stop
       end

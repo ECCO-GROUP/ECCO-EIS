@@ -4,7 +4,7 @@ c
       subroutine objf_time(floc_time)
 
 c Specifiy OBJF in time; Output temporal mask (weight) and set model
-c integration time accordingly in files data and pbs_adj.csh.  Returns
+c integration time accordingly in files data and pbs_adj.sh.  Returns
 c string for naming output directory.
 c
 c For this version of the ECCO Modeling Utility, OBJF will be
@@ -108,7 +108,7 @@ c Output temporal mask (weight)
       close(60)
 
 c ----------------
-c Set integration time/period in data and pbs_adj.csh 
+c Set integration time/period in data and pbs_adj.sh 
 c (data.ecco to be set in main routine.) 
 
 c File data 
@@ -125,8 +125,8 @@ c File data
      $     trim(fstep) //'|g" data'
       call execute_command_line(f_command, wait=.true.)
 
-c File pbs_adj.csh
-      f_command = 'cp -f pbs_adj.csh_orig pbs_adj.csh'
+c File pbs_adj.sh
+      f_command = 'cp -f pbs_adj.sh_orig pbs_adj.sh'
       call execute_command_line(f_command, wait=.true.)
 
       nHours = ceiling(float(nTimesteps)/float(nsteps)
@@ -134,18 +134,18 @@ c File pbs_adj.csh
       write(fstep,'(i24)') nHours
       call StripSpaces(fstep)
       f_command = 'sed -i -e "s|WHOURS_EMU|'//
-     $     trim(fstep) //'|g" pbs_adj.csh'
+     $     trim(fstep) //'|g" pbs_adj.sh'
       call execute_command_line(f_command, wait=.true.)
 
       if (nHours .le. 2) then 
          f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
-     $        'PBS -q devel|g" pbs_adj.csh'
+     $        'PBS -q devel|g" pbs_adj.sh'
          call execute_command_line(f_command, wait=.true.)
       endif
 
 c 
       write(6,"(/,3x,a)") '... Program has set computation periods '
-     $    // 'in files data and pbs_adj.csh accordingly.'
+     $    // 'in files data and pbs_adj.sh accordingly.'
       write(6,"(3x,a,i4)") '... Estimated wallclock hours is '
      $     ,nHours
 

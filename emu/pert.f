@@ -42,7 +42,7 @@ c
       integer iloc
 
       integer i
-      character*256 tooldir
+      character*256 setup
 
 c Integration time 
       integer iend, nsteps
@@ -62,14 +62,14 @@ c directories
       character*256 fdate 
 
 c --------------
-c Set directory where tool files exist
+c Set directory where tool files exist (setup directory)
       open (50, file='tool_setup_dir')
-      read (50,'(a)') tooldir
+      read (50,'(a)') setup
       close (50)
       
 c --------------
 c Read model grid
-      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      file_in = trim(setup) // '/emu/emu_input/XC.data'
       inquire (file=trim(file_in), EXIST=file_exists)
       if (.not. file_exists) then
          write (6,*) ' **** Error: model grid file = ',
@@ -81,12 +81,12 @@ c Read model grid
       read (50) xc
       close (50)
 
-      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      file_in = trim(setup) // '/emu/emu_input/YC.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) yc
       close (50)
 
-      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      file_in = trim(setup) // '/emu/emu_input/Depth.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) bathy
       close (50)
@@ -247,7 +247,7 @@ c time (week)
       write(51,*) ' ...... perturbing week = ',pert_t
 
 c amplitude
-      file_in = trim(tooldir) // '/emu/pert_xx.scale'
+      file_in = trim(setup) // '/emu/emu_input/pert_xx.scale'
       inquire (file=trim(file_in), EXIST=file_exists)
       if (.not. file_exists) then
          write (6,*) ' **** Error: default perturbation scale file = ',
@@ -314,7 +314,7 @@ c     to make sure computation is complete,.
       call execute_command_line(f_command, wait=.true.)
 
 c set walltime for computation 
-      f_command = 'cp -f pbs_pert.csh_orig pbs_pert.csh'
+      f_command = 'cp -f pbs_pert.sh_orig pbs_pert.sh'
       call execute_command_line(f_command, wait=.true.)
 
       nHours = ceiling(float(nTimesteps)/float(nsteps)
@@ -322,18 +322,18 @@ c set walltime for computation
       write(fstep,'(i24)') nHours
       call StripSpaces(fstep)
       f_command = 'sed -i -e "s|WHOURS_EMU|'//
-     $     trim(fstep) //'|g" pbs_pert.csh'
+     $     trim(fstep) //'|g" pbs_pert.sh'
       call execute_command_line(f_command, wait=.true.)
 
       if (nHours .le. 2) then 
          f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
-     $        'PBS -q devel|g" pbs_pert.csh'
+     $        'PBS -q devel|g" pbs_pert.sh'
          call execute_command_line(f_command, wait=.true.)
       endif
 
 c 
       write(6,"(3x,a)") '... Program has set computation periods '
-     $    // 'in files data and pbs_pert.csh accordingly.'
+     $    // 'in files data and pbs_pert.sh accordingly.'
       write(6,"(3x,a,i4,/)") '... Estimated wallclock hours is '
      $     ,nHours
 
@@ -406,15 +406,15 @@ c Setup run directory
       close(52)
 
 c Move all needed files into run directory
-      f_command = 'sed -i -e "s|YOURDIR|'//
-     $     trim(dir_run) //'|g" pbs_pert.csh'
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'mv pbs_pert.csh ' // trim(dir_run)
-      call execute_command_line(f_command, wait=.true.)
-      
-      f_command = 'ln -s ' // trim(dir_run) // '/pbs_pert.csh .'
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'sed -i -e "s|YOURDIR|'//
+cif     $     trim(dir_run) //'|g" pbs_pert.sh'
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'mv pbs_pert.sh ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
+cif      
+cif      f_command = 'cp -p ' // trim(dir_run) // '/pbs_pert.sh .'
+cif      call execute_command_line(f_command, wait=.true.)
       
       f_command = 'mv data ' // trim(dir_run) // '/data_pert'
       call execute_command_line(f_command, wait=.true.)
@@ -428,12 +428,12 @@ c Move all needed files into run directory
       f_command = 'mv pert_xx.str ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
 
-c Wrapup 
-      write(6,"(/,a)") '*********************************'
-      f_command = 'do_pert.csh'
-      write(6,"(4x,a)") 'Run "' // trim(f_command) //
-     $     '" to compute model response.'
-      write(6,"(a,/)") '*********************************'
+cifc Wrapup 
+cif      write(6,"(/,a)") '*********************************'
+cif      f_command = 'do_pert.sh'
+cif      write(6,"(4x,a)") 'Run "' // trim(f_command) //
+cif     $     '" to compute model response.'
+cif      write(6,"(a,/)") '*********************************'
 
       stop
       end
