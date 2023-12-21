@@ -1,5 +1,14 @@
 # EMU 
-all: samp_all pert_all adj conv_all trc
+all: samp_all pert_all adj conv_all trc budg_all 
+
+# Budget Tool 
+budg_all: budg do_budg 
+
+budg: budg.f emu_sub.f adj_sub.f 
+	f95 -fconvert=swap -o budg.x budg.f emu_sub.f adj_sub.f 
+
+do_budg: do_budg.f emu_sub.f 
+	f95 -fconvert=swap -o do_budg.x do_budg.f emu_sub.f 
 
 # Tracer Tool 
 trc: trc.f emu_sub.f adj_sub.f

@@ -9,7 +9,7 @@ c 21 September 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 c files
-      character*256 tooldir   ! directory where tool files are 
+      character*256 setup   ! directory where tool files are 
       character*130 file_in, file_out  ! file names 
 
       logical f_exist
@@ -37,6 +37,7 @@ c Strings for naming output directory
 c directories
       character*256 dir_out   ! output directory
       character*256 dir_run   ! run directory
+      character*256 dir_fin   ! final result directory
       character*256 fcwd      ! current working directory
 
       integer date_time(8)  ! arrrays for date 
@@ -46,12 +47,12 @@ c directories
 c --------------
 c Set directory where tool files exist
       open (50, file='tool_setup_dir')
-      read (50,'(a)') tooldir
+      read (50,'(a)') setup
       close (50)
       
 c --------------
 c Read model grid
-      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      file_in = trim(setup) // '/emu/emu_input/XC.data'
       inquire (file=trim(file_in), EXIST=f_exist)
       if (.not. f_exist) then
          write (6,*) ' **** Error: model grid file = ',
@@ -63,18 +64,18 @@ c Read model grid
       read (50) xc
       close (50)
 
-      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      file_in = trim(setup) // '/emu/emu_input/YC.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) yc
       close (50)
 
-      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      file_in = trim(setup) // '/emu/emu_input/RC.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) rc
       close (50)
       rc = -rc  ! switch sign 
 
-      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      file_in = trim(setup) // '/emu/emu_input/Depth.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) bathy
       close (50)
@@ -225,25 +226,28 @@ c Create concatenated string for naming run directory
       f_command = 'mkdir ' // dir_run
       call execute_command_line(f_command, wait=.true.)
 
+      call emu_getcwd(fcwd)
+      dir_fin = trim(fcwd) // '/' // trim(dir_out) // '/output'
+
       file_out = 'adj.dir_out'
       open (50, file=file_out, action='write')
       write(50,"(a)") trim(dir_out)
       write(50,"(a)") trim(dir_run)
-      write(50,"(a)") trim(dir_out) // '/output'
+      write(50,"(a)") trim(dir_fin) 
       close(50)
 
       write(6,"(/,a,a)") 'Wrote ',trim(file_out)
 
 c Move all needed files into run directory
-      f_command = 'sed -i -e "s|YOURDIR|'//
-     $     trim(dir_run) //'|g" pbs_adj.csh'
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'mv pbs_adj.csh ' // trim(dir_run)
-      call execute_command_line(f_command, wait=.true.)
-      
-      f_command = 'ln -s ' // trim(dir_run) // '/pbs_adj.csh .'
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'sed -i -e "s|YOURDIR|'//
+cif     $     trim(dir_run) //'|g" pbs_adj.csh'
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'mv pbs_adj.csh ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
+cif      
+cif      f_command = 'ln -s ' // trim(dir_run) // '/pbs_adj.csh .'
+cif      call execute_command_line(f_command, wait=.true.)
       
       f_command = 'mv data ' // trim(dir_run) // '/data_adj'
       call execute_command_line(f_command, wait=.true.)
@@ -257,12 +261,12 @@ c Move all needed files into run directory
       f_command = 'cp -p objf_*_mask* ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
 
-c Wrapup 
-      write(6,"(/,a)") '*********************************'
-      f_command = 'do_adj.csh'
-      write(6,"(4x,a)") 'Run "' // trim(f_command) //
-     $     '" to compute adjoint gradients.'
-      write(6,"(a,/)") '*********************************'
+cifc Wrapup 
+cif      write(6,"(/,a)") '*********************************'
+cif      f_command = 'do_adj.csh'
+cif      write(6,"(4x,a)") 'Run "' // trim(f_command) //
+cif     $     '" to compute adjoint gradients.'
+cif      write(6,"(a,/)") '*********************************'
 
       stop
       end

@@ -1,0 +1,43 @@
+cd /inside_out
+mkdir build_from_singularity
+cd build_from_singularity
+
+git clone https://github.com/MITgcm/MITgcm.git -b checkpoint66g
+
+cd MITgcm
+mkdir -p ECCOV4/release4
+cd ECCOV4/release4
+
+git clone https://github.com/ECCO-GROUP/ECCO-v4-Configurations
+
+mv ECCO-v4-Configurations/ECCOv4\ Release\ 4/flux-forced .
+rm -rf ECCO-v4-Configurations
+cd flux-forced
+
+export MPI_INC_DIR='/opt/ompi/include'
+
+mkdir build
+cd build
+../../../../tools/genmake2 -mods=../code -optfile=../../../../tools/build_options/linux_amd64_gfortran -mpi
+sed -i '/^FFLAGS/s/$/ -fallow-argument-mismatch/' Makefile
+make depend
+make all
+cd ..
+
+##9) Derive adjoint of MITgcm by TAF and compile (generates executable
+##   "mitgcmuv_ad"). This step requires a license for TAF. Skip if
+##   Adjoint Tool will not be used.
+mkdir build_ad
+cd build_ad
+ ../../../../tools/genmake2 -mods=../code -optfile=../../../../tools/build_options/linux_amd64_gfortran -mpi
+sed -i '/^FFLAGS/s/$/ -fallow-argument-mismatch/' Makefile
+make depend
+
+#make adtaf  : In place of this "make adtaf", do next two steps
+make ad_input_code.f
+#make ad_taf_output.f  : This must be done outside Singularity
+
+make adall
+mkdir ${basedir}/build_ad
+cp mitgcmuv_ad ${basedir}/build_ad
+cd ..

@@ -1,0 +1,21 @@
+
+======================================
+ECCO Budget Tool: A Brief Description
+======================================
+
+What the Tool does: 
+   The Tool extracts flux time-series from ECCO V4r4 model output for
+   budget analyses of user-chosen quantities (volume, heat, salt,
+   momentum). See
+   PUBLICDIR/README
+   for additional ECCO Modeling Utilities (EMU). 
+
+How to run the Tool:
+   Execute shell script emu (link to emu.sh) and follow its prompt. 
+
+For detailed description: 
+   See Sections 1, 2.6 and 3.6 of the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+========================================
+

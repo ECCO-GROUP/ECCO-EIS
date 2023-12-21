@@ -480,3 +480,16 @@ c Reset reference to time-mean
 
       return
       end
+c 
+c ============================================================
+c 
+      subroutine emu_getcwd(string)
+c Read current working directory from file emu.fcwd
+
+      character(len=*) :: string
+
+      open(52, file='emu.fcwd')
+      read(52,'(a)') string 
+      close(52)
+
+      end subroutine

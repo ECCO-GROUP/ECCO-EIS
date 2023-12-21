@@ -1,14 +1,14 @@
       program trc
 c -----------------------------------------------------
 c Program for Passive Tracer Tool (V4r4)
-c Set up data file for passive tracer integration by pbs_trc.csh. 
+c Set up data file for passive tracer integration by pbs_trc.sh. 
 c     
 c 30 November 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 c files
-      character*256 tooldir   ! directory where tool files are 
-      common /tool/tooldir
+      character*256 setup   ! directory where tool files are 
+      common /tool/setup
       character*130 file_in, file_out  ! file names 
 c
       character*256 f_command 
@@ -50,12 +50,12 @@ c      parameter(nsteps=227903) ! max steps of V4r4
 c --------------
 c Set directory where tool files exist
       open (50, file='tool_setup_dir')
-      read (50,'(a)') tooldir
+      read (50,'(a)') setup
       close (50)
 
 c --------------
 c Read model grid
-      file_in = trim(tooldir) // '/emu_pert_ref/XC.data'
+      file_in = trim(setup) // '/emu/emu_input/XC.data'
       inquire (file=trim(file_in), EXIST=f_exist)
       if (.not. f_exist) then
          write (6,*) ' **** Error: model grid file = ',
@@ -67,18 +67,18 @@ c Read model grid
       read (50) xc
       close (50)
 
-      file_in = trim(tooldir) // '/emu_pert_ref/YC.data'
+      file_in = trim(setup) // '/emu/emu_input/YC.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) yc
       close (50)
 
-      file_in = trim(tooldir) // '/emu_pert_ref/RC.data'
+      file_in = trim(setup) // '/emu/emu_input/RC.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) rc
       close (50)
       rc = -rc  ! switch sign 
 
-      file_in = trim(tooldir) // '/emu_pert_ref/Depth.data'
+      file_in = trim(setup) // '/emu/emu_input/Depth.data'
       open (50, file=file_in, action='read', access='stream')
       read (50) bathy
       close (50)
@@ -132,11 +132,11 @@ c time (day)
       tmode = 1  ! default for foward
       if (istart .gt. iend) tmode = 2
 
-c Modify data and pbs_trc.csh files for istart/iend 
+c Modify data and pbs_trc.sh files for istart/iend 
       f_command = 'cp -f data_trc data'
       call execute_command_line(f_command, wait=.true.)
-      f_command = 'cp -f pbs_trc.csh_orig pbs_trc.csh_tmp'
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'cp -f pbs_trc.sh_orig pbs_trc.sh_tmp'
+cif      call execute_command_line(f_command, wait=.true.)
 
       if (tmode.eq.1) then ! forward tracer
          write(6,"(/,a)") '---------------------------------'
@@ -154,13 +154,15 @@ c
          write(fstep,'(a)') 'build_trc'
          call StripSpaces(fstep)
          f_command = 'sed -i -e "s|FRW_OR_ADJ|'//
-     $        trim(fstep) //'|g" pbs_trc.csh_tmp'
+     $        trim(fstep) //'|g" pbs_trc.sh'
+cif     $        trim(fstep) //'|g" pbs_trc.sh_tmp'
          call execute_command_line(f_command, wait=.true.)
 
          write(fstep,'(a)') 'state_weekly'
          call StripSpaces(fstep)
          f_command = 'sed -i -e "s|STATE_DIR|'//
-     $        trim(fstep) //'|g" pbs_trc.csh_tmp'
+     $        trim(fstep) //'|g" pbs_trc.sh'
+cif     $        trim(fstep) //'|g" pbs_trc.sh_tmp'
          call execute_command_line(f_command, wait=.true.)
 
       else  ! adjoint tracer
@@ -179,18 +181,20 @@ c
          write(fstep,'(a)') 'build_trc_adj'
          call StripSpaces(fstep)
          f_command = 'sed -i -e "s|FRW_OR_ADJ|'//
-     $        trim(fstep) //'|g" pbs_trc.csh_tmp'
+     $        trim(fstep) //'|g" pbs_trc.sh'
+cif     $        trim(fstep) //'|g" pbs_trc.sh_tmp'
          call execute_command_line(f_command, wait=.true.)
 
          write(fstep,'(a)') 'state_weekly_rev_time_227808'
          call StripSpaces(fstep)
          f_command = 'sed -i -e "s|STATE_DIR|'//
-     $        trim(fstep) //'|g" pbs_trc.csh_tmp'
+     $        trim(fstep) //'|g" pbs_trc.sh'
+cif     $        trim(fstep) //'|g" pbs_trc.sh_tmp'
          call execute_command_line(f_command, wait=.true.)
 
       endif
 
-c Set integration time (in data and pbs_trc.csh_tmp)         
+c Set integration time (in data and pbs_trc.sh_tmp)         
       write(fstep,'(i24)') nIter0
       call StripSpaces(fstep)
       f_command = 'sed -i -e "s|nIter0_EMU|'//
@@ -209,12 +213,14 @@ c wall clock (~8 min per year integration)
       write(fstep,'(i24)') nHours
       call StripSpaces(fstep)
       f_command = 'sed -i -e "s|WHOURS_EMU|'//
-     $     trim(fstep) //'|g" pbs_trc.csh_tmp'
+     $     trim(fstep) //'|g" pbs_trc.sh'
+cif     $     trim(fstep) //'|g" pbs_trc.sh_tmp'
       call execute_command_line(f_command, wait=.true.)
          
       if (nHours .le. 2) then 
          f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
-     $        'PBS -q devel|g" pbs_trc.csh_tmp'
+     $        'PBS -q devel|g" pbs_trc.sh'
+cif     $        'PBS -q devel|g" pbs_trc.sh_tmp'
          call execute_command_line(f_command, wait=.true.)
       endif
 
@@ -226,8 +232,9 @@ c bandaid pickup
       write(fIter0,"(i10.10)") nIter0
       f_dum = trim(f_pup) // trim(fIter0) // '.data'
       f_command = 'ln -s ' // trim(f_ref) // ' ' // trim(f_dum)
-      f_dum = 'sed -i -e "s|# BANDAID_PICKUP|'//
-     $     trim(f_command) //'|g" pbs_trc.csh_tmp'
+      f_dum = 'sed -i -e "s|BANDAID_PICKUP|'//
+     $     trim(f_command) //'|g" pbs_trc.sh'
+cif     $     trim(f_command) //'|g" pbs_trc.sh_tmp'
       call execute_command_line(f_dum, wait=.true.)
 
       f_command = 'cp -f pickup_ptracer.meta_orig pickup_ptracer.meta'
@@ -385,23 +392,24 @@ c Create output directory
       close(52)
 
 c Move all needed files into run directory
-      f_command = 'sed -i -e "s|YOURDIR|'//
-     $     trim(dir_run) //'|g" pbs_trc.csh_tmp'
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'sed -i -e "s|YOURDIR|'//
+cif     $     trim(dir_run) //'|g" pbs_trc.sh'
+cifcif     $     trim(dir_run) //'|g" pbs_trc.sh_tmp'
+cif      call execute_command_line(f_command, wait=.true.)
 
-      f_command = 'mv pbs_trc.csh_tmp pbs_trc.csh'  
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'mv pbs_trc.sh_tmp pbs_trc.sh'  
+cif      call execute_command_line(f_command, wait=.true.)
 
-      f_command = 'mv pbs_trc.csh ' // trim(dir_run)
+      f_command = 'cp -f pbs_trc.sh ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
       
-      f_command = 'ln -s ' // trim(dir_run) // '/pbs_trc.csh .'
-      call execute_command_line(f_command, wait=.true.)
+cif      f_command = 'ln -s ' // trim(dir_run) // '/pbs_trc.sh .'
+cif      call execute_command_line(f_command, wait=.true.)
       
       f_command = 'mv data ' // trim(dir_run) // '/data_trc'
       call execute_command_line(f_command, wait=.true.)
       
-      f_command = 'cp -p pickup_ptracers.00*.* ' // trim(dir_run)
+      f_command = 'cp -f pickup_ptracers.00*.* ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
       
       f_command = '/bin/rm -f pickup_ptracers.00*.* ' 
@@ -414,7 +422,7 @@ c Wrapup
       write(6,"(a)") '... Done trc setup'
 
       write(6,"(/,a)") '*********************************'
-      f_command = 'do_trc.csh'
+      f_command = 'do_trc.sh'
       write(6,"(4x,a)") 'Run "' // trim(f_command) //
      $     '" to compute tracer evolution.'
       write(6,"(a,/)") '*********************************'
