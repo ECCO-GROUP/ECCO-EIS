@@ -1,52 +1,101 @@
-# EMU 
-all: samp_all pert_all adj conv_all trc budg_all 
+# EMU Makefile
 
-# Budget Tool 
-budg_all: budg do_budg 
+FC = f95
 
-budg: budg.f emu_sub.f adj_sub.f 
-	f95 -fconvert=swap -o budg.x budg.f emu_sub.f adj_sub.f 
+FFLAGS = -fconvert=swap
 
-do_budg: do_budg.f emu_sub.f 
-	f95 -fconvert=swap -o do_budg.x do_budg.f emu_sub.f 
+SRCDIR=.
 
-# Tracer Tool 
-trc: trc.f emu_sub.f adj_sub.f
-	f95 -fconvert=swap -o trc.x trc.f emu_sub.f adj_sub.f
+OBJDIR=${SRCDIR}/exe
 
-# Convolution Tool 
+# Create the exe directory if it doesn't exist
+$(shell mkdir -p $(OBJDIR))
+
+#
+all: samp_all fgrd_all adj conv_all trc budg_all msim_all atrb_all misc_all mask 
+
+${OBJDIR}/%.o: ${SRCDIR}/%.f
+	$(FC) $(FFLAGS) -c $< -o $@
+
+# Miscellaneous 
+mask: mask.f ${OBJDIR}/emu_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/mask.x ${SRCDIR}/mask.f ${OBJDIR}/emu_sub.o
+
+misc_all: check_timing
+
+check_timing: ${SRCDIR}/check_timing.f
+	$(FC) $(FFLAGS) -o ${OBJDIR}/check_timing.x ${SRCDIR}/check_timing.f
+
+# Attribution Tool (atrb)
+atrb_all: set_samp do_atrb
+
+set_samp: ${SRCDIR}/set_samp.f ${OBJDIR}/emu_sub.o ${OBJDIR}/adj_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/set_samp.x ${SRCDIR}/set_samp.f ${OBJDIR}/emu_sub.o ${OBJDIR}/adj_sub.o 
+
+do_atrb: ${SRCDIR}/do_atrb.f ${OBJDIR}/emu_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/do_atrb.x ${SRCDIR}/do_atrb.f ${OBJDIR}/emu_sub.o
+
+# Modified Simulation Tool (msim)
+msim_all: msim_ave6hrly msim_avefiles msim_ic 
+
+msim_ave6hrly: ${SRCDIR}/msim_ave6hrly.f
+	$(FC) $(FFLAGS) -o ${OBJDIR}/msim_ave6hrly.x ${SRCDIR}/msim_ave6hrly.f
+
+msim_avefiles: ${SRCDIR}/msim_avefiles.f ${OBJDIR}/emu_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/msim_avefiles.x ${SRCDIR}/msim_avefiles.f ${OBJDIR}/emu_sub.o 
+
+msim_ic: ${SRCDIR}/msim_ic.f ${OBJDIR}/emu_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/msim_ic.x ${SRCDIR}/msim_ic.f ${OBJDIR}/emu_sub.o 
+
+# Budget Tool (budg)
+budg_all: budg do_budg do_budg_flx_combine
+
+budg: ${SRCDIR}/budg.f ${OBJDIR}/emu_sub.o ${OBJDIR}/adj_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/budg.x budg.f ${OBJDIR}/emu_sub.o ${OBJDIR}/adj_sub.o 
+
+do_budg: ${SRCDIR}/do_budg.f ${OBJDIR}/emu_sub.o ${OBJDIR}/mysparse.o
+	$(FC) $(FFLAGS) -o ${OBJDIR}/do_budg.x ${SRCDIR}/do_budg.f ${OBJDIR}/emu_sub.o ${OBJDIR}/mysparse.o
+
+do_budg_flx_combine: ${SRCDIR}/do_budg_flx_combine.f ${OBJDIR}/emu_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/do_budg_flx_combine.x ${SRCDIR}/do_budg_flx_combine.f ${OBJDIR}/emu_sub.o 
+
+# Tracer Tool (trc)
+trc: ${SRCDIR}/trc.f ${OBJDIR}/emu_sub.o ${OBJDIR}/adj_sub.o
+	$(FC) $(FFLAGS) -o ${OBJDIR}/trc.x ${SRCDIR}/trc.f ${OBJDIR}/emu_sub.o ${OBJDIR}/adj_sub.o
+
+# Convolution Tool (conv)
 conv_all: conv do_conv 
 
-conv: conv.f emu_sub.f
-	f95 -fconvert=swap -o conv.x conv.f emu_sub.f
+conv: ${SRCDIR}/conv.f ${OBJDIR}/emu_sub.o
+	$(FC) $(FFLAGS) -o ${OBJDIR}/conv.x ${SRCDIR}/conv.f ${OBJDIR}/emu_sub.o
 
-do_conv: do_conv.f emu_sub.f 
-	f95 -fconvert=swap -o do_conv.x do_conv.f emu_sub.f 
+do_conv: ${SRCDIR}/do_conv.f ${OBJDIR}/emu_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/do_conv.x ${SRCDIR}/do_conv.f ${OBJDIR}/emu_sub.o 
 
-# Sampling Tool 
+# Adjoint Tool (adj)
+adj: ${SRCDIR}/adj.f ${OBJDIR}/adj_sub.o ${OBJDIR}/emu_sub.o
+	$(FC) $(FFLAGS) -o ${OBJDIR}/adj.x ${SRCDIR}/adj.f ${OBJDIR}/adj_sub.o ${OBJDIR}/emu_sub.o
+
+# Forward Gradient Tool (fgrd)
+fgrd_all: fgrd_spec fgrd_pert fgrd
+
+fgrd: ${SRCDIR}/fgrd.f ${OBJDIR}/emu_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/fgrd.x ${SRCDIR}/fgrd.f ${OBJDIR}/emu_sub.o
+
+fgrd_pert: ${SRCDIR}/fgrd_pert.f
+	$(FC) $(FFLAGS) -o ${OBJDIR}/fgrd_pert.x ${SRCDIR}/fgrd_pert.f
+
+fgrd_spec: ${SRCDIR}/fgrd_spec.f ${OBJDIR}/emu_sub.o
+	$(FC) $(FFLAGS) -o ${OBJDIR}/fgrd_spec.x ${SRCDIR}/fgrd_spec.f ${OBJDIR}/emu_sub.o
+
+# Sampling Tool (samp)
 samp_all: samp do_samp 
 
-samp: samp.f emu_sub.f adj_sub.f 
-	f95 -fconvert=swap -o samp.x samp.f emu_sub.f adj_sub.f 
+samp: ${SRCDIR}/samp.f ${OBJDIR}/emu_sub.o ${OBJDIR}/adj_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/samp.x ${SRCDIR}/samp.f ${OBJDIR}/emu_sub.o ${OBJDIR}/adj_sub.o 
 
-do_samp: do_samp.f emu_sub.f 
-	f95 -fconvert=swap -o do_samp.x do_samp.f emu_sub.f
-
-# Adjoint Tool 
-adj: adj.f adj_sub.f emu_sub.f
-	f95 -fconvert=swap -o adj.x adj.f adj_sub.f emu_sub.f
-
-# Perturbation Tool 
-pert_all: pert pert_xx pert_grad 
-
-pert_grad: pert_grad.f
-	f95 -fconvert=swap -o pert_grad.x pert_grad.f
-
-pert_xx: pert_xx.f
-	f95 -fconvert=swap -o pert_xx.x pert_xx.f
-
-pert: pert.f emu_sub.f
-	f95 -fconvert=swap -o pert.x pert.f emu_sub.f
+do_samp: ${SRCDIR}/do_samp.f ${OBJDIR}/emu_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/do_samp.x ${SRCDIR}/do_samp.f ${OBJDIR}/emu_sub.o
 
 
 

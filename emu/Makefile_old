@@ -1,0 +1,82 @@
+# EMU Makefile
+
+FC = f95
+
+all: samp_all fgrd_all adj conv_all trc budg_all msim_all atrb_all 
+
+%.o: %.f
+	$(FC) -fconvert=swap -c $<
+
+# Attribution Tool (atrb)
+atrb_all: set_samp do_atrb
+
+set_samp: set_samp.f emu_sub.f adj_sub.f 
+	f95 -fconvert=swap -o set_samp.x set_samp.f emu_sub.f adj_sub.f 
+
+do_atrb: do_atrb.f emu_sub.f 
+	f95 -fconvert=swap -o do_atrb.x do_atrb.f emu_sub.f
+
+# Modified Simulation Tool (msim)
+msim_all: msim_ave6hrly msim_avefiles
+
+msim_ave6hrly: msim_ave6hrly.f
+	f95 -fconvert=swap -o msim_ave6hrly.x msim_ave6hrly.f
+
+msim_avefiles: msim_avefiles.f emu_sub.f 
+	f95 -fconvert=swap -o msim_avefiles.x msim_avefiles.f emu_sub.f 
+
+msim_ic: msim_ic.f emu_sub.f 
+	f95 -fconvert=swap -o msim_ic.x msim_ic.f emu_sub.f 
+
+# Budget Tool (budg)
+budg_all: budg do_budg do_budg_flx_combine
+
+budg: budg.f emu_sub.f adj_sub.f 
+	f95 -fconvert=swap -o budg.x budg.f emu_sub.f adj_sub.f 
+
+do_budg: do_budg.f emu_sub.f mysparse.o
+	f95 -fconvert=swap -o do_budg.x do_budg.f emu_sub.f mysparse.o
+
+do_budg_flx_combine: do_budg_flx_combine.f emu_sub.f 
+	f95 -fconvert=swap -o do_budg_flx_combine.x do_budg_flx_combine.f emu_sub.f 
+
+# Tracer Tool (trc)
+trc: trc.f emu_sub.f adj_sub.f
+	f95 -fconvert=swap -o trc.x trc.f emu_sub.f adj_sub.f
+
+# Convolution Tool (conv)
+conv_all: conv do_conv 
+
+conv: conv.f emu_sub.f
+	f95 -fconvert=swap -o conv.x conv.f emu_sub.f
+
+do_conv: do_conv.f emu_sub.f 
+	f95 -fconvert=swap -o do_conv.x do_conv.f emu_sub.f 
+
+# Adjoint Tool (adj)
+adj: adj.f adj_sub.f emu_sub.f
+	f95 -fconvert=swap -o adj.x adj.f adj_sub.f emu_sub.f
+
+# Forward Gradient Tool (fgrd)
+fgrd_all: fgrd_spec fgrd_pert fgrd
+
+fgrd: fgrd.f emu_sub.f 
+	f95 -fconvert=swap -o fgrd.x fgrd.f emu_sub.f
+
+fgrd_pert: fgrd_pert.f
+	f95 -fconvert=swap -o fgrd_pert.x fgrd_pert.f
+
+fgrd_spec: fgrd_spec.f emu_sub.f
+	f95 -fconvert=swap -o fgrd_spec.x fgrd_spec.f emu_sub.f
+
+# Sampling Tool (samp)
+samp_all: samp do_samp 
+
+samp: samp.f emu_sub.f adj_sub.f 
+	f95 -fconvert=swap -o samp.x samp.f emu_sub.f adj_sub.f 
+
+do_samp: do_samp.f emu_sub.f 
+	f95 -fconvert=swap -o do_samp.x do_samp.f emu_sub.f
+
+
+

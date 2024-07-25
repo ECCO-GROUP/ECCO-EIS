@@ -16,11 +16,14 @@ c Argument
       character*256 floc_time   ! time information for output naming
 
 c V4r4 specific 
-      integer nsteps, nyears, nmonths, whours
+      integer nsteps, nyears, nmonths, hour26yr
       parameter(nsteps=227903) ! max number of steps of V4r4
       parameter(nyears=26)  ! max number of years of V4r4
       parameter(nmonths=312) ! max number of months of V4r4
-      parameter(whours=108) ! wallclock hours for nsteps of adjoint 
+      
+      integer nproc, hour26yr_trc, hour26yr_fwd, hour26yr_adj
+      namelist /mitgcm_timing/ nproc, hour26yr_trc,
+     $     hour26yr_fwd, hour26yr_adj
 
       integer mdays(12)
       data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
@@ -43,6 +46,13 @@ c Other variables
       character*24 fstep
 
       character*256 f_command
+
+c --------------
+c Read MITgcm timing information 
+      open (50, file='mitgcm_timing.nml', status='old')
+      read(50, nml=mitgcm_timing)
+      close (50)
+      hour26yr = hour26yr_adj
 
 c ---------
 c Assign number of days in each month
@@ -130,7 +140,7 @@ c File pbs_adj.sh
       call execute_command_line(f_command, wait=.true.)
 
       nHours = ceiling(float(nTimesteps)/float(nsteps)
-     $     *float(whours))
+     $     *float(hour26yr))
       write(fstep,'(i24)') nHours
       call StripSpaces(fstep)
       f_command = 'sed -i -e "s|WHOURS_EMU|'//
@@ -150,7 +160,7 @@ c
      $     ,nHours
 
       return
-      end subroutine 
+      end subroutine objf_time
 c 
 c ============================================================
 c 
@@ -184,7 +194,7 @@ c Create time mask for variable (link common time mask)
          f_command = 'rm -f ' // trim(fmask)
          call execute_command_line(f_command, wait=.true.)
       endif
-      f_command = 'ln -s objf_mask_T ' // trim(fmask)
+      f_command = 'ln -sf objf_mask_T ' // trim(fmask)
       call execute_command_line(f_command, wait=.true.)
 
 c Edit data.ecco mask field  
@@ -195,7 +205,7 @@ c Edit data.ecco mask field
       call execute_command_line(f_command, wait=.true.)
 
       return
-      end subroutine
+      end subroutine objf_var
 c 
 c ============================================================
 c 
@@ -210,12 +220,17 @@ c Update data.ecco OBJF for either SSH or OBP
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
+
+      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
+      integer kmt(nx,ny)
+      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
 c 
       character*1 pert_2, c1, c2
       integer pert_i, pert_j
-      real*4 dum2d(nx,ny)
+      real*4 dum2d(nx,ny), adum 
       character*256 f_command
       character*256 fmask  ! name of mask file 
       character*256 fdum
@@ -274,10 +289,39 @@ c When OBJF is at a point
  2002    format(3x,'pert_i, pert_j = ',i2,2x,i4)
          write(51,"(3x,a,/)") ' --> OBJF model grid location (i,j).'
 
+         write(51,2003) xc(pert_i,pert_j), yc(pert_i,pert_j)
+ 2003    format(3x,'long(E), lat(N) = ',f8.1,2x,f7.1,/)
+
 c Create 2d mask for the point 
          dum2d = 0.
-         dum2d(pert_i,pert_j) = 1. 
 
+c Option to define OBJF relative to global mean
+         write(6,"(3x,a,a)")
+     $        'Should value at point be relative to global mean ',
+     $        '... (enter 1 for yes)?'
+         read(5,*) iref
+
+         if (iref .eq. 1) then
+            write(6,"(3x,a,/)")
+     $           '... OBJF will be relative to global mean'
+            write(51,"(3x,a,/)")
+     $           '... OBJF will be relative to global mean'
+
+            adum = 0.
+            do i=1,nx
+               do j=1,ny
+                  if (kmt(i,j).ne.0) then
+                     dum2d(i,j) = -rac(i,j)
+                     adum = adum + rac(i,j)
+                  endif
+               enddo
+            enddo
+            dum2d = dum2d / adum
+         endif 
+c
+         dum2d(pert_i,pert_j) = dum2d(pert_i,pert_j) + 1.
+            
+c output 2d mask 
          fmask = 'objf_' // trim(f1) // '_mask_C'
          INQUIRE(FILE=trim(fmask), EXIST=f_exist)
          if (f_exist) then
@@ -299,30 +343,59 @@ c When OBJF is VARIABLE weighted in space
      $    '... OBJF will be a linear function of selected variable'
          write(6,"(4x,a)")
      $        'i.e., MULT * SUM( MASK * VARIABLE )'
-         write(6,"(/,4x,a,/)") '!!!!! MASK must be uploaded' //
-     $     ' (binary native format) before proceeding ... '
-
          write(51,"(3x,a)")
      $   ' --> OBJF is a linear function of selected variable(s)'
          write(51,"(3x,a,/)")
      $     ' --> i.e., MULT * SUM( MASK * VARIABLE )'
 
-c Get mask file name 
-         write(6,*) '   Enter MASK filename (T in Eq 1 of Guide) ... ?'  
-         read(5,'(a)') fmask
+c Choose mask 
+         write (6,"(/,3x,a,a)")
+     $        'Interactively specify MASK (1) or ',
+     $        'read from user file (2) ... (1/2)?'
+         read (5,*) ifunc2 
+         
+         if (ifunc2 .eq. 2) then 
+            write(6,"(/,4x,a)") 'Reading MASK from user file.'
+            write(51,"(3x,a,/)")
+     $           ' --> Reading MASK from user file.'
 
-         write(6,'(/,3x,"fmask = ",a)') trim(fmask)
-         write(51,'(/,3x,"fmask = ",a)') trim(fmask)
-         write(51,"(3x,a,/)") ' --> MASK file. '
+            write(6,"(/,4x,a,/)") '!!!!! MASK file must exist' //
+     $           ' (binary native format) before proceeding ... '
+c Get mask file name 
+            write(6,*)
+     $           '   Enter MASK filename (T in Eq 1 of Guide) ... ?'  
+            read(5,'(a)') fmask
+
+            write(51,'(/,3x,"fmask = ",a)') trim(fmask)
+            write(51,"(3x,a,/)") ' --> MASK file. '
+
+c Check mask 
+cif            call chk_mask2d(fmask,nx,ny,dum2d,1)
+         else
+c Create mask interactively
+            write(6,"(/,4x,a,/)")
+     $           'Interactively creating MASK for area mean.'
+            write(51,"(3x,a,/)")
+     $           ' --> Interactively creating MASK for area mean.'
+            
+            call cr8_mask2d(fmask,x1,x2,y1,y2,iref)
+
+            write(51,"(4x,a)") 'Are defined as ...'
+            write(51,"(7x,a26,2x,2f7.1)")
+     $           'west/east longitude(E):',x1,x2
+            write(51,"(7x,a26,2x,2f7.1)")
+     $           'south/north latitude(N):',y1,y2
+            if (iref .eq. 1) then
+               write(51,"(4x,a,/)") 'Relative to global mean.'
+            endif
+
+         endif
 
 c Save mask file name for naming run directory
          ip1 = index(fmask,'/',.TRUE.)
          ip2 = len(fmask)
          floc_loc = trim(fmask(ip1+1:ip2))
          call StripSpaces(floc_loc)
-
-c Check mask 
-         call chk_mask2d(fmask,nx,ny,dum2d)
 
 c Link input mask to what model expects 
          fdum = 'objf_' // trim(f1) // '_mask_C' 
@@ -332,7 +405,7 @@ c Link input mask to what model expects
             call execute_command_line(f_command, wait=.true.)
          endif
 
-         f_command = 'ln -s ' // trim(fmask) // ' ' //
+         f_command = 'ln -sf ' // trim(fmask) // ' ' //
      $        trim(fdum)
          call execute_command_line(f_command, wait=.true.)
 
@@ -362,7 +435,7 @@ c Specify variable being NOT 3D
       call execute_command_line(f_command, wait=.true.)
 
       return
-      end subroutine
+      end subroutine objf_var_2d
 c 
 c ============================================================
 c 
@@ -377,8 +450,8 @@ c Update data.ecco OBJF for either THETA or SALT
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 c 
       character*1 pert_2, c1, c2
       integer pert_i, pert_j, pert_k
@@ -389,6 +462,7 @@ c
       logical f_exist
       character*24 fmult
       real*4 amult 
+      real*4 x1,x2,y1,y2,z1,z2
 
 c ------
 c Identify OBJF variable among the two available 
@@ -396,13 +470,13 @@ c Identify OBJF variable among the two available
          f_command = 'sed -i -e ' //
      $  '"s/barfile(' // trim(f1) //
      $ ').*/barfile(' // trim(f1) //
-     $ ')=''m_boxmean_THETA''/g" data.ecco'
+     $ ')=''m_boxmean_theta''/g" data.ecco'
          call execute_command_line(f_command, wait=.true.)
       else if (iobjf.eq.4) then 
          f_command = 'sed -i -e ' //
      $  '"s/barfile(' // trim(f1) //
      $ ').*/barfile(' // trim(f1) //
-     $ ')=''m_boxmean_SALT''/g" data.ecco'
+     $ ')=''m_boxmean_salt''/g" data.ecco'
          call execute_command_line(f_command, wait=.true.)
       else
          write(6,*) 'iobjf is NG for objf_var_3d ... ', iobjf
@@ -440,6 +514,11 @@ c When OBJF is at a point
  2002    format(3x,'pert_i, pert_j, pert_k = ',i2,2x,i4,2x,i2)
          write(51,"(3x,a,/)") ' --> OBJF model grid location (i,j,k).'
 
+         write(51,2003) xc(pert_i,pert_j), yc(pert_i,pert_j),
+     $        rc(pert_k)
+ 2003    format(3x,'long(E), lat(N), Dep(m) = ',
+     $        f8.1,1x,f7.1,1x,f9.1,/)
+
 c Create 3d mask for the point 
          dum3d = 0.
          dum3d(pert_i,pert_j,pert_k) = 1. 
@@ -471,29 +550,63 @@ c When OBJF is VARIABLE weighted in space
      $    '... OBJF will be a linear function of selected variable'
          write(6,"(4x,a)")
      $        'i.e., MULT * SUM( MASK * VARIABLE )'
-         write(6,"(/,4x,a,/)") '!!!!! MASK must be uploaded' //
-     $     ' (binary native format) before proceeding ... '
-
          write(51,"(3x,a)")
      $   ' --> OBJF is a linear function of selected variable(s)'
          write(51,"(3x,a,/)")
      $     ' --> i.e., MULT * SUM( MASK * VARIABLE )'
 
-c Get mask file name 
-         write(6,*) '   Enter MASK filename (T in Eq 1 of Guide) ... ?'  
-         read(5,'(a)') fmask
+c Choose mask 
+         write (6,"(/,3x,a,a)")
+     $        'Interactively specify MASK (1) or ',
+     $        'read from user file (2) ... (1/2)?'
+         read (5,*) ifunc2 
 
-         write(51,'(3x,"fmask = ",a)') trim(fmask)
-         write(51,"(3x,a,/)") ' --> MASK file. '
+         write(51,"(3x,'ifunc2 = ',i2)") ifunc2
+
+         if (ifunc2 .eq. 2) then 
+            write(6,"(/,4x,a)") 'Reading MASK from user file.'
+            write(51,"(3x,a,/)")
+     $           ' --> Reading MASK from user file.'
+
+            write(6,"(/,4x,a,/)") '!!!!! MASK file must exist' //
+     $           ' (binary native format) before proceeding ... '
+c Get mask file name 
+            write(6,*)
+     $           '   Enter MASK filename (T in Eq 1 of Guide) ... ?'  
+            read(5,'(a)') fmask
+
+            write(51,'(3x,"fmask = ",a)') trim(fmask)
+            write(51,"(3x,a,/)") ' --> MASK file. '
+
+c Check mask 
+cif            call chk_mask3d(fmask,nx,ny,nr,dum3d,1)
+         else
+c Create mask interactively
+            write(6,"(/,4x,a,/)")
+     $           'Interactively creating MASK for volume mean.'
+            write(51,"(3x,a,/)")
+     $           ' --> Interactively creating MASK for volume mean.'
+            
+            call cr8_mask3d(fmask,x1,x2,y1,y2,z1,z2,iref)
+
+            write(51,"(4x,a)") 'Volume defined as ...'
+            write(51,"(7x,a26,2x,2f7.1)")
+     $           'west/east longitude(E):',x1,x2
+            write(51,"(7x,a26,2x,2f7.1)")
+     $           'south/north latitude(N):',y1,y2
+            write(51,"(7x,a26,2x,2f7.1,/)")
+     $           'max/min depth(m):',z1,z2
+            if (iref .eq. 1) then
+               write(51,"(4x,a,/)") 'Relative to global mean.'
+            endif
+
+        endif
 
 c Save mask file name for naming run directory
          ip1 = index(fmask,'/',.TRUE.)
          ip2 = len(fmask)
          floc_loc = trim(fmask(ip1+1:ip2))
          call StripSpaces(floc_loc)
-
-c Check mask 
-         call chk_mask3d(fmask,nx,ny,nr,dum3d)
 
 c Link input mask to what model expects 
          fdum = 'objf_' // trim(f1) // '_mask_C' 
@@ -503,7 +616,7 @@ c Link input mask to what model expects
             call execute_command_line(f_command, wait=.true.)
          endif
 
-         f_command = 'ln -s ' // trim(fmask) // ' ' //
+         f_command = 'ln -sf ' // trim(fmask) // ' ' //
      $        trim(fdum)
          call execute_command_line(f_command, wait=.true.)
 
@@ -533,7 +646,7 @@ c Specify variable is 3D
       call execute_command_line(f_command, wait=.true.)
 
       return
-      end subroutine
+      end subroutine objf_var_3d
 c 
 c ============================================================
 c 
@@ -548,8 +661,8 @@ c Update data.ecco OBJF for UV
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 
 c 
       character*1 pert_2, c1, c2
@@ -607,6 +720,11 @@ c When OBJF is at a point
  2002    format(3x,'pert_i, pert_j, pert_k = ',i2,2x,i4,2x,i2)
          write(51,"(3x,a,/)") ' --> OBJF model grid location (i,j,k).'
 
+         write(51,2003) xc(pert_i,pert_j), yc(pert_i,pert_j),
+     $        rc(pert_k)
+ 2003    format(3x,'long(E), lat(N), Dep(m) = ',
+     $        f8.1,1x,f7.1,1x,f9.1,/)
+         
 c Select either UVEL or VVEL
          iuv = 0
          do while (iuv.ne.1 .and. iuv.ne.2) 
@@ -694,7 +812,7 @@ c Save mask file name for naming run directory
          call StripSpaces(floc_loc)
 
 c Check mask 
-         call chk_mask3d(fmask,nx,ny,nr,dum3d)
+cif         call chk_mask3d(fmask,nx,ny,nr,dum3d,1)
 
 c Link input mask to what model expects 
          fdum = 'objf_' // trim(f1) // '_mask_W' 
@@ -704,7 +822,7 @@ c Link input mask to what model expects
             call execute_command_line(f_command, wait=.true.)
          endif
 
-         f_command = 'ln -s ' // trim(fmask) // ' ' //
+         f_command = 'ln -sf ' // trim(fmask) // ' ' //
      $        trim(fdum)
          call execute_command_line(f_command, wait=.true.)
 
@@ -721,7 +839,7 @@ c Get mask file name
          write(51,"(3x,a,/)") ' --> MASK_S file for VVEL. '
 
 c Check mask 
-         call chk_mask3d(fmask,nx,ny,nr,dum3d)
+cif         call chk_mask3d(fmask,nx,ny,nr,dum3d,1)
 
 c Link input mask to what model expects 
          fdum = 'objf_' // trim(f1) // '_mask_S' 
@@ -731,7 +849,7 @@ c Link input mask to what model expects
             call execute_command_line(f_command, wait=.true.)
          endif
 
-         f_command = 'ln -s ' // trim(fmask) // ' ' //
+         f_command = 'ln -sf ' // trim(fmask) // ' ' //
      $        trim(fdum)
          call execute_command_line(f_command, wait=.true.)
 
@@ -762,7 +880,7 @@ c Specify variable is 3D
       call execute_command_line(f_command, wait=.true.)
 
       return
-      end subroutine
+      end subroutine objf_var_UV
 c 
 c ============================================================
 c 
@@ -775,8 +893,8 @@ c argument
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 
 c local variables
       integer iloc, check_d
@@ -846,7 +964,7 @@ c Confirm location
      $     bathy(pert_i,pert_j)
 
       return
-      end subroutine 
+      end subroutine slct_2d_pt
 c 
 c ============================================================
 c 
@@ -859,8 +977,8 @@ c argument
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 
 c local variables
       integer iloc, k
@@ -924,4 +1042,4 @@ c Confirm location
      $    '  at depth (m) = ',rc(pert_k)
 
       return
-      end subroutine 
+      end subroutine slct_3d_pt

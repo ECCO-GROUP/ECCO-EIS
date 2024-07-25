@@ -1,0 +1,17 @@
+
+===================================================
+EMU Plotting Tool: Reading and Plotting EMU Results 
+===================================================
+
+IDL (Interactive Data Language) version of EMU Plotting Tool. 
+
+How to run EMU_PLOT 
+   Execute program emu_plot.pro in IDL and follow its prompts;  
+   IDL>.run PUBLICDIR/idl/emu_plot.pro
+   
+For detailed description: 
+   See the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+===================================================
+

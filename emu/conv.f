@@ -8,6 +8,9 @@ c
 c 07 December 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
+      external rel2abs_fname
+      character*256 rel2abs_fname
+
 c files
       character*256 f_inputdir  ! directory where native forcing is 
       character*130 file_in, file_out  ! file names 
@@ -24,6 +27,7 @@ c model arrays
 
 c Strings for adxx
       character*256 f_adxx    ! directory name for adxx 
+      character*256 f_adxx_read  ! directory name for adxx 
       character*256 dir_out   ! output directory
       integer nlag            ! maximum lag in convolution 
       character*256 f_lag     ! character version of nlag
@@ -39,6 +43,7 @@ c directories
       integer date_time(8)  ! arrrays for date 
       character*10 bb(3)
       character*256 fdate 
+
 c --------------
 c Specifying adjoint gradient convolution with forcing. 
       write (6,"(a,/)") 'Convolution Tool ... '
@@ -46,8 +51,16 @@ c Specifying adjoint gradient convolution with forcing.
      $     // 'and maximum lag below ... '
 
 c --------------
-      call getarg(1,f_inputdir)
-      write(6,*) 'inputdir read : ',trim(f_inputdir)
+c Set directory names for ECCO input directory and adxx
+
+      call getarg(1, f_inputdir)
+      write(6,*) 'f_inputdir : ',trim(f_inputdir)
+
+      call getarg(2, f_adxx)
+      write(6,*) 'f_adxx : ',trim(f_adxx)
+
+      call getarg(3, f_adxx_read)
+      write(6,*) 'f_adxx_read : ',trim(f_adxx_read)
 
 c --------------
 c Save Convolution information
@@ -90,24 +103,7 @@ c Specify forcing, if not V4r4's (its directory)
       write(52,"(a)") trim(file_in)
 
 c --------------
-c Specify adjoint gradients to use 
-c (e.g., directory where output of Adjoint Tool is located.)
-
-      write(6,"(/,a)") 'Specify adjoint gradients ...' 
-      write(6,"(3x,a)") 'Gradients must have equivalent file and '
-     $     // 'directory names as Adjoint Tool output.' 
-      write(6,"(3x,a)") 'Gradient files must be named '
-     $     // 'adxx_***CTRL***..0000000129.data etc'
-      write(6,"(3x,a)") 'and be present in a directory '
-     $     // 'named ''output'' '
-      write(6,"(3x,a)") 'under a parent directory ' 
-     $     // 'prefixed ''emu_adj_'' '
-
-      write(6,"(/,a)") 'Enter directory name of Adjoint Tool output '
-     $     // 'or its equivalent ... ?'
-      read (5,'(a)') f_adxx
-
-c check adxx files
+c Check adxx files
       fdum1 = 'emu_adj_'
       fdum2 = '/output'
       ip1 = index(f_adxx,trim(fdum1)) 
@@ -132,7 +128,7 @@ c
       write(52,"(a)") trim(f_adxx)
 
 c Check number of records in adxx
-      file_in = trim(f_adxx) //
+      file_in = trim(f_adxx_read) //
      $     '/adxx_tauu.0000000129.data'
       inquire (file=trim(file_in), EXIST=f_exist,
      $     SIZE=f_size)

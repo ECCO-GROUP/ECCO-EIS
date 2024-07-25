@@ -1,0 +1,18 @@
+################
+# Progress can be followed in terminal output and the script's log
+# file misc_test_suite.log which includes timing information of each
+# Example. 
+# 
+# Progress for Examples 2) Forward Gradient and 7) Modified Simulation 
+# can additionally be monitored, respectively, by
+#    ls ./emu_fgrd*/temp/diags/*2d*day*data | wc -l
+#    ls ./emu_msim*/temp/diags/*2d*day*data | wc -l
+# which should reach 396, the total number of days that the model is
+# integrated (nominally one year plus one month). 
+#
+# Progress for Example 3) Adjoint can be monitored by
+#    grep ad_time_tsnumber ./emu_adj*/temp/STDOUT.0000 | tail -n 3
+# which counts down from 4320 to 240. Variable ad_time_tsnumber is the
+# 1-hour time-step number of the adjoint model printed backward every
+# 10-days (240).
+################

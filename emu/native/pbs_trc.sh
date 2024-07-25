@@ -1,34 +1,31 @@
-#PBS -S /bin/bash 
-#PBS -l select=3:ncpus=40:model=sky_ele
+#PBS -S /bin/bash
+#CHOOSE_NODES
 #PBS -l walltime=WHOURS_EMU:00:00
 #PBS -j oe
 #PBS -o ./
 #PBS -m bea
 #CHOOSE_DEVEL
 
+umask 022
+
 #=================================
-# Shell script for V4r4 Tracer Tool (native)
+# PBS script for V4r4 Tracer Tool (native)
 #=================================
+
+#=================================
+# Set program specific parameters 
+nprocs=EMU_NPROC
+emu_dir=EMU_DIR
+emu_input_dir=EMU_INPUT_DIR
+
+rundir=YOURDIR
 
 ##=================================
 # Set running environment 
 ulimit -s unlimited
 
-module purge
-module load comp-intel/2020.4.304 
-module load mpi-hpe/mpt
-module load hdf4/4.2.12 
-module load hdf5/1.8.18_mpt
-module load netcdf/4.4.1.1_mpt
-module load python3/3.9.12
-module list
-
-#=================================
-# Set program specific parameters 
-nprocs=96
-native_setup=NATIVE_SETUP
-
-rundir=YOURDIR
+# set_modules.sh must be run by source 
+source ${emu_dir}/emu/native/set_modules.sh
 
 #=================================
 # cd to directory to run rundir
@@ -38,15 +35,25 @@ cd ${rundir}
 # Link tracer executable 
 
 BANDAID_PICKUP 
-ln -s ${native_setup}/forcing/other/flux-forced/STATE_DIR/* .
-ln -s ${native_setup}/FRW_OR_ADJ/mitgcmuv .
+ln -sf ${emu_input_dir}/forcing/other/flux-forced/STATE_DIR/* .
+ln -sf ${emu_dir}/emu/exe/nproc/${nprocs}/FRW_OR_ADJ .
+ln -sf ${emu_dir}/emu/emu_input/nproc/${nprocs}/data.exch2 .
 
 # Run tracer executable 
-mpiexec -np ${nprocs} /u/scicon/tools/bin/mbind.x ./mitgcmuv
+mpiexec -np ${nprocs} /u/scicon/tools/bin/mbind.x ./FRW_OR_ADJ
 
 #=================================
 # Move result to output dirctory 
 mv diags ../output
 mv pbs_trc.sh ../output
 mv trc.info ../output
+
+# Save initial TRC 
+PUBLICDIR/misc_move_files.sh ./ ../output 'pickup_ptracers.0*.data'
+
+
+#=================================
+# Reorder (rename time step) ptracer output files if adjoint run
+cd ../output
+#REORDER_PTRACER ${emu_dir}/emu/emu_input/scripts/rename_offline_adj_diags_fn.sh YES
 

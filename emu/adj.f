@@ -9,7 +9,8 @@ c 21 September 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 c files
-      character*256 setup   ! directory where tool files are 
+      character*256 inputdir   ! directory where tool input files are 
+      common /tool/inputdir
       character*130 file_in, file_out  ! file names 
 
       logical f_exist
@@ -17,8 +18,8 @@ c files
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 
 c Objective function 
       integer nvar    ! number of OBJF variables 
@@ -46,39 +47,13 @@ c directories
 
 c --------------
 c Set directory where tool files exist
-      open (50, file='tool_setup_dir')
-      read (50,'(a)') setup
+      open (50, file='input_setup_dir')
+      read (50,'(a)') inputdir
       close (50)
       
 c --------------
 c Read model grid
-      file_in = trim(setup) // '/emu/emu_input/XC.data'
-      inquire (file=trim(file_in), EXIST=f_exist)
-      if (.not. f_exist) then
-         write (6,*) ' **** Error: model grid file = ',
-     $        trim(file_in) 
-         write (6,*) '**** does not exist'
-         stop
-      endif
-      open (50, file=file_in, action='read', access='stream')
-      read (50) xc
-      close (50)
-
-      file_in = trim(setup) // '/emu/emu_input/YC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) yc
-      close (50)
-
-      file_in = trim(setup) // '/emu/emu_input/RC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) rc
-      close (50)
-      rc = -rc  ! switch sign 
-
-      file_in = trim(setup) // '/emu/emu_input/Depth.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) bathy
-      close (50)
+      call grid_info
       
 c --------------
 c Variable name
@@ -246,7 +221,7 @@ cif
 cif      f_command = 'mv pbs_adj.csh ' // trim(dir_run)
 cif      call execute_command_line(f_command, wait=.true.)
 cif      
-cif      f_command = 'ln -s ' // trim(dir_run) // '/pbs_adj.csh .'
+cif      f_command = 'ln -sf ' // trim(dir_run) // '/pbs_adj.csh .'
 cif      call execute_command_line(f_command, wait=.true.)
       
       f_command = 'mv data ' // trim(dir_run) // '/data_adj'

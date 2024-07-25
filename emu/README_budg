@@ -1,6 +1,6 @@
 
 ======================================
-ECCO Budget Tool: A Brief Description
+EMU Budget Tool: A Brief Description
 ======================================
 
 What the Tool does: 
@@ -11,7 +11,213 @@ What the Tool does:
    for additional ECCO Modeling Utilities (EMU). 
 
 How to run the Tool:
-   Execute shell script emu (link to emu.sh) and follow its prompt. 
+   Execute command emu (linked to emu.sh) and select Budget Tool
+   (tool #6).  
+
+Output:
+   Unless noted otherwise, all files are binary files. Numbers in
+   EMU’s binary input and output files are 32-bit big endian for both
+   float and integer.
+
+   The Budget Tool creates files in a directory bearing specification
+   of the budget in its name, e.g.,
+   emu_budg_m_2_-170.0_-120.0_-5.0_5.0_50.0_0.0. Here “emu_budg”
+   indicates output from the Budget Tool, “m” for monthly mean
+   variable, “2” for Heat Budget, “-170.0_-120.0_-5.0_5.0_50.0_0.0”
+   for the interactively chosen range of longitude, latitude, and
+   depth of the volume. User output is collected in a subdirectory
+   named output.
+
+   ------------------
+   File Description:
+   ------------------   
+
+   pfe20>lss emu_budg_m_2_-170.0_-120.0_-5.0_5.0_50.0_0.0/output
+   total 15364
+   -rw-r--r-- 1     554  budg.info
+   -rw-r--r-- 1     307  data.ecco
+   -rw-r--r-- 1  624005  emu_budg.mkup_adv_x
+   -rw-r--r-- 1  249605  emu_budg.mkup_adv_y
+   -rw-r--r-- 1 2496005  emu_budg.mkup_adv_z
+   -rw-r--r-- 1 6240005  emu_budg.mkup_atm
+   -rw-r--r-- 1  624005  emu_budg.mkup_mix_x
+   -rw-r--r-- 1  249605  emu_budg.mkup_mix_y
+   -rw-r--r-- 1 2496005  emu_budg.mkup_mix_z_e
+   -rw-r--r-- 1 2496005  emu_budg.mkup_mix_z_i
+   -rw-r--r-- 1   80004  emu_budg.msk3d_a
+   -rw-r--r-- 1   80004  emu_budg.msk3d_v
+   -rw-r--r-- 1    8004  emu_budg.msk3d_x
+   -rw-r--r-- 1    3204  emu_budg.msk3d_y
+   -rw-r--r-- 1   32004  emu_budg.msk3d_z
+   -rw-r--r-- 1    8828  emu_budg.sum_tend
+   -rw-r--r-- 1    8828  emu_budg.sum_tint
+
+   budg.info 	
+      A text file, created by budg.x, summarizing the user-specified
+      budget computation.
+
+   data.ecco 	
+      An ECCO MITgcm namelist file (text file) defining the objective
+      function, modified by budg.x, and used by do_budg.x to conduct
+      the budget computation.
+
+   emu_budg.mkup_****
+      Time-series of spatially varying converging fluxes making up
+      individual terms of the budget. These files are useful for
+      analyzing the spatial location of the fluxes contributing to the
+      budgeted quantity. Time-series of the spatial sum of these files
+      are summarized in emu_budg.sum_tend. The string **** indicates
+      particular terms in the budget summarized below for heat
+      budget. See Piecuch (2022) for description of the terms.  (Some
+      of these files will be absent if the budget has no corresponding
+      elements, as in geothermal flux in the example above.) Per
+      divergence theorem, the fluxes are those along the bounding
+      surface of the budget’s domain (2d surface in 3d space), except
+      for short-wave radiation that penetrates the volume (included in
+      emu_budg.mkup_atm for this heat budget example.)  (Sea ice’s
+      salt-plume flux, a component for salt and salinity budgets, is
+      also a penetrative flux deposited inside a budget’s volume.)
+
+      adv_x: Advection in the horizontal i-direction.
+      adv_y: Advection in the horizontal j-direction.
+      adv_z: Advection in the vertical r-direction.
+      atm: Fluxes from atmosphere & sea ice.
+      geo: Geothermal heating.
+      mix_x: Mixing in the horizontal i-direction.
+      mix_y: Mixing in the horizontal j-direction.
+      mix_z_e: Explicit mixing in the vertical r-direction.
+      mix_z_i: Implicit mixing (convection) in the vertical r-direction.
+
+      For volume budget, possible terms are
+      adv_x: Advection in the horizontal i-direction.
+      adv_y: Advection in the horizontal j-direction.
+      adv_z: Advection in the vertical r-direction.
+      srf: Surface fluxes.
+
+      For salt budget, possible terms are
+      adv_x: Advection in the horizontal i-direction.
+      adv_y: Advection in the horizontal j-direction.
+      adv_z: Advection in the vertical r-direction.
+      frc_sflux: Surface salt flux from sea ice.
+      frc_oceSP: Penetrative salt flux from sea ice.
+      mix_x: Mixing in the horizontal i-direction.
+      mix_y: Mixing in the horizontal j-direction.
+      mix_z_e: Explicit mixing in the vertical r-direction.
+      mix_z_i: Implicit mixing (convection) in the vertical r-direction.
+
+      The salinity budget does not take a divergence form and does not
+      have directional information. For brevity, the spatial
+      distribution of the fluxes that make up the budget are not
+      individually output by the Tool. (Each term is 3-dimensional
+      spanning the domain of interest making the file sizes much
+      larger, if saved, than those for fluxes on the domain’s
+      boundary.)  Spatially integrated summary of the salinity budget
+      is, as are other budgets, given in files emu_budg.sum_tend and
+      emu_budg.sum_tint described below.
+
+      The files contain the following items in this order;
+      msk: A single character identifying the spatial location of the
+           fluxes (character). The character corresponds to string ?
+           in file emu_budg.msk3d_? below that defines this location.
+      i31: The term number in file emu_budg.sum_tend that fluxes in
+           this file are aggregated in (integer)
+      b3d: An array of n3d elements with the fluxes where n3d is given
+           in file emu_budg.msk3d_? (float)
+
+      Array b3d is repeated for each month that is available (which
+      totals nmonths in file emu_budg.sum_tend).
+
+   emu_budg.msk3d_? 	
+      Spatial location of the convergence in files
+      emu_budg.mkup_****. The string ?  is a letter denoting the type
+      of location described below. The location string (?) is also the
+      first record of each convergence file (emu_budg.mkup_****)
+      indicating the corresponding location for the converging fluxes
+      in that file.
+
+      a: Location of fluxes at the ocean surface including shortwave radiation.
+      v: Location spanning the entire volume of the domain.
+      x: Location of fluxes in the horizontal i-direction.
+      y: Location of fluxes in the horizontal j-direction.
+      z: Location of fluxes in the vertical r-direction.
+
+      s: Location of fluxes at the ocean surface.
+      g: Location of geothermal fluxes (ocean bottom).
+
+      The files contain the following items in this order;
+         n3d: number of locations in file (integer)
+	 f3d: array with n3d elements used as weights in extracting fluxes (float)
+	 i3d: array with n3d elements indicating i-index of the flux (integer)
+	 j3d: array with n3d elements indicating j-index of the flux (integer)
+	 k3d: array with n3d elements indicating k-index of the flux (integer)
+
+   emu_budg.sum_tend 	
+      Spatially integrated summary scalar time-series of each term in
+      the budget (tendency budget). (File is created as unit 31 in
+      do_budg.f) The file contains the following items in this order;
+
+      ibud: type of budget (integer, 2 for heat budget)
+      nmonths: number of months (integer)
+      tname: name of variable (fixed-length string with 12 characters)
+      tvar: variable (float array with nmonths elements)
+
+      The pair of records tname and tvar are repeated for all items
+      that make up the budget, which differ with budget type and
+      budget domain. The first pair is always the length of time
+      (hours) for each month (tname=dt) and the second pair is always
+      the left-hand-side of the budget (tname=lhs). The left-hand-side
+      is given here for reference purpose only in checking consistency
+      with terms on the right-hand-side of the budget in this file.
+      The left-hand-side in this file is based on instantaneous states
+      at the end of the month, except for the first and last months
+      whose tendency is artificially set to zero due to missing
+      output.
+
+      For heat budget, there are an additional six possible pairs for
+      tname and tvar depending on domain. The variable name tname for
+      these six are;
+advh: horizontal advection (sum of emu_budg.mkup_adv_x and emu_budg.mkup_adv_y)
+mixh: horizontal mixing (sum of emu_budg.mkup_mix_x and emu_budg.mkup_mix_y.)
+advv: vertical advection 
+mixv: vertical mixing (sum of emu_budg.mkup_mix_z_e and emu_budg.mkup_mix_z_i.)
+tfrc: surface forcing (atmosphere & sea ice)
+geo: geothermal forcing
+
+      For volume budget, there are an additional three possible pairs
+      for tname and tvar depending on domain. The variable name tname
+      for these three are;
+advh: horizontal advection (sum of emu_budg.mkup_adv_x and emu_budg.mkup_adv_y)
+advv: vertical advection 
+vfrc: surface forcing 
+
+      For salt budget, there are an additional five possible pairs for
+      tname and tvar depending on domain. The variable name tname for
+      these five are;
+advh: horizontal advection (sum of emu_budg.mkup_adv_x and emu_budg.mkup_adv_y)
+mixh: horizontal mixing (sum of emu_budg.mkup_mix_x and emu_budg.mkup_mix_y.)
+advv: vertical advection 
+mixv: vertical mixing (sum of emu_budg.mkup_mix_z_e and emu_budg.mkup_mix_z_i.)
+sfrc: surface forcing (sea ice)
+
+      For salinity budget, there are an additional five possible pairs
+      for tname and tvar depending on domain. The variable name tname
+      for these five are;
+advh_slt: horizontal advection of salt
+advh_vol: horizontal advection of volume
+mixh: horizontal mixing 
+advv_slt: vertical advection of salt
+advv_vol: vertical advection of volume
+mixv: vertical mixing 
+sfrc_slt: surface forcing of salt (sea ice)
+sfrc_vol: surface forcing of volume
+
+   emu_budg.sum_tint	
+      Time-integral of the tendency budget (emu_budg.sum_tend). This
+      file is useful for assessing processes controlling the quantity
+      of interest itself (volume, heat, salt, salinity) instead of its
+      tendency. The file content is the same as emu_budg.sum_tend but
+      with all variables (except tname=dt) time-integrated relative to
+      the second month.
 
 For detailed description: 
    See Sections 1, 2.6 and 3.6 of the EMU User Guide; 

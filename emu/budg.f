@@ -11,7 +11,10 @@ c files
       character*256 f_inputdir   ! where external tool files exist
       common /tool/f_inputdir
       character*130 file_in, file_out  ! file names 
-c
+
+      character*256 f_srcdir  ! directory where state output is 
+      common /source_dir/f_srcdir
+c     
       character*256 f_command
       logical f_exist
       character*6 f0, f1  ! For different OBJF variables 
@@ -19,8 +22,8 @@ c
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 
 c Objective function 
       integer nvar    ! possible number of OBJF variables 
@@ -59,47 +62,22 @@ c Set directory where external tool files exist
       call getarg(1,f_inputdir)
       write(6,*) 'inputdir read : ',trim(f_inputdir)
 
-c --------------
-c Set directory where tool files exist
-      open (50, file='tool_setup_dir')
-      read (50,'(a)') setup
-      close (50)
-      write(6,*) 'tool files read : ',trim(setup)
+c Read directory where state output exist
+      call getarg(2,f_srcdir)
+      write(6,*) 'srcdir read : ',trim(f_srcdir)
+      
+cc --------------
+cc Set directory where tool files exist
+c      open (50, file='tool_setup_dir')
+c      read (50,'(a)') setup
+c      close (50)
+c      write(6,*) 'tool files read : ',trim(setup)
 
 c --------------
 c Read model grid from EMU tool directory (XC, YC is fully
 c specified. Those used in the model have blank regions.)
 c 
-c      file_in = trim(f_inputdir) // '/emu_pert_ref_budg/XC.data'
-      file_in = trim(setup) // '/emu/emu_input/XC.data'
-      inquire (file=trim(file_in), EXIST=f_exist)
-      if (.not. f_exist) then
-         write (6,*) ' **** Error: model grid file = ',
-     $        trim(file_in) 
-         write (6,*) '**** does not exist'
-         stop
-      endif
-      open (50, file=file_in, action='read', access='stream')
-      read (50) xc
-      close (50)
-
-c      file_in = trim(f_inputdir) // '/emu_pert_ref_budg/YC.data'
-      file_in = trim(setup) // '/emu/emu_input/YC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) yc
-      close (50)
-
-c      file_in = trim(f_inputdir) // '/emu_pert_ref_budg/RC.data'
-      file_in = trim(setup) // '/emu/emu_input/RC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) rc
-      close (50)
-
-c      file_in = trim(f_inputdir) // '/emu_pert_ref_budg/Depth.data'
-      file_in = trim(setup) // '/emu/emu_input/Depth.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) bathy
-      close (50)
+      call grid_info
       
 c --------------
 c Variable name
@@ -130,6 +108,8 @@ c Save OBJF information for reference.
      $     'Budget Tool variable specification'
       write(51,"(a,/)") '***********************'
 
+      write(51,"(a,2x,a,/)") 'Budget sampled from ', trim(f_srcdir)
+      
 c --------------
 c Set up data.ecco with OBJF specification
 
@@ -297,7 +277,7 @@ c Create time mask for variable (link common time mask)
          f_command = 'rm -f ' // trim(fmask)
          call execute_command_line(f_command, wait=.true.)
       endif
-      f_command = 'ln -s budg_mask_T ' // trim(fmask)
+      f_command = 'ln -sf budg_mask_T ' // trim(fmask)
       call execute_command_line(f_command, wait=.true.)
 
 c Edit data.ecco mask field  
@@ -308,7 +288,7 @@ c Edit data.ecco mask field
       call execute_command_line(f_command, wait=.true.)
 
       return
-      end subroutine
+      end subroutine budg_var
 c 
 c ============================================================
 c 
@@ -323,8 +303,8 @@ c Update data.ecco OBJF for Budget
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 c 
       character*1 pert_2, c1, c2
       integer pert_i, pert_j, pert_k
@@ -345,31 +325,31 @@ c Identify Budget OBJF variable
          f_command = 'sed -i -e ' //
      $  '"s/barfile(' // trim(f1) //
      $ ').*/barfile(' // trim(f1) //
-     $ ')=''m_boxmean_VOLUME''/g" data.ecco'
+     $ ')=''m_boxmean_volume''/g" data.ecco'
          call execute_command_line(f_command, wait=.true.)
       else if (iobjf.eq.2) then 
          f_command = 'sed -i -e ' //
      $  '"s/barfile(' // trim(f1) //
      $ ').*/barfile(' // trim(f1) //
-     $ ')=''m_boxmean_HEAT''/g" data.ecco'
+     $ ')=''m_boxmean_heat''/g" data.ecco'
          call execute_command_line(f_command, wait=.true.)
       else if (iobjf.eq.3) then 
          f_command = 'sed -i -e ' //
      $  '"s/barfile(' // trim(f1) //
      $ ').*/barfile(' // trim(f1) //
-     $ ')=''m_boxmean_SALT''/g" data.ecco'
+     $ ')=''m_boxmean_salt''/g" data.ecco'
          call execute_command_line(f_command, wait=.true.)
       else if (iobjf.eq.4) then 
          f_command = 'sed -i -e ' //
      $  '"s/barfile(' // trim(f1) //
      $ ').*/barfile(' // trim(f1) //
-     $ ')=''m_boxmean_SALINITY''/g" data.ecco'
+     $ ')=''m_boxmean_salinity''/g" data.ecco'
          call execute_command_line(f_command, wait=.true.)
       else if (iobjf.eq.5) then 
          f_command = 'sed -i -e ' //
      $  '"s/barfile(' // trim(f1) //
      $ ').*/barfile(' // trim(f1) //
-     $ ')=''m_boxmean_MOMENTUM''/g" data.ecco'
+     $ ')=''m_boxmean_momentum''/g" data.ecco'
          call execute_command_line(f_command, wait=.true.)
       else
          write(6,*) 'iobjf is NG for budg_var_3d ... ', iobjf
@@ -440,7 +420,6 @@ c When OBJF is VARIABLE over a volume
          write(51,"(3x,a)")
      $   ' --> Budget will be over a volume'
 
-
 c
          ivol = 0
          do while (ivol.ne.1 .and. ivol.ne.2) 
@@ -459,8 +438,14 @@ c
          write(51,"(3x,'ivol = ',i2)") ivol
 
          if (ivol.eq.1) then 
+
+            write(6,*)
+     $           '... Budget will be over a lat/lon/depth volume'
+            write(51,"(3x,a)")
+     $           ' --> Budget will be over a lat/lon/depth volume'
+            
 c When Volume is over lat/lon/depth
-            call cr8_mask3d(dum3d,x1,x2,y1,y2,z1,z2)
+            call mask01_3d(dum3d,x1,x2,y1,y2,z1,z2)
 
             f_command = 'sed -i -e ' //
      $           '"s/mask(' // trim(f1) //
@@ -482,6 +467,14 @@ c Save location for naming run directory
             write(floc_loc,'(5(f6.1,"_"),f6.1)')
      $           x1,x2,y1,y2,z1,z2
             call StripSpaces(floc_loc)
+
+c Printout lat/lon/depth volume
+            write(6,'(a,2f8.1)') '   min/max longitude ',x1,x2
+            write(6,'(a,2f8.1)') '   min/max latitude ', y1,y2
+            write(6,'(a,2f8.1)') '   min/max depth ',    z1,z2
+            write(51,'(a,2f8.1)') '   min/max longitude ',x1,x2
+            write(51,'(a,2f8.1)') '   min/max latitude ', y1,y2
+            write(51,'(a,2f8.1)') '   min/max depth ',    z1,z2
 
          else
 c When Volume is specified in user-provided file 
@@ -510,7 +503,7 @@ c Link input mask to what model expects
             call execute_command_line(f_command, wait=.true.)
          endif
 
-         f_command = 'ln -s ' // trim(fmask) // ' ' //
+         f_command = 'ln -sf ' // trim(fmask) // ' ' //
      $        trim(fdum)
          call execute_command_line(f_command, wait=.true.)
 
@@ -526,141 +519,4 @@ c Specify variable is 3D
       call execute_command_line(f_command, wait=.true.)
 
       return
-      end subroutine
-c 
-c ============================================================
-c 
-      subroutine cr8_mask3d(dum3d,x1,x2,y1,y2,z1,z2)
-
-c model arrays
-      integer nx, ny, nr
-      parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
-c 
-      real*4 dum3d(nx,ny,nr)
-      real*4 x1,x2,y1,y2,z1,z2 
-
-      real*4 dumx(nx,ny), dumy(nx,ny), dumz(nr), dum 
-      real*4 dum2d(nx,ny)
-      real*4 vcheck
-
-c ------
-c Volume must span at least one model grid pint 
-      vcheck = 0.
-
-      do while (vcheck .eq. 0) 
-
-c ------
-c Select min/max longitude, latitude, depth 
-      x1 = -200.
-      do while (x1.lt.-180. .or. x1.gt.180.) 
-         write(6,*) 'Enter west most longitude (-180E to 180E)... x1?'
-         read(5,*) x1
-      end do
-
-      x2 = -200.
-      do while (x2.lt.-180. .or. x2.gt.180.) 
-         write(6,*) 'Enter east most longitude (-180E to 180E)... x2?'
-         write(6,*) '   (choose x2=x1 for zonally global volume) '
-         read(5,*) x2
-      end do
-
-      y1 = -100.
-      do while (y1.lt.-90. .or. y1.gt.90.) 
-         write(6,*) 'Enter south most latitude (-90N to 90N)... y1?'
-         read(5,*) y1
-      end do
-
-      y2 = -100.
-      do while (y2.lt.-90. .or. y2.gt.90. .or. y2.lt.y1) 
-         write(6,*) 'Enter north most latitude (-90N to 90N)... y2?'
-         read(5,*) y2
-      end do
-      
-      z1 = -100.
-      do while (z1.lt.0. .or. z1.gt.6000.) 
-         write(6,*) 'Enter deepest depth (0-6000m) ... z1?'
-         read(5,*) z1
-      end do
-      
-      z2 = -100.
-      do while (z2.lt.0. .or. z2.gt.6000. .or. z2.gt.z1) 
-         write(6,*) 'Enter shallowest depth (0-6000m)... z2?'
-         read(5,*) z2
-      end do 
-
-c Find all (i,j,k) locations that is within volume 
-      dumx(:,:) = 0.
-      dumy(:,:) = 0.
-      dumz(:) = 0.
-
-      if (x1.eq.x2) then 
-         dumx(:,:) = 1.
-      elseif (x1.lt.x2) then 
-         do i=1,nx
-            do j=1,ny
-               if (xc(i,j).ge.x1 .and. xc(i,j).le.x2) dumx(i,j) = 1.
-            enddo
-         enddo
-      else
-         do i=1,nx
-            do j=1,ny
-               if (xc(i,j).ge.x1 .or. xc(i,j).le.x2) dumx(i,j) = 1.
-            enddo
-         enddo
-      endif
-
-      if (y1.eq.-90. .and. y2.eq.90.) then
-         dumy(:,:) = 1.
-      else
-         do i=1,nx
-            do j=1,ny
-               dum = (yc(i,j)-y1)*(yc(i,j)-y2)
-               if (dum.le.0.) dumy(i,j) = 1.
-            enddo
-         enddo
-      endif
-         
-      if (z1.eq.0. .and. z2.eq.6000.) then
-         dumz(:) = 1.
-      else
-         do k=1,nr
-            dum = (rc(k)+z1)*(rc(k)+z2) ! rc is negative 
-            if (dum.le.0.) dumz(k) = 1.
-         enddo
-      endif
-         
-      do i=1,nx
-         do j=1,ny
-            do k=1,nr
-               dum3d(i,j,k) = dumx(i,j)*dumy(i,j)*dumz(k)
-            enddo
-         enddo
-      enddo
-
-c ------
-c Check Volume
-      vcheck = 0.
-      do i=1,nx
-         do j=1,ny
-            do k=1,nr
-               vcheck = vcheck + dum3d(i,j,k)
-            enddo
-         enddo
-      enddo
-      
-      if (vcheck.eq.0.) then
-         write(6,*) 'NG: Volume is empty.'
-         write(6,*) 'Volume must span at least one grid point. '
-         write(6,*) 'Re-Enter volume specification ... '
-      endif
-
-      end do  ! end while 
-c 
-      return
-      end subroutine
-
-     
-      
-      
+      end subroutine budg_var_3d

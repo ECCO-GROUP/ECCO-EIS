@@ -1,10 +1,10 @@
 
 ===========================================
-ECCO Convolution Tool: A Brief Description
+EMU Convolution Tool: A Brief Description
 ===========================================
 
 What the Tool does: 
-   The Tool computes the convolution of a particular set of adjoint 
+   The Tool evaluates the convolution of a particular set of adjoint 
    gradients (cf Adjoint Tool) with corresponding controls
    (forcing). The Tool is useful for analyzing causal relationships
    between the model and its controls. See
@@ -12,8 +12,60 @@ What the Tool does:
    for additional ECCO Modeling Utilities (EMU). 
 
 How to run the Tool:
-   Execute shell script emu_conv.csh and follow its prompt; e.g.,
-   source PUBLICDIR/emu_conv.csh
+   Execute command emu (linked to emu.sh) and select Convolution 
+   Tool (tool #4).
+   
+Output:
+   Unless noted otherwise, all files are binary files. Numbers in
+   EMU’s binary input and output files are 32-bit big endian for both
+   float and integer.
+
+   The Convolution Tool creates files in a directory bearing the
+   convolution’s specification in its name, e.g.,
+   emu_conv_24_24_1_beaufortsea.msk_1_105. Here “emu_conv” indicates
+   output from the Convolution Tool and “24_24_1_beaufortsea.msk_1”
+   corresponds to the adjoint gradient used, and the last “105” is the
+   maximum lag used. User output is collected in a subdirectory named
+   output.
+
+   ------------------
+   File Description:
+   ------------------   
+
+   recon2d_***CTRL***.data 	
+      Two-dimensional time-series of the convolution for individual
+      controls, ***CTRL*** (Table 3),
+      		Equation (9) 
+      This sum is a function of space (r) and time (t) for a
+      particular control (i). The quantity represents a partial sum of
+      the terms on the RHS of Eq (7), and is useful in analyzing
+      contributions from different locations of each separate
+      control (e.g., Figure 9 of Fukumori et al., 2021).
+
+   recon1d_***CTRL***.data 	
+      Time-series of global sum of the convolution at different
+      maximum lags (k) for individual controls, ***CTRL*** (Table 3),
+      	      Equation (10)
+      This sum is a function time (t) and maximum lag (k) for a
+      particular control (i). The quantity represents a partial sum of
+      the terms on the RHS of Eq (7), and is useful in analyzing
+      contributions up to different lags of each separate control
+      (e.g., Figure 10 of Fukumori et al., 2021).
+
+   istep_***CTRL***.data 	
+      Time (t) of the convolution time-series for individual controls,
+      ***CTRL*** (Table 3), defined as the end instant of each period
+      (e.g., end of the 7-day mean), in terms of the model’s time-step
+      (1-hour time-step from 12Z January 1, 1992.) (Different forcing
+      files can span different periods.)
+
+   conv.info  
+      Specification of convolution set by conv.x, identifying forcing,
+      adjoint gradients, maximum lag used, and name of output
+      directory.
+
+   conv.out  
+      Same as conv.info but without the comments (read by do_conv.x.)
 
 For detailed description: 
    See Sections 1, 2.4, and 3.4 of the EMU User Guide; 

@@ -1,18 +1,57 @@
 
 ========================================
-ECCO Sampling Tool: A Brief Description
+EMU Sampling Tool: A Brief Description
 ========================================
 
-What the Tool does: 
+What the Tool does:
    The Tool extracts time-series of a user-defined variable of the
    ECCO estimate, V4r4. The Tool is useful for assessing the fidelity
-   of this model. See
+   of this model and is part of ECCO Modeling Utilities (EMU). See
    PUBLICDIR/README
-   for additional ECCO Modeling Utilities (EMU). 
+   for additional tools. 
 
 How to run the Tool:
-   Execute shell script emu_samp.csh and follow its prompt; e.g., 
-   source PUBLICDIR/emu_samp.csh
+   Execute command emu (linked to emu.sh) and select Sampling Tool
+   (tool #1).
+
+Output:
+   Unless noted otherwise, all files are binary files. Numbers in
+   EMU’s binary input and output files are 32-bit big endian for both
+   float and integer.
+   
+   Output Example:
+   > ls -log --time-style=+"" emu_samp/output
+   total 28
+   -rw-r--r-- 1   332 data.ecco
+   -rw-r--r-- 1   654 samp.info
+   -rw-r--r-- 1  1252 samp.out_312
+   -rw-r--r-- 1  1248 samp.step_312
+   -rw-r--r-- 1 10642 samp.txt 
+
+   ------------------
+   File Description:
+   ------------------   
+
+   File samp.txt is a text file with the time-series of the user
+   specified variable, with time (1-hour time-step from 12Z January 1,
+   1992) and corresponding sampled quantity listed in a table
+   format. The time here is the end instant of the averaging period of
+   the sampled quantity (e.g., end of month).
+
+   Files samp.out_312 and samp.step_312 are equivalent to samp.txt but
+   in binary format. File samp.out_312 has anomaly time-series of the
+   sampled quantity from its time-mean (float); The last number after
+   “_” in the file name indicates the number of records in the anomaly
+   time-series, which in this case is 312 monthly mean values from
+   1992 to 2017 of V4r4’s analysis period. The time-mean reference
+   value (float) is given as the last variable in the file (313th in
+   the example above.) File samp.step_312 has the time record of the
+   time-series (integer). An example FORTRAN code to read these binary
+   output files is given below.
+
+   File samp.info is a text file summarizing the user-defined
+   Objective Function and file data.ecco is an ECCO MITgcm input file
+   defining the objective function.
 
 For detailed description: 
    See Sections 1, 2.1, and 3.1 of the EMU User Guide; 

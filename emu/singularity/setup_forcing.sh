@@ -1,14 +1,16 @@
-#!/bin/bash
+#!/bin/bash -e
+
+umask 022
+
 #
 # Create link to outside files neede to run flux-forced V4r4
 #
 
-inputdir=/emu_outside/forcing
-
 # Link outside files 
-ln -s ${inputdir}/other/flux-forced/*/* .
+ln -sf /emu_input_dir/forcing/other/flux-forced/forcing/* .
+ln -sf /emu_input_dir/forcing/other/flux-forced/xx/* .
 
-ln -s ${inputdir}/input_init/error_weight/ctrl_weight/* .
-ln -s ${inputdir}/input_init/* .
-ln -s ${inputdir}/input_init/tools/* .
+ln -sf /emu_input_dir/forcing/input_init/error_weight/ctrl_weight/* .
+ln -sf /emu_input_dir/forcing/input_init/* .
+ln -sf /emu_input_dir/forcing/input_init/tools/* .
 

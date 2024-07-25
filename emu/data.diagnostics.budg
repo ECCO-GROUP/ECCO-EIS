@@ -136,6 +136,10 @@ timePhase(91) = 42300.,
 filename(91) = 'diags/state_2d_set1_day',
 fileFlags(91) = 'D       ',
 #---
+frequency(92) = 2635200.0,
+fields(1,92) = 'GGL90TKE',
+filename(92) = 'diags/GGL90TKE_mon_mean/GGL90TKE_mon_mean',
+#---
   /
 #
 #

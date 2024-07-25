@@ -21,4 +21,5 @@
  usePtracers=.TRUE.,
 #useBBL=.TRUE.,
  useOFFLINE=.TRUE.,
+ useAUTODIFF=.FALSE.,
  /

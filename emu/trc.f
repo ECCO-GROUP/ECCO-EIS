@@ -7,8 +7,9 @@ c 30 November 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 c files
-      character*256 setup   ! directory where tool files are 
-      common /tool/setup
+      character*256 tooldir    ! directory where tool files are 
+      character*256 inputdir   ! directory where tool input files are 
+      common /tool/inputdir
       character*130 file_in, file_out  ! file names 
 c
       character*256 f_command 
@@ -17,8 +18,8 @@ c
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 
       real*4 dum3d(nx,ny,nr) 
       character*256 fmask, fdum
@@ -41,47 +42,39 @@ c Strings for naming output directory
 c Integration time 
       integer nsteps
 c      parameter(nsteps=227903) ! max steps of V4r4
-      parameter(nsteps=227808, nhweek=84) ! max steps 
+c      parameter(nsteps=227808, nhweek=84) ! max steps
+      parameter(nsteps=227639, nhweek=84) ! max steps 
       integer nTimesteps, nHours, hour26yr, nTmax 
-      parameter(hour26yr=3) ! wallclock hours for nsteps 
+
+      integer nproc, hour26yr_trc, hour26yr_fwd, hour26yr_adj
+      namelist /mitgcm_timing/ nproc, hour26yr_trc,
+     $     hour26yr_fwd, hour26yr_adj
+
       character*256 fstep 
       character*256 f_ref, f_pup, f_dum 
 
 c --------------
-c Set directory where tool files exist
-      open (50, file='tool_setup_dir')
-      read (50,'(a)') setup
+c Read MITgcm timing information 
+      open (50, file='mitgcm_timing.nml', status='old')
+      read(50, nml=mitgcm_timing)
       close (50)
+      hour26yr = hour26yr_trc 
+
+c --------------
+c Set directory where tool files exist
+      open (50, file='input_setup_dir')
+      read (50,'(a)') inputdir
+      close (50)
+
+cc --------------
+cc Set directory where tool files exist
+c      open (50, file='tool_setup_dir')
+c      read (50,'(a)') tooldir
+c      close (50)
 
 c --------------
 c Read model grid
-      file_in = trim(setup) // '/emu/emu_input/XC.data'
-      inquire (file=trim(file_in), EXIST=f_exist)
-      if (.not. f_exist) then
-         write (6,*) ' **** Error: model grid file = ',
-     $        trim(file_in) 
-         write (6,*) '**** does not exist'
-         stop
-      endif
-      open (50, file=file_in, action='read', access='stream')
-      read (50) xc
-      close (50)
-
-      file_in = trim(setup) // '/emu/emu_input/YC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) yc
-      close (50)
-
-      file_in = trim(setup) // '/emu/emu_input/RC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) rc
-      close (50)
-      rc = -rc  ! switch sign 
-
-      file_in = trim(setup) // '/emu/emu_input/Depth.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) bathy
-      close (50)
+      call grid_info
       
 c --------------
 c Interactive specification of Tracer
@@ -103,19 +96,22 @@ c time (day)
       write (6,"(/,a)") '------------------'
       write (6,"(a)") 'Enter START and END days of integration ... '
       write (6,"(a)")
-     $     '(days since 01 January 1992, between 1 and 9495)' 
+c     $     '(days since 01 January 1992, between 1 and 9496)'
+     $     '(days between 1 and 9485)'
+      write (6,"(a)") '(   1 being 02 January  1992)'
+      write (6,"(a)") '(9485 being 20 December 2017)' 
       write (6,"(/,3x,a)")
      $     'Tool computes forward tracer when START lt END and '
       write (6,"(3x,a,/)") 'adjoint tracer when START gt END.'
 
       istart = -1
       iend = -1
-      do while (istart.lt.0 .or. istart.gt.9495) 
-         write (6,"(a)") 'Enter start day ... (1-9495)?'
+      do while (istart.lt.0 .or. istart.gt.9485) 
+         write (6,"(a)") 'Enter start day ... (1-9485)?'
          read (5,*) istart
       enddo
-      do while (iend.lt.0 .or. iend.gt.9495) 
-         write (6,"(a)") 'Enter end day ... (1-9495)?'
+      do while (iend.lt.0 .or. iend.gt.9485) 
+         write (6,"(a)") 'Enter end day ... (1-9485)?'
          read (5,*) iend 
       enddo
 
@@ -145,13 +141,16 @@ cif      call execute_command_line(f_command, wait=.true.)
 
          write(51,"(3x,a,/)") ' --> Forward tracer computation '          
 
-         nIter0 = istart*24
-         nTimesteps = (iend-istart)*24 
-         if (nIter0 + nTimesteps .gt. nsteps-nhweek) then
-            nTimesteps = (nsteps-nhweek) - nIter0 - 1 
+         nIter0 = (istart-1)*24 + 12   ! 0Z of a day 
+         nTimesteps = (iend-istart)*24
+c         if (nIter0 + nTimesteps .gt. nsteps-nhweek) then
+c            nTimesteps = (nsteps-nhweek) - nIter0 - 1 
+c         endif
+         if (nIter0 + nTimesteps .gt. nsteps) then
+            nTimesteps = nsteps - nIter0
          endif
 c
-         write(fstep,'(a)') 'build_trc'
+         write(fstep,'(a)') 'trc.x'
          call StripSpaces(fstep)
          f_command = 'sed -i -e "s|FRW_OR_ADJ|'//
      $        trim(fstep) //'|g" pbs_trc.sh'
@@ -172,13 +171,15 @@ cif     $        trim(fstep) //'|g" pbs_trc.sh_tmp'
 
          write(51,"(3x,a,/)") ' --> Adjoint tracer computation '          
 
-         nIter0 = (nsteps-istart*24)
-         nTimesteps = abs(iend-istart)*24 
-         if (nIter0 + nTimesteps .gt. nsteps-nhweek) then
-            nTimesteps = (nsteps-nhweek) - nIter0 - 1 
+c Tracer runs from 13Z 1/1/1992 (time-step 1) to
+c 11Z 12/20/2017 (time-step 227639).
+         nIter0 = (nsteps-(istart-1)*24-12)  
+         nTimesteps = (istart-iend)*24 
+         if (nIter0 + nTimesteps .gt. nsteps) then
+            nTimesteps = nsteps - nIter0
          endif
 c 
-         write(fstep,'(a)') 'build_trc_adj'
+         write(fstep,'(a)') 'trc_ad.x'
          call StripSpaces(fstep)
          f_command = 'sed -i -e "s|FRW_OR_ADJ|'//
      $        trim(fstep) //'|g" pbs_trc.sh'
@@ -190,6 +191,12 @@ cif     $        trim(fstep) //'|g" pbs_trc.sh_tmp'
          f_command = 'sed -i -e "s|STATE_DIR|'//
      $        trim(fstep) //'|g" pbs_trc.sh'
 cif     $        trim(fstep) //'|g" pbs_trc.sh_tmp'
+         call execute_command_line(f_command, wait=.true.)
+
+         write(fstep,'(a)') 'bash'
+         call StripSpaces(fstep)
+         f_command = 'sed -i -e "s|#REORDER_PTRACER|'//
+     $        trim(fstep) //'|g" pbs_trc.sh'
          call execute_command_line(f_command, wait=.true.)
 
       endif
@@ -214,15 +221,30 @@ c wall clock (~8 min per year integration)
       call StripSpaces(fstep)
       f_command = 'sed -i -e "s|WHOURS_EMU|'//
      $     trim(fstep) //'|g" pbs_trc.sh'
-cif     $     trim(fstep) //'|g" pbs_trc.sh_tmp'
       call execute_command_line(f_command, wait=.true.)
          
       if (nHours .le. 2) then 
          f_command = 'sed -i -e "s|CHOOSE_DEVEL|'//
      $        'PBS -q devel|g" pbs_trc.sh'
-cif     $        'PBS -q devel|g" pbs_trc.sh_tmp'
          call execute_command_line(f_command, wait=.true.)
       endif
+
+cc ---------------------
+cc Set nproc 
+c      write(fstep,'(i24)') nproc
+c      call StripSpaces(fstep)
+c      f_command = 'sed -i -e "s|EMU_NPROC|'//
+c     $     trim(fstep) //'|g" pbs_trc.sh'
+c      call execute_command_line(f_command, wait=.true.)
+c
+c      file_in=trim(tooldir) // '/emu/emu_input/nproc/'
+c     $     // trim(fstep) // 'PBS_nodes'
+c      open(50, file=trim(file_in), status='old')
+c      read(50,'(a)') fstep 
+c      close(50) 
+c      f_command = 'sed -i -e "s|CHOOSE_NODES|'//
+c     $     trim(fstep) //'|g" pbs_trc.sh'
+c      call execute_command_line(f_command, wait=.true.)
 
 c ---------------------
 c bandaid pickup 
@@ -231,10 +253,9 @@ c bandaid pickup
       f_ref = trim(f_pup) // trim(fstep) // '.data'
       write(fIter0,"(i10.10)") nIter0
       f_dum = trim(f_pup) // trim(fIter0) // '.data'
-      f_command = 'ln -s ' // trim(f_ref) // ' ' // trim(f_dum)
+      f_command = 'ln -sf ' // trim(f_ref) // ' ' // trim(f_dum)
       f_dum = 'sed -i -e "s|BANDAID_PICKUP|'//
      $     trim(f_command) //'|g" pbs_trc.sh'
-cif     $     trim(f_command) //'|g" pbs_trc.sh_tmp'
       call execute_command_line(f_dum, wait=.true.)
 
       f_command = 'cp -f pickup_ptracer.meta_orig pickup_ptracer.meta'
@@ -260,8 +281,9 @@ c      write (6,"(/,a)") '------------------'
 c Select tracer at point with unit value or user-provided distribution
       ifunc = 0
       do while (ifunc.ne.1 .and. ifunc.ne.2) 
-         write (6,"(a)") 'Choose either unit tracer at a point (1) or '
-         write (6,"(a)") 'user-provided distribution in a file (2) ' //
+         write (6,"(a)")
+     $        'Choose either a unit tracer at a point (1) or '
+         write (6,"(a)") 'one with 3d distribution (2)' //
      $      ' ... (1/2)?'
          read (5,*) ifunc
       end do
@@ -270,7 +292,6 @@ c Select tracer at point with unit value or user-provided distribution
 
       if (ifunc .eq. 1) then 
 c Tracer is at a point
-
          write(6,"(3x,a)")
      $        '... starting TRC is unit value at a point.' 
          write(51,"(3x,a,/)")
@@ -306,19 +327,38 @@ c Save location for naming run directory
          call StripSpaces(floc_loc)
 
       else
-c User-provided start time tracer
+c Initial Tracer with 3d distribution 
+         write(6,"(3x,a)")
+     $    '... Initial tracer has 3d distribution' 
+         write(51,"(3x,a)")
+     $    '... Initial tracer has 3d distribution' 
 
-         write(6,"(3x,a,/)")
-     $        '... starting TRC is user-defined. '
-         write(51,"(3x,a,/)")
-     $        '... starting TRC is user-defined. '
+c Choose how to specify 3d distribution
+         write (6,"(3x,a,a)")
+     $        'Interactively specify initial tracer (1) or ',
+     $        'read from user file (2) ... (1/2)?'
+         read (5,*) ifunc2 
+         
+         if (ifunc2 .eq. 2) then 
+            write(6,"(/,4x,a)") 'Reading TRC from user file.'
+            write(51,"(/,4x,a)") 'Reading TRC from user file.'
 
 c Get starting tracer file name 
-         write(6,*) '   Enter starting TRC filename (real*8) ... ?'  
-         read(5,'(a)') fmask
+            write(6,*) '   Enter starting TRC filename (real*8) ... ?'  
+            read(5,'(a)') fmask
 
-         write(51,'(3x,"fmask = ",a)') trim(fmask)
-         write(51,"(3x,a,/)") ' --> starting TRC file. '
+            write(51,'(3x,"fmask = ",a)') trim(fmask)
+            write(51,"(3x,a,/)") ' --> starting TRC file. '
+
+         else
+c Create TRC interactively
+            write(6,"(/,4x,a)")
+     $           'Interactively creating initial TRC.'
+            write(51,"(/,4x,a)")
+     $           'Interactively creating initial TRC.'
+            
+            call cr8_trc3d(fmask)
+         endif
 
 c Save file name for naming run directory
          floc_loc = trim(fmask)
@@ -327,7 +367,7 @@ c Save file name for naming run directory
       endif
 
 c Check user file 
-c      call chk_mask3d(fmask,nx,ny,nr,dum3d)  ptracer is real*8
+c      call chk_mask3d(fmask,nx,ny,nr,dum3d,1)  ptracer is real*8
 
 c Link input mask to what model expects 
       write(fIter0,"(i10.10)") nIter0
@@ -338,7 +378,7 @@ c Link input mask to what model expects
          call execute_command_line(f_command, wait=.true.)
       endif
 
-      f_command = 'ln -s ' // trim(fmask) // ' ' //
+      f_command = 'ln -sf ' // trim(fmask) // ' ' //
      $     trim(fdum)
       call execute_command_line(f_command, wait=.true.)
 
@@ -350,7 +390,7 @@ c for meta
          call execute_command_line(f_command, wait=.true.)
       endif
 
-      f_command = 'ln -s pickup_ptracer.meta ' // 
+      f_command = 'ln -sf pickup_ptracer.meta ' // 
      $     trim(fdum)
       call execute_command_line(f_command, wait=.true.)
 
@@ -403,7 +443,7 @@ cif      call execute_command_line(f_command, wait=.true.)
       f_command = 'cp -f pbs_trc.sh ' // trim(dir_run)
       call execute_command_line(f_command, wait=.true.)
       
-cif      f_command = 'ln -s ' // trim(dir_run) // '/pbs_trc.sh .'
+cif      f_command = 'ln -sf ' // trim(dir_run) // '/pbs_trc.sh .'
 cif      call execute_command_line(f_command, wait=.true.)
       
       f_command = 'mv data ' // trim(dir_run) // '/data_trc'
@@ -421,12 +461,56 @@ cif      call execute_command_line(f_command, wait=.true.)
 c Wrapup 
       write(6,"(a)") '... Done trc setup'
 
-      write(6,"(/,a)") '*********************************'
-      f_command = 'do_trc.sh'
-      write(6,"(4x,a)") 'Run "' // trim(f_command) //
-     $     '" to compute tracer evolution.'
-      write(6,"(a,/)") '*********************************'
+cif      write(6,"(/,a)") '*********************************'
+cif      f_command = 'do_trc.sh'
+cif      write(6,"(4x,a)") 'Run "' // trim(f_command) //
+cif     $     '" to compute tracer evolution.'
+cif      write(6,"(a,/)") '*********************************'
       
       stop
       end
+c 
+c ============================================================
+c 
+      subroutine cr8_trc3d(fmask)
+c -----------------------------------------------------
+c Subroutine to create a unit tracer distribution at points on the
+c C-grid over a rectilinear volume. 
+c     
+c 19 June 2024, Ichiro Fukumori (fukumori@jpl.nasa.gov)
+c -----------------------------------------------------
+      external StripSpaces
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+
+c Mask 
+      integer iref
+      real*4 x1,x2,y1,y2,z1,z2
+      real*4 dum3d(nx,ny,nr)
+
+      character*256 floc_loc  ! location (mask) 
+      character*256 fmask
+
+c --------------
+c Get 0/1 mask 
+      call mask01_3d(dum3d,x1,x2,y1,y2,z1,z2)
+
+c Save area for naming mask file 
+      write(floc_loc,'(5(f6.1,"_"),f6.1,a4)')
+     $     x1,x2,y1,y2,z1,z2,'-gmn'
+
+      call StripSpaces(floc_loc)
+      fmask = 'trc3d.' // trim(floc_loc)
+
+      write(6,"(3x,a,/)")
+     $     '3d tracer output: ',trim(fmask)
+
+      open(60,file=trim(fmask),form='unformatted',access='stream')
+      write(60) dble(dum3d)
+      close(60)
+
+      return
+      end subroutine cr8_trc3d
       

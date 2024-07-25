@@ -1,0 +1,6 @@
+&mitgcm_timing 
+  nproc = 68	       
+  hour26yr_trc =   6
+  hour26yr_fwd =  26 
+  hour26yr_adj = 230
+/
