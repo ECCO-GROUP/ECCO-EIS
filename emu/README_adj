@@ -1,6 +1,6 @@
 
 =======================================
-ECCO Adjoint Tool: A Brief Description
+EMU Adjoint Tool: A Brief Description
 =======================================
 
 What the Tool does: 
@@ -13,8 +13,37 @@ What the Tool does:
    for additional ECCO Modeling Utilities (EMU). 
 
 How to run the Tool:
-   Execute shell script emu_adj.csh and follow its prompt; e.g., 
-   source PUBLICDIR/emu_adj.csh
+   Execute command emu (linked to emu.sh) and select Adjoint Tool
+   (tool #3).  
+
+Output:
+   Unless noted otherwise, all files are binary files. Numbers in
+   EMU’s binary input and output files are 32-bit big endian for both
+   float and integer.
+
+   The Adjoint Tool creates files in a directory bearing its objective
+   function’s specification in its name, e.g.,
+   emu_adj_24_24_1_beaufortsea.msk_1. Here “emu_adj” indicates output
+   from the Adjoint Tool, “24_24” for the first and last months of the
+   Objective Function’s averaging period, “beaufortsea.msk” for the
+   file name of the spatial mask used, and “1” for the number of
+   variables defining the Objective Function (nobjf=1). User output is
+   collected in a subdirectory named output.
+
+   ------------------
+   File Description:
+   ------------------   
+
+   adj.info: 	
+      A text file summarizing the objective function created by adj.x.
+
+   adxx_***CTRL***_0000000129.data 
+   adxx_***CTRL***_0000000129.meta 
+      Adjoint gradient in MITgcm output format; "data" files are
+      binary, "meta" files are text files with "data" file
+      information. ***CTRL*** is the name of the modelâs different
+      forcing (Table 3).  (0000000129 is the âiterationâ number of the
+      particular ECCO estimate.)
 
 For detailed description: 
    See Sections 1, 2.3, and 3.3 of the EMU User Guide; 

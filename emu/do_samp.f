@@ -7,8 +7,7 @@ c 30 November 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 c files
-      character*256 f_inputdir   ! directory where tool files are 
-      common /tool/f_inputdir
+      character*256 f_statedir   ! directory where tool files are 
       character*130 file_in, file_out  ! file names 
 c
       character*256 f_command
@@ -28,9 +27,9 @@ c OBJF
       integer istep(ndays)
 
 c --------------
-c Set directory where external tool files exist
-      call getarg(1,f_inputdir)
-      write(6,*) 'inputdir read : ',trim(f_inputdir)
+c Read directory with state to sample 
+      call getarg(1,f_statedir)
+      write(6,*) 'inputdir read : ',trim(f_statedir)
 
 c --------------
 c Read output directory 
@@ -43,7 +42,7 @@ c --------------
 c Sample state
       objf(:) = 0.
       mobjf = 0.
-      call samp_objf(objf, mobjf, nrec, istep)
+      call samp_objf(f_statedir, objf, mobjf, nrec, istep)
 
 c --------------
 c Output sampled state
@@ -91,17 +90,16 @@ cif      write(6,"(a,/)") '*********************************'
 c 
 c ============================================================
 c 
-      subroutine samp_objf(objf, mobjf, nrec, istep)
+      subroutine samp_objf(f_statedir, objf, mobjf, nrec, istep)
 c Compute OBJF per data.ecco by samp.f
 
 c
+      character*256 f_statedir   ! directory where tool files are 
       real*4 objf(*)
       real*4 mobjf
       integer nrec
       integer istep(*)
 c
-      character*256 f_inputdir   ! directory where tool files are 
-      common /tool/f_inputdir
 
 c model arrays
       integer nx, ny, nr
@@ -179,41 +177,41 @@ c Monthly state
          if (gencost_barfile(i).eq.'m_boxmean_eta_dyn') then 
             ffile = 'state_2d_set1_mon'
             fmask = trim(gencost_mask(i)) // 'C'
-            call chk_mask2d(fmask,nx,ny,dum2d)
-            call samp_2d_r8_wgtd(f_inputdir,ffile,1,dum2d,
+            call chk_mask2d(fmask,nx,ny,dum2d,1)
+            call samp_2d_r8_wgtd(f_statedir,ffile,1,dum2d,
      $           objf_1,nrec,mobjf_1,istep)
 
          else if (gencost_barfile(i).eq.'m_boxmean_obp') then 
             ffile = 'state_2d_set1_mon'
             fmask = trim(gencost_mask(i)) // 'C'
-            call chk_mask2d(fmask,nx,ny,dum2d)
-            call samp_2d_r8_wgtd(f_inputdir,ffile,2,dum2d,
+            call chk_mask2d(fmask,nx,ny,dum2d,1)
+            call samp_2d_r8_wgtd(f_statedir,ffile,2,dum2d,
      $           objf_1,nrec,mobjf_1,istep)
 
-         else if (gencost_barfile(i).eq.'m_boxmean_THETA') then 
+         else if (gencost_barfile(i).eq.'m_boxmean_theta') then 
             ffile = 'state_3d_set1_mon'
             fmask = trim(gencost_mask(i)) // 'C'
-            call chk_mask3d(fmask,nx,ny,nr,dum3d)
-            call samp_3d_wgtd(f_inputdir,ffile,1,dum3d,
+            call chk_mask3d(fmask,nx,ny,nr,dum3d,1)
+            call samp_3d_wgtd(f_statedir,ffile,1,dum3d,
      $           objf_1,nrec,mobjf_1,istep)
 
-         else if (gencost_barfile(i).eq.'m_boxmean_SALT') then 
+         else if (gencost_barfile(i).eq.'m_boxmean_salt') then 
             ffile = 'state_3d_set1_mon'
             fmask = trim(gencost_mask(i)) // 'C'
-            call chk_mask3d(fmask,nx,ny,nr,dum3d)
-            call samp_3d_wgtd(f_inputdir,ffile,2,dum3d,
+            call chk_mask3d(fmask,nx,ny,nr,dum3d,1)
+            call samp_3d_wgtd(f_statedir,ffile,2,dum3d,
      $           objf_1,nrec,mobjf_1,istep)
 
          else if (gencost_barfile(i).eq.'m_horflux_vol') then 
             ffile = 'state_3d_set1_mon'
             fmask = trim(gencost_mask(i)) // 'W'
-            call chk_mask3d(fmask,nx,ny,nr,dum3d)
-            call samp_3d_wgtd(f_inputdir,ffile,3,dum3d,
+            call chk_mask3d(fmask,nx,ny,nr,dum3d,1)
+            call samp_3d_wgtd(f_statedir,ffile,3,dum3d,
      $           objf_1,nrec,mobjf_1,istep)
 
             fmask = trim(gencost_mask(i)) // 'S'
-            call chk_mask3d(fmask,nx,ny,nr,dum3d)
-            call samp_3d_wgtd(f_inputdir,ffile,4,dum3d,
+            call chk_mask3d(fmask,nx,ny,nr,dum3d,1)
+            call samp_3d_wgtd(f_statedir,ffile,4,dum3d,
      $           objf_2,nrec,mobjf_2,istep)
 
             objf_1 = objf_1 + objf_2
@@ -241,15 +239,15 @@ c Daily state
          if (gencost_barfile(i).eq.'m_boxmean_eta_dyn') then 
             ffile = 'state_2d_set1_day'
             fmask = trim(gencost_mask(i)) // 'C'
-            call chk_mask2d(fmask,nx,ny,dum2d)
-            call samp_2d_r8_wgtd(f_inputdir,ffile,1,dum2d,
+            call chk_mask2d(fmask,nx,ny,dum2d,1)
+            call samp_2d_r8_wgtd(f_statedir,ffile,1,dum2d,
      $           objf_1,nrec,mobjf_1,istep)
 
          else if (gencost_barfile(i).eq.'m_boxmean_obp') then 
             ffile = 'state_2d_set1_day'
             fmask = trim(gencost_mask(i)) // 'C'
-            call chk_mask2d(fmask,nx,ny,dum2d)
-            call samp_2d_r8_wgtd(f_inputdir,ffile,2,dum2d,
+            call chk_mask2d(fmask,nx,ny,dum2d,1)
+            call samp_2d_r8_wgtd(f_statedir,ffile,2,dum2d,
      $           objf_1,nrec,mobjf_1,istep)
 
          else

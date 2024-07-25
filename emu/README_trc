@@ -1,6 +1,6 @@
 
 ======================================
-ECCO Tracer Tool: A Brief Description
+EMU Tracer Tool: A Brief Description
 ======================================
 
 What the Tool does: 
@@ -12,8 +12,50 @@ What the Tool does:
    for additional ECCO Modeling Utilities (EMU). 
 
 How to run the Tool:
-   Execute shell script emu_trc.csh and follow its prompt; e.g., 
-   source PUBLICDIR/emu_trc.csh
+   Execute command emu (linked to emu.sh) and select Tracer Tool
+   (tool #5).  
+
+Output:
+   Unless noted otherwise, all files are binary files. Numbers in
+   EMU’s binary input and output files are 32-bit big endian for both
+   float and integer.
+
+   The Tracer Tool creates files in a directory bearing the tracer
+   specification in its name, e.g., emu_trc_30_90_15_803_1. Here
+   “emu_trc” indicates output from the Tracer Tool, “30_90” for the
+   start and ending dates (1992-day) of the integration, “15_803_1”
+   describing the initial perturbation perturbation which is grid
+   (i,j,k)=(15, 803,1) in the example. User output is collected in a
+   subdirectory named output.
+
+   ------------------
+   File Description:
+   ------------------   
+
+   trc.info 	
+      A text file summarizing the tracer computation specified by
+      trc.x.
+
+   ptracer_mon_mean.***TIMESTEP***.data
+   ptracer_mon_mean.***TIMESTEP***.meta
+      “Monthly” average tracer distribution in MITgcm diagnostic
+      output format; "data" are binary files and "meta" are text files
+      with "data" file information. The ***TIMESTEP*** in the
+      filenames are model time-steps (1-hour time-steps) of each
+      average from V4r4’s initial instant (12Z 01 January 1992). These
+      time-steps correspond to the end of each succeeding averaging
+      period, which is nominally 30.5-days.
+
+   ptracer_mon_snap.***TIMESTEP***.data
+   ptracer_mon_snap.***TIMESTEP***.meta
+      Tracer distribution at particular instances (“snapshots”) in
+      MITgcm diagnostic output format; "data" are binary files and
+      "meta" are text files with "data" file information. The
+      ***TIMESTEP*** in the filenames are model time-steps (1-hour
+      time-steps) of each instant from V4r4’s initial instant (12Z 01
+      January 1992). These files are the same as corresponding
+      ptracer_mon_mean files but the output here is instantaneous
+      values instead of time-mean in the latter (30.5-day average).
 
 For detailed description: 
    See Sections 1, 2.5, and 3.5 of the EMU User Guide; 

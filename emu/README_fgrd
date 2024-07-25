@@ -1,0 +1,85 @@
+
+============================================
+EMU Forward Gradient Tool: A Brief Description
+============================================
+
+What the Tool does: 
+   The Tool computes the model's response to a perturbation in its
+   control, viz., forward gradient. The Tool is useful for analyzing
+   the ocean's response to change in forcing and for assessing the
+   accuracy of the model's adjoint gradients (cf Adjoint Tool.) See
+   PUBLICDIR/README
+   for additional ECCO Modeling Utilities (EMU). 
+
+How to run the Tool:
+   Execute command emu (linked to emu.sh) and select Forward Gradient
+   Tool (tool #2).
+
+Output:
+   Unless noted otherwise, all files are binary files. Numbers in
+   EMU’s binary input and output files are 32-bit big endian for both
+   float and integer.
+
+   The Forward Gradient Tool creates files in a directory bearing the
+   perturbation’s specification in its name, e.g.,
+   emu_fgrd_7_87_605_518_-1.00E-01. Here “emu_fgrd” indicates output
+   from the Forward Gradient Tool, “7” for perturbing tauu, “87_605”
+   for the perturbation’s location (i,j)=(87, 605), “518” for
+   perturbing week 518, and the last “-1.00E-01” for perturbation
+   magnitude. User output is collected in a subdirectory named output.
+
+   ------------------
+   File Description:
+   ------------------   
+
+   fgrd_xx.nml: 	
+      Namelist file with specifics of the perturbation saved for
+      reference.
+
+   state_2d_set1_day.***TIMESTEP***.data
+   state_2d_set1_day.***TIMESTEP***.meta
+   
+   state_2d_set1_mon.***TIMESTEP***.data
+   state_2d_set1_mon.***TIMESTEP***.meta
+
+   state_3d_set1_mon.***TIMESTEP***.data
+   state_3d_set1_mon.***TIMESTEP***.meta
+
+      Forward gradient in MITgcm diagnostic output format; "data" are
+      binary, "meta" are text files with "data" file information. The
+      ***TIMESTEP*** in the filenames are model time-steps (center
+      step of average); each file corresponds to a particular
+      instant. The fields are on the model's native grid.
+
+      Files "state_2d_set1_day" have gradients of daily mean dynamic
+      sea level (ssh) and ocean bottom pressure (obp) on the model’s
+      2-dimensional horizontal grid. Files "state_2d_set1_mon" have
+      monthly means of these same variables. Units are meters for both
+      variables (equivalent sea level for obp) per unit perturbation
+      of the chosen control.
+
+      Files "state_3d_set1_mon" have gradients of monthly mean
+      temperature (theta; deg C), salinity (salt; PSU), i-direction
+      velocity (uvel; m/s), and j-direction velocity (vvel; m/s) on
+      the model’s 3-dimensional grid per unit perturbation of the
+      chosen control. (NOTE: Although controls tauu and tauv are
+      westward and southward on the native grid, uvel and vvel are in
+      the model’s i- and j-directions.)
+
+      Units and direction of the different controls are (as noted by
+      fgrd.x prompts),
+      control (1) = 'empmr'   'kg/m2/s (upward freshwater flux)'		 
+      control (2) = 'pload'   'N/m2 (downward surface pressure loading)'	
+      control (3) = 'qnet'    'W/m2 (net upward heat flux)'		
+      control (4) = 'qsw'     'W/m2 (net upward shortwave radiation)'	
+      control (5) = 'saltflux’ 'g/m2/s (net upward salt flux)'		
+      control (6) = 'spflx'   'g/m2/s (net downward salt plume flux)'	
+      control (7) = 'tauu'    'N/m2 (westward wind stress)'		
+      control (8) = 'tauv'    'N/m2 (southward wind stress)'             
+
+For detailed description: 
+   See Sections 1, 2.2, and 3.2 of the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+========================================
+

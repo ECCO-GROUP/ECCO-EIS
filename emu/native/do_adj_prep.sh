@@ -1,15 +1,17 @@
-#!/bin/bash
+#!/bin/bash -e
+
+umask 022
+
 #
 # Prepare to run MITgcm adjoint 
 #
-
-basedir=SETUPDIR
 
 #=================================
 # Over-ride V4 namelist files with EMU's. 
 # (integration duration and output precision)
 
-ln -s ${basedir}/namelist/* .
+#ln -s ${emu_dir}/namelist/* .
+ln -sf ${emu_dir}/emu/emu_input/namelist/* .
 
 if [ -f data_adj ]; then
     mv -f data_adj data
@@ -23,4 +25,4 @@ fi
 # Ready running flux-forced V4r4 adjoint 
 python3 mkdir_subdir_diags.py
 
-ln -s ${basedir}/build_ad/mitgcmuv_ad .
+#ln -s ${emu_dir}/build_ad/mitgcmuv_ad .

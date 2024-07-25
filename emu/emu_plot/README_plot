@@ -1,0 +1,23 @@
+
+===================================================
+EMU Plotting Tool: Reading and Plotting EMU Results 
+===================================================
+
+EMU provides programs for interactively reading and plotting EMU
+output in select programming environments;
+   IDL (idl) 
+   MATLAB (under development)
+   Python (under developemnt) 
+
+How to run EMU_PLOT 
+   Execute program emu_plot.??? found in sub-directories of the
+   corresponding programming environment above in
+   PUBLICDIR 
+   and follow its prompts.
+
+For detailed description: 
+   See the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+===================================================
+

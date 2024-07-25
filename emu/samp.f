@@ -7,6 +7,7 @@ c 30 November 2022, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
 c files
+      character*256 f_statedir   ! directory with state
       character*256 setup   ! directory where tool files are 
       common /tool/setup
       character*130 file_in, file_out  ! file names 
@@ -18,9 +19,14 @@ c
 c model arrays
       integer nx, ny, nr
       parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny)
-      common /grid/xc, yc, rc, bathy
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
 
+      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
+      integer kmt(nx,ny)
+      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      
 c Objective function 
       integer nvar, mvar    ! number of OBJF variables 
       parameter (nvar=5)    
@@ -54,40 +60,19 @@ c OBJF
       character*256 fmask
 
 c --------------
+c Read directory with state to sample 
+      call getarg(1,f_statedir)
+      write(6,*) 'State will be read from : ',trim(f_statedir)
+
+c --------------
 c Set directory where tool files exist
-      open (50, file='tool_setup_dir')
+      open (50, file='input_setup_dir')
       read (50,'(a)') setup
       close (50)
 
 c --------------
-c Read model grid
-      file_in = trim(setup) // '/emu/emu_input/XC.data'
-      inquire (file=trim(file_in), EXIST=f_exist)
-      if (.not. f_exist) then
-         write (6,*) ' **** Error: model grid file = ',
-     $        trim(file_in) 
-         write (6,*) '**** does not exist'
-         stop
-      endif
-      open (50, file=file_in, action='read', access='stream')
-      read (50) xc
-      close (50)
-
-      file_in = trim(setup) // '/emu/emu_input/YC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) yc
-      close (50)
-
-      file_in = trim(setup) // '/emu/emu_input/RC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) rc
-      close (50)
-      rc = -rc  ! switch sign 
-
-      file_in = trim(setup) // '/emu/emu_input/Depth.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) bathy
-      close (50)
+c Get model grid info
+      call grid_info
       
 c --------------
 c Variable name
@@ -105,26 +90,28 @@ c Variable name
 
 c --------------
 c Interactive specification of perturbation 
-      write (6,"(/,a,/)") 'Extracting model time-series ... '
+      write (6,"(/,a,/)") 'Evaluating model time-series ... '
       write (6,*) 'Define objective function (OBJF) ... '
 
 c --------------
 c Save OBJF information for reference. 
       file_out = 'samp.info'
-      open (51, file=file_out, action='write')
+      open (51, file='./' // file_out, action='write')
       write(51,"(a)") '***********************'
       write(51,"(a)") 'Output of samp.f'
       write(51,"(a)")
      $     'Sampling Tool objective function (OBJF) specification'
       write(51,"(a,/)") '***********************'
 
+      write(51,"(a,2x,a,/)") 'State sampled from ', trim(f_statedir)
+
 c --------------
 c Set up data.ecco with OBJF specification
 
-      f_command = 'cp -f data.ecco_adj data.ecco'
+      f_command = 'cp -f ./data.ecco_adj ./data.ecco'
       call execute_command_line(f_command, wait=.true.)
 
-cif      f_command = 'cp -f do_samp.csh_orig do_samp.csh'
+cif      f_command = 'cp -f ./do_samp.csh_orig ./do_samp.csh'
 cif      call execute_command_line(f_command, wait=.true.)
 
 c --------------
@@ -157,14 +144,14 @@ c Monthly mean or daily mean
          mvar = 2 
          floc_time = 'd'
          f_command = 'sed -i -e '//
-     $        '"s|OBJF_PRD|day|g" data.ecco'
+     $        '"s|OBJF_PRD|day|g" ./data.ecco'
       else
          write(6,"(3x,a)") '==> Sampling MONTHLY means ... '
          write(51,"(3x,a)") '==> Sampling MONTHLY means ... '
          mvar = nvar
          floc_time = 'm'
          f_command = 'sed -i -e '//
-     $        '"s|OBJF_PRD|month|g" data.ecco'
+     $        '"s|OBJF_PRD|month|g" ./data.ecco'
       endif
       call execute_command_line(f_command, wait=.true.)
 
@@ -175,7 +162,7 @@ c Create dummy temporal mask
          f_command = 'rm -f ' // trim(fmask)
          call execute_command_line(f_command, wait=.true.)
       endif
-      open(60,file=fmask,form='unformatted',access='stream')
+      open(60,file='./' // fmask,form='unformatted',access='stream')
       write(60) tmask
       close(60)
 
@@ -220,7 +207,7 @@ c Duplicate entries for new variable in data.ecco
 c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
             f_command = 'sed -i -e '//
      $        '"/(' // trim(f0) // ')/{p;s|(' // trim(f0) //
-     $         ')|(' // trim(f1) // ')|}" data.ecco'
+     $         ')|(' // trim(f1) // ')|}" ./data.ecco'
             call execute_command_line(f_command, wait=.true.)
          else
             write(floc_var,"(i2)") iobjf
@@ -249,7 +236,7 @@ c Create output directory before sampling
       write(6,"(/,a,a,/)")
      $     'Sampling Tool output will be in : ',trim(dir_out)
 
-      inquire (file=trim(dir_out), EXIST=f_exist)
+      inquire (file='./' // trim(dir_out), EXIST=f_exist)
       if (f_exist) then
          write (6,*) '**** WARNING: Directory exists already : ',
      $        trim(dir_out) 
@@ -261,7 +248,7 @@ c Create output directory before sampling
      $        '**** Renaming output directory to :',trim(dir_out)
       endif
 
-      f_command = 'mkdir ' // dir_out
+      f_command = 'mkdir ' // './' // dir_out
       call execute_command_line(f_command, wait=.true.)
       call getcwd(fcwd)
       dir_run = trim(fcwd) // '/' // trim(dir_out) // '/temp'
@@ -269,7 +256,7 @@ c Create output directory before sampling
       call execute_command_line(f_command, wait=.true.)
 
       file_out = 'samp.dir_out'
-      open (52, file=file_out, action='write')
+      open (52, file='./' // file_out, action='write')
       write(52,"(a)") trim(dir_out)
       write(52,"(a)") trim(dir_run)
       write(52,"(a)") trim(dir_out) // '/output'
@@ -281,22 +268,25 @@ c Move all needed files into run directory
 cif      f_command = 'sed -i -e "s|YOURDIR|'//
 cif     $     trim(dir_run) //'|g" do_samp.csh'
 cif      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'mv samp.info ' // trim(dir_run)
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'mv data.ecco ' // trim(dir_run)
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'cp -p samp.dir_out ' // trim(dir_run)
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'cp -p tool_setup_dir ' // trim(dir_run)
-      call execute_command_line(f_command, wait=.true.)
-
-      f_command = 'cp -p objf_*_mask* ' // trim(dir_run)
-      call execute_command_line(f_command, wait=.true.)
-
+cif
+cif      f_command = 'mv ./samp.info ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'mv ./data.ecco ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'cp -p ./samp.dir_out ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'cp -p ./tool_setup_dir ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'cp -p ./input_setup_dir ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
+cif
+cif      f_command = 'cp -p ./objf_*_mask* ' // trim(dir_run)
+cif      call execute_command_line(f_command, wait=.true.)
+cif
 cifc Wrapup 
 cif      write(6,"(/,a)") '*********************************'
 cif      f_command = 'do_samp.csh'

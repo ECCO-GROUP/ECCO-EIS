@@ -1,4 +1,6 @@
-#!/bin/bash 
+#!/bin/bash -e
+
+umask 022
 
 #=================================
 # Shell script for V4r4 Convolution Tool
@@ -8,33 +10,54 @@
 #    3) do_conv.csh
 #=================================
 
-native_singularity=NATIVE_SINGULARITY
 singularity_image=SINGULARITY_IMAGE
-native_setup=NATIVE_SETUP
+emu_input_dir=EMU_INPUT_DIR
 
 echo " "
 echo "************************************"
 echo "    EMU Convolution Tool (singularity) "
 echo "************************************"
 
+# Step 0: Check required EMU Input 
+fdum=${emu_input_dir}/forcing/other/flux-forced/forcing_weekly
+if [[ ! -d $fdum ]]; then 
+    echo " "
+    echo "ABORT: EMU Input for Convolution Tool not found;"
+    echo $fdum
+    echo "Run PUBLICDIR/emu_download_input.sh"
+    echo "using ${emu_input_dir} as 'directory name to place EMU Input'" 
+    echo "to download forcing needed for the Convolution Tool." 
+    exit 1
+fi
+
+# Step 1: Tool Setup & Specification 
+echo " "
+echo "**** Step 1 & 2: Setup & Specification"
+echo ""
+
+echo "Specify directory name of Adjoint Tool output or its equivalent "
+echo "where the adjoint gradients to use in the convolution are. " 
+echo "Files must have the same name and format as those of the "
+echo "Adjoint Tool, in a directory named 'output' with its parent"
+echo "directory having prefix 'emu_adj'; "
+echo "  e.g., emu_adj_SOMETHING/output "
+echo " " 
+echo "Enter directory name with the adjoint gradients ... ?" 
+read f_adxx
+
+f_adxx=$(realpath "${f_adxx}")
+
+echo " " 
+echo "     Running conv.x"
+
 /bin/rm -f my_commands.sh
-echo '#!/bin/bash' > my_commands.sh & chmod +x my_commands.sh
+echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'               >> my_commands.sh
+echo 'ln -sf ${emu_dir}/emu/exe/conv.x . ' >> my_commands.sh
+echo "./conv.x ${emu_input_dir} ${f_adxx} /inside_alt "  >> my_commands.sh
 
-# Step 1: Tool Setup
-echo 'echo " "'                          >> my_commands.sh
-echo 'echo "**** Step 1: Tool Setup"'    >> my_commands.sh
-echo 'echo "     Running setup_conv.sh"' >> my_commands.sh
-echo '${basedir}/emu/setup_conv.sh'      >> my_commands.sh
-
-# Step 2: Specification
-echo 'echo " "'                          >> my_commands.sh
-echo 'echo "**** Step 2: Specification"' >> my_commands.sh
-echo 'echo "     Running conv.x"'        >> my_commands.sh
-echo './conv.x /emu_outside '            >> my_commands.sh
-
-${native_singularity} exec --bind ${native_setup}:/emu_outside:ro --bind ${PWD}:/inside_out \
-     ${singularity_image} /inside_out/my_commands.sh
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+     --bind ${f_adxx}:/inside_alt:ro ${singularity_image} /inside_out/my_commands.sh
 
 if [ -f "conv.dir_out" ] && [ -f "pbs_conv.sh" ]; then
     read dummy < "conv.dir_out"
@@ -53,61 +76,23 @@ echo " "
 echo "**** Step 3: Calculation"
 echo "     Running do_conv.x"
 echo " "
-echo "Do convolution (1) interactively or (2) in PBS ... (1/2)? " 
 
-read conv_choice
+#BATCH_COMMAND pbs_conv.sh
 
-if [ "$conv_choice" -eq 1 ]; then 
-    /bin/rm -f my_commands.sh
-    echo '#!/bin/bash' > my_commands.sh & chmod +x my_commands.sh
-    echo 'cd /inside_out'               >> my_commands.sh
-    echo 'read dummy < conv.dir_out'         >> my_commands.sh
-    echo 'cd ${dummy}/temp'                  >> my_commands.sh
-    echo 'ln -sf ${basedir}/emu/do_conv.x .' >> my_commands.sh
-    echo 'seq 8 | parallel -j 8 -u --joblog conv.log "echo {} | do_conv.x"' >> my_commands.sh
+echo "... Running batch job pbs_conv.sh "
+echo "    to compute the convolution." 
 
-    ${native_singularity} exec --bind ${native_setup}:/emu_outside:ro --bind ${PWD}:/inside_out \
-	${singularity_image} /inside_out/my_commands.sh
+echo " "
+echo "    Estimated wallclock time:"
+sed -n '3p' pbs_conv.sh
 
-#=================================
-# Move result to output dirctory 
-    returndir=$PWD
+echo " " 
+dum=`sed -n '3p' conv.dir_out`
+echo '********************************************'
+echo "    Results will be in " ${dum}
+echo '********************************************'
+echo " "
 
-    read dummy < conv.dir_out
-    cd ${PWD}/${dummy}/temp
-
-    mkdir ../output
-
-    mv conv.info ../output
-    mv conv.out  ../output
-    mv istep_*.data ../output
-    mv recon1d_*.data ../output
-    mv recon2d_*.data ../output
-
-    echo " " 
-    dum=`tail -n 1 conv.dir_out`
-    echo '********************************************'
-    echo "    Results are in" $dum
-    echo '********************************************'
-    echo " "
-
-    cd ${returndir}
-else
-    BATCH_COMMAND pbs_conv.sh
-
-    echo "... Batch job pbs_conv.sh has been submitted "
-    echo "    to compute the convolution." 
-
-    echo " "
-    echo "    Estimated wallclock time:"
-    sed -n '3p' pbs_conv.sh
-
-    echo " " 
-    dum=`sed -n '3p' conv.dir_out`
-    echo '********************************************'
-    echo "    Results will be in " ${dum}
-    echo '********************************************'
-    echo " "
-fi
+BATCH_COMMAND pbs_conv.sh
 
 

@@ -1,0 +1,40 @@
+
+============================================
+EMU Modified Simulation Tool: A Brief Description
+============================================
+
+What the Tool does:
+   The Tool runs the flux-forced version of the ECCO V4r4 model with
+   an option to replace any of its input files, such as the model's
+   forcing and initial condition (controls), what is output
+   (data.diagnostics file) etc, with user-provided versions of these
+   files. The Tool is useful for analyzing the ocean's response to
+   these changes and/or to output what is not available as "standard
+   output." See
+   PUBLICDIR/README
+   for additional ECCO Modeling Utilities (EMU).
+
+How to run the Tool:
+   Execute command emu (linked to emu.sh) and select Modified
+   Simulation Tool (tool #7).  
+
+Output:
+   Unless noted otherwise, all files are binary files. Numbers in
+   EMU’s binary input and output files are 32-bit big endian for both
+   float and integer.
+
+   The Modified Simulation Tool creates files in a directory bearing
+   the directory name of the user replacement files, e.g.,
+   emu_msim_REPLACE. Here “emu_msim” indicates output from the
+   Modified Simulation Tool, and "REPLACE" for user replacement file
+   directory. Files in this Tool generated directory are equivalent to
+   those of the Reference Run (emu_ref). In particular, the diagnostic
+   output (state) can be found in subdirectory "diags". See Wang et
+   al. (2021, 2022) for details.
+
+For detailed description: 
+   See Sections 1, 2.7, and 3.7 of the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+========================================
+

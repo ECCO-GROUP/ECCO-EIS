@@ -1,0 +1,2 @@
+PBS -l select=1:ncpus=40:model=sky_ele
+

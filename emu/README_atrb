@@ -1,0 +1,95 @@
+
+============================================
+EMU Attribution Tool: A Brief Description
+============================================
+
+What the Tool does:
+   This Tool extracts time-series of contributions to a user-defined
+   variable of the ECCO estimate from seperate types of controls. The
+   Tool is useful in identifying the type of control responsible for
+   the variable's variation and to ascertain the accuracty of the
+   model's adjoint when using the Convolution Tool. See
+   PUBLICDIR/README
+   for additional ECCO Modeling Utilities (EMU).
+
+How to run the Tool:
+   Execute command emu (linked to emu.sh) and select Attribution Tool
+   (tool #8).
+
+Output:
+   Unless noted otherwise, all files are binary files. Numbers in
+   EMU’s binary input and output files are 32-bit big endian for both
+   float and integer.
+   
+   Output Example:
+   > ls -log --time-style=+"" emu_atrb/output
+     total 72
+     -rw-r--r-- 1   8764 atrb.out_312
+     -rw-r--r-- 1   1248 atrb.step_312
+     -rw-r--r-- 1  48202 atrb.txt
+     -rw-r--r-- 1    544 data.ecco
+     -rw-r--r-- 1    847 set_samp.info
+
+   ------------------
+   File Description:
+   ------------------   
+
+   atrb.out_312
+      Monthly anomaly time-series of the objective function for the
+      Reference Run (ref) and contributions to it from anomalies in
+      different controls; i.e., surface forcing that consists of wind
+      (tau), heat flux (htflx), freshwater flux (fwflx), salt flux
+      (sflux) and pressure load (pload), and the initial state of the
+      ocean (ic). The last number after “_” in the file name indicates
+      the number of records in the anomaly time-series. The value 312
+      is the number of monthly mean values available from 1992 to 2017
+      for V4r4. The time-mean reference for the anomaly is given as
+      the last set of variables in the file (mean).
+
+      The file contains the following variables in the order given.
+      All variables are 312-element arrays except the last one (mean)
+      which is a 7-element array with the time-mean references for the
+      seven anomaly variables ref, tau, htflx, fwflx, sflux, pload and
+      ic.
+      ref: Array of anomaly OBJF time-series of the Reference Run (float)
+      tau: Array of anomaly OBJF time-series due to wind anomaly (float)
+      htflx: Array of anomaly OBJF time-series due to heat flux anomaly (float)
+      fwflx: Array of anomaly OBJF time-series due to freshwater flux anomaly (float)
+      sflux: Array of anomaly OBJF time-series due to salt flux anomaly (float)
+      pload: Array of anomaly OBJF time-series due to pressure load anomaly (float)
+      ic: Array of anomaly OBJF time-series due to initial state anomaly (float)
+      mean: Array with time-mean OBJF reference for the variables above (float)
+
+   atrb.step_312 	
+      Time (hour from 12Z January 1, 1992) of the monthly mean values
+      in atrb.out_312. Time here is the end instant of the averaging
+      period of the sampled quantity (e.g., end of month). The file
+      contains a single array (float) of 312-elements.
+
+   atrb.txt 	
+      A text file equivalent of binary files atrb.step_312 and
+      atrb.out_312. The file has time-series of the user specified
+      objective function (not its anomaly) listed in table format (see
+      first line of file); time (hour from 12Z January 1, 1992),
+      Reference Run (ref) and contributions to it from anomalies in
+      different controls; i.e., surface forcing that consists of wind
+      (tau), heat flux (htflx), freshwater flux (fwflx), salt flux
+      (sflux) and pressure load (pload), and the initial state of the
+      ocean (ic). The time here is the end instant of the averaging
+      period of the sampled quantity (e.g., end of month).
+
+   data.ecco 	
+      An ECCO MITgcm namelist file (text file) defining the objective
+      function, modified by set_samp.x, and used by do_samp.x to
+      extract objective function from different runs.
+
+   set_samp.info 	
+      A text file, created by set_samp.x, summarizing the
+      user-specified objective function.
+
+For detailed description: 
+   See Sections 1, 2.8, and 3.8 of the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+============================================
+
