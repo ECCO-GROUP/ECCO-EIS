@@ -442,6 +442,7 @@ goto_singularity() {
     wget -P ${emu_dir} -r --no-parent --user $Earthdata_username \
 	--password $WebDAV_password -nH \
 	--cut-dirs=8 https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced/emu_input/emu_misc/emu.sif 
+    chmod a+x ${emu_dir}/emu.sif
     singularity_image=${emu_dir}/emu.sif
 #    singularity_image=/net/b230-304-t3/ecco_nfs_1/shared/EMU/emu_dir/emu_sandbox
 
