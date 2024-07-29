@@ -475,7 +475,7 @@ goto_singularity() {
 
 if [ ! -e "${native_mpiexec}" ] ; then
     compile_openmpi=true
-    echo "Download and compiling EMU compatible OpenMPI in the backgroudn in "
+    echo "Download and compiling EMU compatible OpenMPI in the background in "
     echo ${native_ompi}
 
     log_file="install_openmpi.log"

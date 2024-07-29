@@ -76,13 +76,16 @@ mv ./set_samp.info ./${dir_run}
 mv ./data.ecco ./${dir_run}
 mv ./objf_*_T ./${dir_run}
 for file in ./objf_*_{C,S,W}; do
+    # Check if file exists
+    if [ -e "${file}" ]; then
     # Check if file is a symbolic link 
-    if [ -h "${file}" ]; then
-	source_file=$(readlink -f "./${file}")
-	ln -sf ${source_file} ./${dir_run}/${file}
-	rm ./${file}
-    else
-	mv ./${file} ./${dir_run}
+	if [ -h "${file}" ]; then
+	    source_file=$(readlink -f "./${file}")
+	    ln -sf ${source_file} ./${dir_run}/${file}
+	    rm ./${file}
+	else
+	    mv ./${file} ./${dir_run}
+	fi
     fi
 done
 
@@ -174,8 +177,8 @@ mv ./atrb.txt  ../output
 
 # Save mask
 PUBLICDIR/misc_move_files.sh ./ ../output '*mask_C'
-PUBLICDIR/misc_move_files.sh ./ ../output '*mask_S'
 PUBLICDIR/misc_move_files.sh ./ ../output '*mask_W'
+PUBLICDIR/misc_move_files.sh ./ ../output '*mask_S'
 
 echo " " 
 dum=$(readlink -f ${PWD}/../output)
