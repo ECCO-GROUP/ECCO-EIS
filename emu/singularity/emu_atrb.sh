@@ -87,13 +87,20 @@ mv ./set_samp.info ./${dir_run}
 mv ./data.ecco ./${dir_run}
 mv ./objf_*_T ./${dir_run}
 for file in ./objf_*_{C,S,W}; do
+    # Check if file exists
+    if [ -e "${file}" ]; then
     # Check if file is a symbolic link 
-    if [ -h "${file}" ]; then
-	source_file=$(readlink -f "./${file}")
-	ln -s ${source_file} ./${dir_run}/${file}
-	rm ./${file}
-    else
-	mv ./${file} ./${dir_run}
+	if [ -h "${file}" ]; then
+    # If link, copy source as singularity will generally not have access to it
+	    source_file=$(readlink -f "${file}")
+	    cp -f ${source_file} ./${dir_run}
+	    base_name=$(basename "${source_file}")
+	    if [ ! -e "./${dir_run}/${file}" ]; then
+		ln -s ./${base_name} ./${dir_run}/${file}
+	    fi
+	else
+	    mv ./${file} ./${dir_run}
+	fi
     fi
 done
 

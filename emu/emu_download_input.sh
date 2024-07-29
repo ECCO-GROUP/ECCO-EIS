@@ -133,16 +133,16 @@ goto_download_indiv() {
 # Download small input 
 
 # input_init
-goto_download_indiv ${focring_dir} "input_init" 4 "input_init"
+goto_download_indiv ${forcing_dir} "input_init" 4 "input_init"
 
 # forcing_weekly
-goto_download_indiv ${focring_dir} "forcing_weekly" 4 "other/flux-forced/forcing_weekly"
+goto_download_indiv ${forcing_dir} "forcing_weekly" 4 "other/flux-forced/forcing_weekly"
 
 # mask
-goto_download_indiv ${focring_dir} "mask" 4 "other/flux-forced/mask"
+goto_download_indiv ${forcing_dir} "mask" 4 "other/flux-forced/mask"
 
 # xx
-goto_download_indiv ${focring_dir} "xx" 4 "other/flux-forced/xx"
+goto_download_indiv ${forcing_dir} "xx" 4 "other/flux-forced/xx"
 
 
 # emu_ref

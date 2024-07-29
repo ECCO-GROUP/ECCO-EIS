@@ -24,7 +24,7 @@ currentDir = FILE_DIRNAME(currentRoutinePath)
 if STRPOS(':' + !PATH + ':', ':' + currentDir + ':') eq -1 then begin
     ; Add the current directory to !PATH
     !PATH = !PATH + ':' + currentDir
-    !PATH = !PATH + ':' + currentDir + '/lib_idl'
+    !PATH = !PATH + ':' + currentDir + '/lib'
 ;    PRINT, 'Directory added to !PATH:', currentDir
 endif else begin
 ;    PRINT, 'Directory already in !PATH:', currentDir
@@ -36,7 +36,7 @@ emu_plot_dir=currentDir
 
 ; ---------------
 ; Run lib_xwin
-lib_xwin,currentDir+'/lib_idl'
+lib_xwin,currentDir+'/lib'
 
 ; ---------------
 ; Read emu_ref location
