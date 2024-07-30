@@ -15,8 +15,8 @@ umask 022
 
 echo 
 echo " This script sets up EMU, a collection of computational tools for analyzing"
-echo " the ECCO model (flux-forced version of ECCO Version 4 Release 4) that "
-echo " includes the following;"
+echo " the ECCO model (flux-forced version of ECCO Version 4 Release 4). The Tools "
+echo " include the following;"
 echo 
 echo "   1) Sampling (samp); Evaluates state time-series from model output."
 echo "   2) Forward Gradient (fgrd); Computes model's forward gradient."
@@ -251,7 +251,8 @@ if [[ "$emu_download" -ge 0 && "$emu_download" -le  5 ]]; then
 
     log_file="emu_download_input.log"
     echo
-    echo "This can take a while. Progress can be monitored in file " ${log_file}
+    echo "This can take a while (~13 hours if downloading all input files). "
+    echo "Progress can be monitored in file " ${log_file}
     echo "  tail ${setup_dir}/${log_file} "
 
     ./emu_download_input.sh <<EOF > "$log_file" 2>> "$log_file" &
@@ -395,7 +396,8 @@ goto_native() {
     echo ${emu_dir}/emu/exe/nproc
 
     log_file="emu_compile_mdl.log"
-    echo "This can take a while. Progress can be monitored in file " $log_file
+    echo "This can take a while (~30 minutes). "
+    echo "Progress can be monitored in file " ${log_file}
     echo "  tail ${setup_dir}/${log_file} "
 
     ${emu_dir}/emu/native/emu_compile_mdl.sh <<EOF > "$log_file" 2>> "$log_file" 
@@ -479,7 +481,8 @@ if [ ! -e "${native_mpiexec}" ] ; then
     echo ${native_ompi}
 
     log_file="install_openmpi.log"
-    echo "This can take a while. Progress can be monitored in file " ${log_file}
+    echo "This can take a while (~30 minutes). "
+    echo "Progress can be monitored in file " ${log_file}
     echo "  tail ${setup_dir}/${log_file} "
 
     ./install_openmpi.sh <<EOF > "$log_file" 2>> "$log_file" &
@@ -688,12 +691,15 @@ elif [[ "$emu_type" -eq 3 ]]; then
 fi
 
 # Monitor setup of EMU's Input Files 
-if [[ ! "$emu_download" -eq 0 ]]; then 
+if [[ ! "$emu_download" -eq -1 ]]; then 
     check_job $emu_download_input_pid "EMU Input File setup" "${setup_dir}/emu_download_input.log"
 fi
 
 echo 
 echo "----------------------"
 echo "emu_setup.sh execution complete. $(date)"
+echo
+echo "Enter following command to run EMU " 
+echo "   ${emu_userinterface_dir}/emu "
 echo "----------------------"
 
