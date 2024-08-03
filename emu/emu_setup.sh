@@ -41,6 +41,26 @@ echo "Press ENTER key to continue ... "
 read ftemp
 
 # ***************************************
+# 0) Set trap to kill background jobs in case this script is terminated prematurely. 
+
+# Define an array to hold background process IDs
+bg_pids=()
+
+# Function to clean up background processes
+cleanup() {
+    echo "Cleaning up background processes..."
+    for pid in "${bg_pids[@]}"; do
+        kill "$pid" 2>/dev/null
+    done
+    exit 1
+}
+
+# Trap SIGINT, SIGTERM, and SIGQUIT and call the cleanup function
+# Does not trap SIGHUP
+trap cleanup SIGINT SIGTERM SIGQUIT
+
+
+# ***************************************
 # 1) Enter Earthdata username & password (for downloading EMU's Input Files)
 
 echo "----------------------"
@@ -262,7 +282,9 @@ ${emu_input_dir}
 ${emu_download}
 
 EOF
-    emu_download_input_pid=$!
+    bg_pids+=($!)
+    emu_download_input_pid=($!)
+    
 # Check if the PID was assigned
     echo 
     if [ -z "$emu_download_input_pid" ]; then
@@ -488,7 +510,8 @@ if [ ! -e "${native_mpiexec}" ] ; then
     ./install_openmpi.sh <<EOF > "$log_file" 2>> "$log_file" &
 ${native_ompi}
 EOF
-    install_openmpi_pid=$!
+    bg_pids+=($!)
+    install_openmpi_pid=($!)
 
 # Check if the PID was assigned
     echo
