@@ -97,9 +97,7 @@ cd ${currentdir}
 
 # ----------------------------------------
 # Finish 
-
-echo 
 echo 
 echo "install_emu_access.sh (singularity) execution complete. $(date)"
-echo 
-echo 
+
+

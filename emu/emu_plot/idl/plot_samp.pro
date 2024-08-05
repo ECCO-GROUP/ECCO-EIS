@@ -1,4 +1,4 @@
-pro plot_samp, frun, smp, smp_mn, smp_sec
+pro plot_samp, frun, smp, smp_mn, smp_hr
 ; Read Sampling Tool output
 
 ; ---------------
@@ -56,17 +56,17 @@ if (naa eq 0) then begin
    return
 endif
 
-smp_sec = lonarr(nrec)
+smp_hr = lonarr(nrec)
 close,1 & openr,1,aa(0),/swap_if_little_endian
-readu,1,smp_sec
+readu,1,smp_hr
 close,1
 print,''
 print,'*********************************************'
 print,'Read variable '
-print,'   smp_sec: sample time (seconds from 1/1/1992 12Z)' 
+print,'   smp_hr: sample time (hours from 1/1/1992 12Z)' 
 print,'from file ',aa(0)
 
-smp_yday = (smp_sec/24.)/365. + 1992. 
+smp_yday = (smp_hr/24.)/365. + 1992. 
 
 ; ---------------
 ; Plot
@@ -82,6 +82,6 @@ frun_file=file_basename(frun)
 
 tmin = fix(min(samp_t))-1
 tmax = fix(max(samp_t))+1
-plot,samp_t,samp_v,title=frun_file,ynozero=1,ytitle='smp + smp_mn',xtitle='smp_sec',xrange=[tmin,tmax],xstyle=1
+plot,samp_t,samp_v,title=frun_file,ynozero=1,ytitle='smp + smp_mn',xtitle='smp_hr',xrange=[tmin,tmax],xstyle=1
 
 end

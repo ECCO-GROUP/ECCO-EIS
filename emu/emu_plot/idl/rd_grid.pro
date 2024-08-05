@@ -47,9 +47,9 @@ readu, 1, dyc
 close, 1
 
 fdrf = emu_ref + '/DRC.data'
-drc = fltarr(nr) 
+drc = fltarr(nr+1) 
 close, 1 & openr, 1, fdrf, /swap_if_little_endian
-readu, 1, drc  ; distance to level (or surface) above.
+readu, 1, drc  ; vertical distance between tracer points 
 close, 1
 
 ; ...............
