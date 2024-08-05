@@ -1,139 +1,151 @@
-; Read and plot EMU output 
-;
-; .run emu_plot.pro
+# Read and plot EMU output 
+#
 
-common emu_grid, nx, ny, nr, xc, yc, rc, dxc, dyc, drc, $
-   xg, yg, dxg, dyg, rf, drf, hfacc, hfacw, hfacs, $
-   cs, sn, rac, ras, raw, raz, dvol3d
+class TerminateScriptException(Exception):
+    """Custom exception to terminate script execution."""
+    pass
 
-; Suppress the % Compiled module: print out
-!QUIET = 1
+# ---------------
+import sys
+import os
 
-; ---------------
-; Add EMU's directory of idl programs in IDL's path 
+# Add EMU's directory to the Python path
+sys.path.append(os.path.dirname(__file__))
 
-; Get the current script's full path using SCOPE_TRACEBACK
-traceback = SCOPE_TRACEBACK(/STRUCTURE)
-currentRoutinePath = traceback[0].FILENAME
+# ---------------
+# Read emu_ref location
+emu_plot_dir=os.path.dirname(__file__)
+emu_access_dir=os.path.dirname(emu_plot_dir)
 
-; Extract the directory from the full path
-currentDir = FILE_DIRNAME(currentRoutinePath)
-;PRINT, 'Current directory:', currentDir
+import glob
 
-; Check if the directory is already in !PATH
-if STRPOS(':' + !PATH + ':', ':' + currentDir + ':') eq -1 then begin
-    ; Add the current directory to !PATH
-    !PATH = !PATH + ':' + currentDir
-    !PATH = !PATH + ':' + currentDir + '/lib'
-;    PRINT, 'Directory added to !PATH:', currentDir
-endif else begin
-;    PRINT, 'Directory already in !PATH:', currentDir
-end
+# Search for files matching the pattern emu_env.* but not emu_env.sh
+pattern = os.path.join(emu_access_dir, 'emu_env.*')
+files = glob.glob(pattern)
+filtered_files = [f for f in files if not f.endswith('.sh')]
 
-;; Print the updated !PATH
-;PRINT, '!PATH:', !PATH
-emu_plot_dir=currentDir
-
-; ---------------
-; Run lib_xwin
-lib_xwin,currentDir+'/lib'
-
-; ---------------
-; Read emu_ref location
-
-emu_access_dir=file_dirname(emu_plot_dir)
-;print,'emu_access_dir=',emu_access_dir
-
-; Find all files in the directory excluding 'emu_env.sh'
-files = FILE_SEARCH(emu_access_dir + '/emu_env.*', COUNT=count)
-filteredFiles = []
-
-FOR i = 0, count-1 DO BEGIN
-    IF FILE_BASENAME(files[i]) NE 'emu_env.sh' THEN filteredFiles = [filteredFiles, files[i]]
-ENDFOR
-
-; Check if there is only one file left after filtering
-IF N_ELEMENTS(filteredFiles) EQ 1 THEN BEGIN
-    fileToRead = filteredFiles[0]
-;    PRINT, 'Reading file: ', fileToRead
+# Check if only one file matches the criteria
+if len(filtered_files) == 1:
+    file_path = filtered_files[0]
+    print(f"Found file: {file_path}")
     
-    ; Open the file and read it line by line
-    OPENR, lun, fileToRead, /GET_LUN
-    line = ''
-    emu_input_dir = ''
-    WHILE NOT EOF(lun) DO BEGIN
-        READF, lun, line
-        ; Check if the line starts with 'input_'
-        IF STRPOS(line, 'input_') EQ 0 THEN BEGIN
-            emu_input_dir = STRMID(line, 6, STRLEN(line) - 6) ; Extract the part after 'input_'
-            BREAK
-        ENDIF
-    ENDWHILE
-    FREE_LUN, lun
+    # Initialize emu_input_dir variable
+    emu_input_dir = None
     
-    ; Print the extracted emu_input_dir
-    IF emu_input_dir NE '' THEN BEGIN
-        PRINT, 'EMU Input Files directory: ', emu_input_dir
-    ENDIF ELSE BEGIN
-        PRINT, 'No line starting with "input_" found in the file.'
-    ENDELSE
-ENDIF ELSE BEGIN
-    PRINT, 'Error: There are either no files or more than one file excluding emu_env.sh in the directory.'
-ENDELSE
+    # Read the file as a text file and search for lines starting with 'input_'
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            if line.startswith('input_'):
+                # Assign what is after 'input_' to emu_input_dir
+                emu_input_dir = line.strip()[len('input_'):]
+                print(f"EMU Input Files directory: {emu_input_dir}")
+                break  # Assuming you only need the first occurrence
+else:
+    print(f"Error: There are either no files or more than one file excluding emu_env.sh in the directory.")
+    raise TerminateScriptException("No emu_env files or more than one excluding emu_env.sh in the directory.")  # Raise custom exception
 
-; ---------------
-; Read model grid information 
+import global_emu_var as emu
 
-emu_ref=emu_input_dir + '/emu_ref'
-;print,'emu_ref = ',emu_ref
-rd_grid, emu_ref
+# ---------------
+# Read model grid information 
 
-; ---------------
-; Read EMU output
+import rd_grid
 
-frun_temp = ' '
-print,' '
-print,'Enter directory of EMU run to examine; e.g., emu_samp_m_2_45_585_1 ... ?'
-read, frun_temp
+# Initialize the grid with the path to the data directory
+emu_ref = emu_input_dir + "/emu_ref"
+rd_grid.rd_grid(emu_ref)
 
-lib_fullpath, frun_temp, frun 
+# ---------------
+# Read EMU output
 
-print,' '
-print,'Reading ',frun
+frun_temp = None
+print()
+frun_temp = input("Enter directory of EMU run to examine; e.g., emu_samp_m_2_45_585_1 ... ? ")
+if not os.path.isdir(frun_temp):
+    print(f"The directory {frun_temp} does not exist.")
+    raise TerminateScriptException("EMU run directory {frun_temp} does not exist.")  # Raise custom exception
 
-id_tool, frun, ftool
+frun = os.path.abspath(frun_temp)
+print()
+print(f"Reading {frun}")
 
-print,''
-if (ftool eq 'samp') then begin
-   print,'Reading Sampling Tool output .. ' 
-   plot_samp,frun, smp, smp_mn, smp_sec
-   endif 
-if (ftool eq 'fgrd') then begin
-   print,'Reading Forward Gradient Tool output .. ' 
-   plot_fgrd, frun, fgrd2d
-   endif 
-if (ftool eq 'adj') then begin
-   print,'Reading Adjoint Tool output .. ' 
-   plot_adj, frun, adxx
-   endif 
-if (ftool eq 'conv') then begin
-   print,'Reading Convolution Tool output .. ' 
-   plot_conv, frun, recon1d, istep, fctrl, ev_lag, ev_ctrl, ev_space
-   endif 
-if (ftool eq 'trc') then begin
-   print,'Reading Tracer Tool output .. ' 
-   plot_trc, frun, trc3d
-   endif 
-if (ftool eq 'budg') then begin
-   print,'Reading Budget Tool output .. ' 
-   plot_budg, frun, emu_tend, emu_tend_name, emu_tint, emu_tint_name, budg_msk, budg_mkup, nmkup
-endif 
-if (ftool eq 'msim') then begin
-   plot_msim, frun, fld2d
-endif 
-if (ftool eq 'atrb') then begin
-   print,'Reading Attribution Tool output .. ' 
-   plot_atrb,frun, atrb, atrb_mn, atrb_sec, fctrl
-endif 
+# ----------------
+# Code to ID EMU tool 
+def id_tool(frun):
+    # Get the file name from the full pathname
+    filename = os.path.basename(frun)
 
-end
+    # Find the positions of the first and second underscores
+    first_underscore = filename.find('_')
+    if first_underscore == -1:
+        print("Error: Underscore not found in run directory name.")
+        print("Error: Does not conform to EMU syntax.")
+        raise TerminateScriptException("Underscore not found in run directory name.")  # Raise custom exception
+
+    second_underscore = filename.find('_', first_underscore + 1)
+    if second_underscore == -1:
+        print("Error: Less than two underscores in run directory name.")
+        print("Error: Does not conform to EMU syntax.")
+        raise TerminateScriptException("Less than two underscores in run directory name.")  # Raise custom exception
+
+    # Extract the part of the string between the first and second underscores
+    part1 = filename[:first_underscore]
+    part2 = filename[first_underscore + 1:second_underscore]
+    if part1 != 'emu':
+        print("Error: part1 is not equal to 'emu'. ")
+        print("Error: Does not conform to EMU syntax.")
+        raise TerminateScriptException("Run directory name does not start with emu.")  # Raise custom exception
+
+    return part2
+
+# ----------------
+
+ftool = id_tool(frun)
+#print("Tool is :", ftool)
+print()
+
+if ftool == 'samp':
+    import plot_samp 
+
+    print("Reading Sampling Tool output ... ")
+    plot_samp.plot_samp(frun)
+
+#if (ftool eq 'samp') then begin
+#   print,'Reading Sampling Tool output .. ' 
+#   plot_samp,frun, smp, smp_mn, smp_sec
+#   endif 
+#if (ftool eq 'fgrd') then begin
+#   print,'Reading Forward Gradient Tool output .. ' 
+#   plot_fgrd, frun, fgrd2d
+#   endif 
+if ftool == 'adj':
+    import plot_adj 
+
+    print("Reading Adjoint Tool output ... ")
+    plot_adj.plot_adj(frun)
+
+#if (ftool eq 'conv') then begin
+#   print,'Reading Convolution Tool output .. ' 
+#   plot_conv, frun, recon1d, istep, fctrl, ev_lag, ev_ctrl, ev_space
+#   endif 
+#if (ftool eq 'trc') then begin
+#   print,'Reading Tracer Tool output .. ' 
+#   plot_trc, frun, trc3d
+#   endif 
+#if (ftool eq 'budg') then begin
+#   print,'Reading Budget Tool output .. ' 
+#   plot_budg, frun, emu_tend, emu_tend_name, emu_tint, emu_tint_name, budg_msk, budg_mkup, nmkup
+#endif 
+#if (ftool eq 'msim') then begin
+#   plot_msim, frun, fld2d
+#endif 
+if ftool == 'atrb':
+    import plot_atrb
+
+    print("Reading Attribution Tool output ... ")
+    plot_atrb.plot_atrb(frun)
+
+#
+#end
+#

@@ -6,17 +6,10 @@
 
 umask 022
 
-# Record the start time
-start_time=$(date +%s)
-
-#=================================
-# Install OpenMPI for EMU (singularity)
-#=================================
-
 echo ""
-echo "Installing OpenMPI for EMU (singularity) ... "
+echo "Installing Open MPI for EMU (singularity) ... "
 echo ""
-echo "Enter directory name for installing OpenMPI ... (OMPI_DIR)?"
+echo "Enter directory name for installing Open MPI ... (OMPI_DIR)?"
 read ompi_dir
 if [[ -d ${ompi_dir} ]] ; then
     echo "Files will be created in "${ompi_dir}
@@ -41,23 +34,10 @@ cd ichiro_tmp
     cd ${OMPI_DIR}/ichiro_tmp/openmpi-$OMPI_VERSION && ./configure --prefix=$OMPI_DIR && make install
     rm -rf ${ompi_dir}/ichiro_tmp
 
-# ---------------------------------------
 # End script
 cd ${current_dir}
-
-# Record the end time
-end_time=$(date +%s)
-
-# Calculate the difference from start_time
-elapsed_time=$((end_time - start_time))
-
-hours=$((elapsed_time / 3600))
-minutes=$(((elapsed_time % 3600) / 60))
-seconds=$((elapsed_time % 60))
-
 echo " "
-echo "Sussessfully created OpenMPI by install_openmpi.sh" 
-printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
+echo "Sussessfully created Open MPI" 
 echo "install_openmpi.sh execution complete. $(date)"
-echo " "
+
 

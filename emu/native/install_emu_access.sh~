@@ -69,12 +69,8 @@ cd ${currentdir}
 
 # ----------------------------------------
 # Finish 
-
-echo 
-echo 
-echo "install_emu_access.sh (native) execution complete. $(date)"
-echo 
-echo 
-
+echo ""
+echo "Done ... install_emu_access.sh (native)"
+echo ""
 
 

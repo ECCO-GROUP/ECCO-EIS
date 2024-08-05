@@ -46,8 +46,11 @@ endif else begin
 
       ijloc, pert_x, pert_y, pert_i, pert_j
 
+      pert_x = xc(pert_i-1, pert_j-1)
+      pert_y = yc(pert_i-1, pert_j-1)
+
 ; Make sure point is wet      
-      if (hfacc(pert_i,pert_j) eq 0.) then begin 
+      if (hfacc(pert_i-1, pert_j-1, 0) eq 0.) then begin 
          fdum = 'Closest C-grid ('+string([pert_i,pert_j],format='(i2,1x,i4)')+') is dry.'
          print,fdum
          print,'Select another point ... '

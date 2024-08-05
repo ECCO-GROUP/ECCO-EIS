@@ -28,8 +28,8 @@ for j = 0, ny-1 do begin
                    cos(pert_y * d2r) * cos(yc[i, j] * d2r) * cos((xc[i, j] - pert_x) * d2r)
          dumdist = acos(dumdist)
          if dumdist lt target then begin
-            pert_i = i
-            pert_j = j
+            pert_i = i+1
+            pert_j = j+1
             target = dumdist
          endif
       endif

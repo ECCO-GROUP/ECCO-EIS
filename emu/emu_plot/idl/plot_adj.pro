@@ -44,6 +44,7 @@ if (naa ne 1) then begin
 endif
 
 fname = file_basename(aa(0))
+print,'Found file: ',fname 
 
 ; ---------------
 ; Read entire adxx time-series 
@@ -164,8 +165,8 @@ while (valid_pt eq 1) do begin
 
    slct_2d_pt, xlon, ylat, ix, jy
 
-   ftitle='(i,j,lon,lat)= '+string([ix+1,jy+1,xlon,ylat],format='(i2,1x,i4,2X,f7.1,1x,f6.1)')+' ' + fname
-   plot,ww,adxx(ix,jy,iww),title=ftitle,xtitle='lag (weeks)'
+   ftitle='(i,j,lon,lat)= '+string([ix,jy,xlon,ylat],format='(i2,1x,i4,2X,f7.1,1x,f6.1)')+' ' + fname
+   plot,ww,adxx(ix-1,jy-1,iww),title=ftitle,xtitle='lag (weeks)', ytitle='adxx'
 
 endwhile
 

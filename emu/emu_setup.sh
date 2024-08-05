@@ -2,6 +2,9 @@
 
 umask 022
 
+# Record the start time
+start_time=$(date +%s)
+
 #=================================
 # A consolidated shell script to set up EMU. 
 # Includes 
@@ -282,8 +285,8 @@ ${emu_input_dir}
 ${emu_download}
 
 EOF
-    bg_pids+=($!)
-    emu_download_input_pid=($!)
+    emu_download_input_pid=$!
+    bg_pids+=($emu_download_input_pid)
     
 # Check if the PID was assigned
     echo 
@@ -510,8 +513,8 @@ if [ ! -e "${native_mpiexec}" ] ; then
     ./install_openmpi.sh <<EOF > "$log_file" 2>> "$log_file" &
 ${native_ompi}
 EOF
-    bg_pids+=($!)
-    install_openmpi_pid=($!)
+    install_openmpi_pid=$!
+    bg_pids+=($install_openmpi_pid)
 
 # Check if the PID was assigned
     echo
@@ -682,21 +685,25 @@ check_job() {
 if ps -p $1 > /dev/null; then
     echo 
     echo "$2 is still running." 
-    echo "Waiting for it to finish..."
+    echo "PID is $1"
+    echo "Check progress in log file $3"
+    echo "Waiting for this job to finish..."
     wait $1
     # Check the exit status of the background job
     if [ $? -ne 0 ]; then
 	echo 
-        echo "$2 failed."
-        echo "Check log file $3"
+	echo "***********************************"
+        echo "$2 has failed."
+	echo "Check log file $3"
+	echo "***********************************"
     else
 	echo 
-        echo "$2 completed successfully."
+        echo "$2 has finished."
     fi
 else
     echo 
-    echo "$2 has already finished or failed to start."
-    echo "Check log file $3"
+#    echo "$2 is already finished or failed to start."
+    echo "$2 is already finished."
 fi
 }
 
@@ -718,9 +725,23 @@ if [[ ! "$emu_download" -eq -1 ]]; then
     check_job $emu_download_input_pid "EMU Input File setup" "${setup_dir}/emu_download_input.log"
 fi
 
+# ***************************************
+# 12) End 
+
+# Record the end time
+end_time=$(date +%s)
+
+# Calculate the difference from start_time
+elapsed_time=$((end_time - start_time))
+
+hours=$((elapsed_time / 3600))
+minutes=$(((elapsed_time % 3600) / 60))
+seconds=$((elapsed_time % 60))
+
 echo 
 echo "----------------------"
 echo "emu_setup.sh execution complete. $(date)"
+printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
 echo
 echo "Enter following command to run EMU " 
 echo "   ${emu_userinterface_dir}/emu "

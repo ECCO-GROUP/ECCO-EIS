@@ -2,6 +2,9 @@
 
 umask 022
 
+# Record the start time
+start_time=$(date +%s)
+
 #=================================
 # Download input files needed by EMU
 #=================================
@@ -188,9 +191,19 @@ fi
 
 # ---------------------------------------
 # 5) End
+
+# Record the end time
+end_time=$(date +%s)
+
+# Calculate the difference from start_time
+elapsed_time=$((end_time - start_time))
+
+hours=$((elapsed_time / 3600))
+minutes=$(((elapsed_time % 3600) / 60))
+seconds=$((elapsed_time % 60))
+
 echo " "
 echo "Successfully set up EMU input by emu_download_input.sh"
-echo 
+printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
 echo "emu_download_input.sh execution complete. $(date)"
-
-
+echo " "
