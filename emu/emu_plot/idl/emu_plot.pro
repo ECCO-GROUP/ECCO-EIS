@@ -35,7 +35,8 @@ end
 emu_plot_dir=currentDir
 
 ; ---------------
-; Run lib_xwin
+; Run lib_xwin (set up plotting environment)
+
 lib_xwin,currentDir+'/lib_idl'
 
 ; ---------------
@@ -95,45 +96,85 @@ frun_temp = ' '
 print,' '
 print,'Enter directory of EMU run to examine; e.g., emu_samp_m_2_45_585_1 ... ?'
 read, frun_temp
+if file_test(frun_temp, /directory) eq 0 then begin
+   print, 'Error: Directory does not exist.'
+   stop
+endif
 
-lib_fullpath, frun_temp, frun 
+; Truncate to EMU run directory name in case user provides emu's output subdirectory
+lib_chk_emu_name, frun_temp, frun_temp_chk
+if (frun_temp_chk eq ' ') then begin 
+   print,'Directory name ', frun_temp, ' does not conform to EMU syntax.'
+   stop
+endif
+
+; Get full pathname to frun_temp 
+lib_fullpath, frun_temp_chk, frun 
 
 print,' '
 print,'Reading ',frun
 
 id_tool, frun, ftool
+if (ftool eq ' ') then begin 
+   stop
+endif
 
+; ---------------
 print,''
-if (ftool eq 'samp') then begin
-   print,'Reading Sampling Tool output .. ' 
-   plot_samp,frun, smp, smp_mn, smp_sec
-   endif 
-if (ftool eq 'fgrd') then begin
-   print,'Reading Forward Gradient Tool output .. ' 
-   plot_fgrd, frun, fgrd2d
-   endif 
-if (ftool eq 'adj') then begin
-   print,'Reading Adjoint Tool output .. ' 
-   plot_adj, frun, adxx
-   endif 
-if (ftool eq 'conv') then begin
-   print,'Reading Convolution Tool output .. ' 
-   plot_conv, frun, recon1d, istep, fctrl, ev_lag, ev_ctrl, ev_space
-   endif 
-if (ftool eq 'trc') then begin
-   print,'Reading Tracer Tool output .. ' 
-   plot_trc, frun, trc3d
-   endif 
-if (ftool eq 'budg') then begin
-   print,'Reading Budget Tool output .. ' 
-   plot_budg, frun, emu_tend, emu_tend_name, emu_tint, emu_tint_name, budg_msk, budg_mkup, nmkup
-endif 
-if (ftool eq 'msim') then begin
-   plot_msim, frun, fld2d
-endif 
-if (ftool eq 'atrb') then begin
-   print,'Reading Attribution Tool output .. ' 
-   plot_atrb,frun, atrb, atrb_mn, atrb_sec, fctrl
-endif 
+
+case ftool of
+; 1) Sampling Tool
+   'samp': begin 
+      print,'Reading Sampling Tool output .. ' 
+      plot_samp,frun, smp, smp_mn, smp_sec
+   end
+
+; 2) Foward Gradient Tool
+   'fgrd': begin
+      print,'Reading Forward Gradient Tool output .. ' 
+      plot_fgrd, frun, fgrd2d, fgrd3d 
+   end
+
+; 3) Adjoint Tool
+   'adj': begin
+      print,'Reading Adjoint Tool output .. ' 
+      plot_adj, frun, adxx
+   end
+
+; 4) Convolution Tool
+   'conv': begin
+      print,'Reading Convolution Tool output .. ' 
+      plot_conv, frun, recon1d, istep, fctrl, ev_lag, ev_ctrl, ev_space
+   end
+
+; 5) Tracer Tool
+   'trc': begin
+      print,'Reading Tracer Tool output .. ' 
+      plot_trc, frun, trc3d
+   end
+
+; 6) Budget Tool
+   'budg': begin
+      print,'Reading Budget Tool output .. ' 
+      plot_budg, frun, emu_tend, emu_tend_name, emu_tint, emu_tint_name, budg_msk, budg_mkup, nmkup
+   end
+
+; 7) Modified Simulation Tool
+   'msim': begin
+      print,'Reading Modified Simulation Tool output .. ' 
+      plot_msim, frun, fld2d, fld3d 
+   end
+
+; 8) Attribution Tool                          ;
+   'atrb': begin
+      print,'Reading Attribution Tool output .. ' 
+      plot_atrb,frun, atrb, atrb_mn, atrb_sec, fctrl
+   end
+
+; No corresponding Tool
+   else: begin 
+      print,'Corresponding EMU Tool not found  ... ', ftool
+   end
+endcase
 
 end

@@ -13,7 +13,9 @@ pro id_tool, frun, ftool ; ID the EMU Tool used
 
   ; Check if the first underscore is found
   IF underscore1_pos EQ -1 THEN BEGIN
-    PRINT, 'Error: The first underscore not found.'
+    PRINT, 'Error: Underscore not found in run directory name.'
+    print, 'Error: Does not conform to EMU syntax.'
+    ftool = ' '
     RETURN
  ENDIF
 
@@ -22,7 +24,9 @@ pro id_tool, frun, ftool ; ID the EMU Tool used
 
   ; Check if the second underscore is found
   IF underscore2_pos EQ -1 THEN BEGIN
-    PRINT, 'Error: The second underscore not found.'
+    PRINT, 'Error: Less than two underscores in run directory name.'
+    print, 'Error: Does not conform to EMU syntax.'
+    ftool = ' '
     RETURN
  ENDIF
 
@@ -40,9 +44,10 @@ pro id_tool, frun, ftool ; ID the EMU Tool used
 
 ;
   if (part1 ne 'emu') then begin 
-     print,'*********************************************'
+     print,"Error: part1 is not equal to 'emu'"
      print,'Directory name does not conform to EMU syntax.'
-     print,'*********************************************'
+     ftool = ' '
+     return
   endif
 
   ftool=part2

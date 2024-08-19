@@ -117,9 +117,17 @@ print,'Plot explained variance vs space (ev_space) ...  '
 lib_nat2globe,hfacc(*,*,0),dumg
 landg = where(dumg eq 0, nlandg)  ; index where it is dry
 
+print,''
+print,'Choose control to plot ... '
+for i=0,nctrl-1 do begin
+   pdum=string(i+1,format='(i1)')+') '+fctrl(i)
+   print,pdum
+endfor
+
 ic = 1
 while (ic ge 1 and ic le nctrl) do begin 
 
+   print,''
    print,'Enter control to plot explained variance (EV) vs space ...  (1-'+string(nctrl,format='(i0)')+')?'
    read, ic 
    if (ic lt 1 or ic gt nctrl) then break

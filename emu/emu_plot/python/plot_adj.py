@@ -154,12 +154,16 @@ def plot_adj(frun):
         # Mask dry grid points 
         masked_dumg = np.ma.masked_where(ref2d == 0, dumg)
 
-        plt.close(10)
-        plt.figure(num=10, figsize=(10,10))
+#        plt.close(10)
+#        plt.figure(num=10, figsize=(10,10))
+        plt.figure(figsize=(10,10))
         ftitle = f'lag, rec = {idum}, {irec + 1} {fname} scaled by x{dscale:.0e}'
         plt.title(ftitle)        
         plt.imshow(masked_dumg, origin='lower',cmap=cmap, aspect='auto')
         plt.colorbar()
+
+        plt.ion()  # Enable interactive mode
+        plt.show(block=False)  # Show the plot without blocking
 
     # ---------------
     # Plot time-series of adxx at select locations 
@@ -191,11 +195,14 @@ def plot_adj(frun):
         ftitle = f'(i,j,lon,lat)= {ix:2},{jy:4}  {xlon:7.1f} {ylat:6.1f} {fname}'
 
         # Plot using Matplotlib
-        plt.close(1)
-        plt.figure(num=1, figsize=(10,10))
+#        plt.close(1)
+#        plt.figure(num=1, figsize=(10,10))
+        plt.figure(figsize=(10,10))
         plt.plot(ww, adxx[iww, jy-1, ix-1])
         plt.title(ftitle)
         plt.xlabel('lag (weeks)')
         plt.ylabel('adxx')  
         plt.grid(True)
-        plt.show()
+
+        plt.ion()  # Enable interactive mode
+        plt.show(block=False)  # Show the plot without blocking

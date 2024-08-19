@@ -1,4 +1,4 @@
-pro plot_msim, frun, fld2d
+pro plot_msim, frun, fld2d, fld3d 
 ; check Modified Simulation Tool output
 
 ; ---------------
@@ -12,7 +12,7 @@ print,''
 print,"Checking EMU standard model state output ... "
 print,''
 
-plot_state, frun_output, fld2d, naa_2d_day, naa_2d_mon, naa_3d_mon
+plot_state, frun_output, fld2d, fld3d, naa_2d_day, naa_2d_mon, naa_3d_mon
 
 ndum = max([naa_2d_day, naa_2d_mon, naa_3d_mon])
 print,''
