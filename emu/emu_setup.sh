@@ -98,7 +98,8 @@ while true; do
 #        echo "Earthdata Credentials confirmed"
 #        break
 #    fi
-    if echo "$OUTPUT" | grep -Ei "Remote file exists"; then
+
+    if echo "$OUTPUT" | grep -Ei "Remote file exists and could contain further links" > /dev/null 2>&1; then
 #        echo "Earthdata/WebDAV Credentials confirmed"
         break
     else
