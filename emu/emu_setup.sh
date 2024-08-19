@@ -10,7 +10,7 @@ start_time=$(date +%s)
 # Includes 
 #    1) Set up EMU (in emu_dir)
 #       a) Select mode (native, singularity, docker) 
-#       b) Setup MPI if singularity or docker
+#       b) Set up MPI if singularity or docker
 #    2) Download input files (in emu_input_dir)
 #    3) Install user access files (in emu_userinterface_dir)
 #
@@ -32,12 +32,17 @@ echo "   8) Attribution (atrb); Evaluates state time-series by control type."
 echo
 echo "------------------------------------------------------------------------------"
 echo " This script will install EMU's Programs (~1GB), its User Interface (~2MB), "
-echo " and download its Input Files (up to 1TB) to user-specified directories. "
+echo " and download its Input Files (~1TB) to user-specified directories. "
+echo 
 echo " For downloading the Input Files, users will need to obtain a NASA Earthdata "
 echo " account at https://ecco.jpl.nasa.gov/drive/ and enter the corresponding "
-echo " Username and WebDAV password (not Earthdata password) at the prompts below."
+echo " Earthdata username and WebDAV password (not Earthdata password) at the "
+echo " prompts below. WebDAV password can be found at the URL above after logging"
+echo " in with your Earthdata username/password, or click the 'Back to WebDAV"
+echo " Credentials' button when browsing files at the URL."
+echo 
 echo " See the README file that will be installed in the User Interface directory "
-echo " for details of EMU including instructions on its usage."
+echo " for details of EMU, including instructions on using it."
 echo "------------------------------------------------------------------------------"
 echo 
 echo "Press ENTER key to continue ... "
@@ -64,7 +69,7 @@ trap cleanup SIGINT SIGTERM SIGQUIT
 
 
 # ***************************************
-# 1) Enter Earthdata username & password (for downloading EMU's Input Files)
+# 1) Enter Earthdata username & WebDAV password (for downloading EMU's Input Files)
 
 echo "----------------------"
 URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
@@ -74,7 +79,7 @@ while true; do
     read -p "Enter your Earthdata username: " Earthdata_username
 
     # Prompt for password
-    read -p "Enter your WebDAV password: " WebDAV_password
+    read -p "Enter your WebDAV password (*NOT* Earthdata password): " WebDAV_password
     echo
 
     # Disable exit on error
@@ -87,11 +92,18 @@ while true; do
     set -e 
 
     # Check the exit status of wget
-    if echo "$OUTPUT" | grep -q "Authorization failed"; then
-        echo "Invalid username and/or password. Please try again."
-    else
-        echo "Earthdata Credentials confirmed"
+#    if echo "$OUTPUT" | grep -Ei "Authorization failed|Authentication Failed"; then
+#        echo "Invalid username and/or password. Please try again."
+#    else
+#        echo "Earthdata Credentials confirmed"
+#        break
+#    fi
+    if echo "$OUTPUT" | grep -Ei "Remote file exists"; then
+#        echo "Earthdata/WebDAV Credentials confirmed"
         break
+    else
+        echo "Invalid username and/or password. Try again."
+	echo
     fi
 
 done
@@ -245,7 +257,7 @@ echo
 echo "Enter Input Files download choice ... ?"
 read emu_download 
 
-if [[ -z ${ftext} ]]; then
+if [[ -z ${emu_download} ]]; then
     emu_download=-1
     echo 
     echo "Input Files will not be downloaded during EMU set up."
@@ -313,18 +325,27 @@ sleep 2
 # Set batch command
 
 echo "----------------------"
-echo "EMU provides scripts (pbs_*.sh) to run batch jobs for PBS (Portable Batch System)."
-echo "The PBS commands in these scripts may need to be revised for different batch "
-echo "systems and/or different hosts. Alternatively, the scripts can be run interactively"
-echo "if sufficient resources are available."
+echo "EMU uses scripts (pbs_*.sh) to run some of its tools as batch jobs for "
+echo "PBS (Portable Batch System). The PBS commands in these scripts may need"
+echo "to be revised for different batch systems and/or different hosts. "
+echo "Alternatively, these scripts can be run interactively if sufficient "
+echo "resources are available."
 echo
-echo "Enter the command for submitting batch jobs (e.g., qsub) or enter bash to run "
-echo "the scripts interactively ... ?"
-read batch_command 
+echo "Enter the command for submitting batch jobs (e.g., qsub, sbatch, "
+echo "bsub <, condor_submit, msub) or press the ENTER key to have EMU "
+echo "run its batch scripts interactively ... ?"
+read ftext
 
 echo 
-echo "Command to run EMU's batch job scripts will be: ${batch_command}"
+if [[ -z ${ftext} ]]; then
+    batch_command=bash
+    echo "EMU's batch job scripts will be run interactively."
+else
+    batch_command=${ftext}
+    echo "Command to submit EMU's batch job scripts will be: ${batch_command}"
+fi
 echo 
+
 sleep 2 
 
 # ------------------
@@ -495,7 +516,7 @@ goto_singularity() {
 
 # .......................................
 # Download and compile OpenMPI that is compatible with EMU
-# if it doesn't exist alread 
+# if it doesn't exist already 
     echo "----------------------"
     native_ompi=${emu_dir}/ompi
     native_mpiexec=${native_ompi}/bin/mpiexec
@@ -712,7 +733,7 @@ if [[ "$emu_type" -eq 2 ]]; then
 
 # Check OpenMPI setup 
     if [ "$compile_openmpi" = true ]; then
-	check_job $install_openmpi_pid "EMU compatible OpenMPI setup" "${setup_dir}/install_openmpi.log"
+	check_job ${install_openmpi_pid} "EMU compatible OpenMPI setup" "${setup_dir}/install_openmpi.log"
     fi
 
 elif [[ "$emu_type" -eq 3 ]]; then    
@@ -722,7 +743,7 @@ fi
 
 # Monitor setup of EMU's Input Files 
 if [[ ! "$emu_download" -eq -1 ]]; then 
-    check_job $emu_download_input_pid "EMU Input File setup" "${setup_dir}/emu_download_input.log"
+    check_job ${emu_download_input_pid} "EMU Input File setup" "${setup_dir}/emu_download_input.log"
 fi
 
 # ***************************************

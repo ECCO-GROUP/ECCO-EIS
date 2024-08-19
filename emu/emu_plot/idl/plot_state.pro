@@ -1,4 +1,4 @@
-pro plot_state, fdir, fld2d, naa_2d_day, naa_2d_mon, naa_3d_mon
+pro plot_state, fdir, fld2d, fld3d, naa_2d_day, naa_2d_mon, naa_3d_mon
 ; Read and plot standard state output
 
 ; ---------------
@@ -51,7 +51,7 @@ if (ndum ne 0) then begin
       read, fmd
 
       pvar = 0
-      idum = 0
+      ivar = 0
       if (fmd eq 'd' or fmd eq 'D') then begin 
 ; ---------------
 ; Reading state_2d_set1_day
@@ -61,12 +61,32 @@ if (ndum ne 0) then begin
             while (pvar lt 1 or pvar gt 2) do begin 
                print,'Enter variable # to plot ... (1-2)?'
                read, pvar 
-               idum = pvar-1 
+               ivar = pvar-1 
             endwhile
             print,''
-            print,'Plotting ... ',f_var(idum)
+            print,'Plotting ... ',f_var(ivar)
 
-            rd_state2d, aa_2d_day, idum, f_var(idum), fld2d
+; ---------------------------      
+; loop among daily mean 2d files 
+            pfile = 1
+            while (pfile ge 1 and pfile le naa_2d_day) do begin
+               print,''
+               print,'Enter file # to read ... (1-'+string(naa_2d_day, format='(i0)')+')?'
+               read, pfile
+               if (pfile lt 1) or (pfile gt naa_2d_day) then break 
+               ifile=pfile-1
+               rd_state2d, aa_2d_day(ifile), ivar, fld2d
+               
+               fname = file_basename(aa_2d_day(ifile))
+               pinfo = f_var(ivar) + string(pfile,format='(1x,i0)') + ' ' + fname
+               plt_state2d, fld2d, pinfo
+            endwhile
+
+            print,'*********************************************'
+            print,'Returning variable '
+            print,'   fld2d: last plotted 2d field'
+            print,''
+
          endif else begin
             print,''
             print,'No daily mean output available ... '
@@ -78,30 +98,82 @@ if (ndum ne 0) then begin
          while (pvar lt 1 or pvar gt nvar) do begin 
             print,'Enter variable # to plot ... (1-',string(nvar,format='(i0)')+')?'
             read, pvar 
-            idum = pvar-1 
+            ivar = pvar-1 
          endwhile
          print,''
          print,'-------------------'
-         print,'Plotting ... ',f_var(idum)
+         print,'Plotting ... ',f_var(ivar)
 
-         if (idum le 1) then begin 
+         if (ivar le 1) then begin 
 ; ---------------
 ; Reading state_2d_set1_mon
             if (naa_2d_mon ne 0) then begin 
-               rd_state2d, aa_2d_mon, idum, f_var(idum), fld2d
+               print,''
+               print,'==> Reading and plotting 2d monthly means ... '
+               print,''
+               print,'Plotting ... ',f_var(ivar)
+
+; ---------------------------      
+; loop among monthly mean 2d files 
+               pfile = 1
+               while (pfile ge 1 and pfile le naa_2d_mon) do begin
+                  print,''
+                  print,'Enter file # to read ... (1-'+string(naa_2d_mon, format='(i0)')+')?'
+                  read, pfile
+                  if (pfile lt 1) or (pfile gt naa_2d_mon) then break 
+                  ifile=pfile-1
+                  rd_state2d, aa_2d_mon(ifile), ivar, fld2d
+               
+                  fname = file_basename(aa_2d_mon(ifile))
+                  pinfo = f_var(ivar) + string(pfile,format='(1x,i0)') + ' ' + fname
+                  plt_state2d, fld2d, pinfo
+               endwhile
+
+               print,'*********************************************'
+               print,'Returning variable '
+               print,'   fld2d: last plotted 2d field'
+               print,''
+
             endif else begin
                print,''
                print,'No monthly mean 2d output available ... '
             endelse
+
          endif else begin
 ; ---------------
 ; Reading state_3d_set1_mon
             if (naa_3d_mon ne 0) then begin 
-               rd_state3d, aa_3d_mon, idum, f_var(idum), fld2d
+               print,''
+               print,'==> Reading and plotting 3d monthly means ... '
+               print,''
+               print,'Plotting ... ',f_var(ivar)
+
+; ---------------------------      
+; loop among monthly mean 3d files 
+               pfile = 1
+               while (pfile ge 1 and pfile le naa_3d_mon) do begin
+                  print,''
+                  print,'Enter file # to read ... (1-'+string(naa_3d_mon, format='(i0)')+')?'
+                  read, pfile
+                  if (pfile lt 1) or (pfile gt naa_3d_mon) then break 
+                  ifile=pfile-1
+                  rd_state3d, aa_3d_mon(ifile), ivar-2, fld3d ; ivar-2 because no 3d SSH/OBP
+               
+                  fname = file_basename(aa_3d_mon(ifile))
+                  pinfo = f_var(ivar) + string(pfile,format='(1x,i0)') + ' ' + fname
+                  plt_state3d, fld3d, pinfo, ivar-2 ; ivar-2 because no 3d SSH/OBP
+               endwhile
+
+               print,'*********************************************'
+               print,'Returning variable '
+               print,'   fld3d: last plotted 3d field'
+               print,''
+
             endif else begin
                print,''
                print,'No monthly mean 3d output available ... '
             endelse
+
          endelse
       endelse
 
@@ -109,13 +181,6 @@ if (ndum ne 0) then begin
       print,'Plot another file ... (Y/N)?'
       read, plot_another
    endwhile
-
-; ---------------
-; Return last plotted 
-   print,''
-   print,'*********************************************'
-   print,'Returning variable '
-   print,'   fld2d: last plotted 2d field'
 
 endif else begin
 ; ---------------

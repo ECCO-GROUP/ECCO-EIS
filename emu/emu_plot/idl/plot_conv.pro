@@ -6,8 +6,16 @@ pro plot_conv, frun, recon1d, istep, fctrl, ev_lag, ev_ctrl, ev_space
 frun_output = frun + '/output/'
 
 ; Get maximum lag from the name of the run (frun) 
+; nlag is number of lags (max lag is nlag-1 weeks) 
 ii = strpos(frun,'_',/reverse_search)
-nlag = fix(strmid(frun,ii+1,strlen(frun)-ii)) 
+if (strlen(frun)-ii eq 7) then begin  ; frun has date & time at end
+   ; Split the string by underscore '_'
+   parts = STRSPLIT(frun, '_', /EXTRACT)
+   ; Extract the third number from the end
+   nlag = parts[parts.LENGTH - 3] + 1  ; lag starts from zero, so number of lag is +1
+endif else begin ; frun does not have date & time at end 
+   nlag = fix(strmid(frun,ii+1,strlen(frun)-ii)) + 1 ; lag starts from zero, so number of lag is +1
+endelse
 
 ; specify controls in file 
 fctrl = ['empmr', 'pload', 'qnet', 'qsw', 'saltflux', 'spflx', 'tauu', 'tauv']
@@ -88,7 +96,7 @@ for i=0,nlag-1 do begin
    ev_lag(i) = 1. - lib_var(recon1d_sum(*,nlag-1) - recon1d_sum(*,i))/vref
 endfor
 
-tlag = findgen(nlag) + 1
+tlag = findgen(nlag) ; start from zero lag 
 
 print,'*********************************************'
 print,'Computed Explained Variance (EV) vs lag with all controls. '
@@ -129,12 +137,12 @@ cc=cmin + (cmax-cmin)*findgen(nctrl)/(nctrl-1)
 
 ip=nlag-1 ; IDL counts from zero
 
-while (ip+1 ge 1 and ip+1 le nlag) do begin 
+while (ip ge 0 and ip le nlag-1) do begin 
 
 ; Plot reconstruction 
    !p.multi=[0,1,2]
 
-   fdum = 'recon1d: reconstruction at lag='+string(ip+1,format='(i0)')
+   fdum = 'recon1d: reconstruction at lag='+string(ip,format='(i0)')
 
    plot,ww,recon1d_sum(*,ip),title=fdum,xrange=[wwmin,wwmax],xstyle=1
    for i=0,nctrl-1 do oplot,ww,recon1d(*,ip,i),col=cc(i)
@@ -148,15 +156,14 @@ while (ip+1 ge 1 and ip+1 le nlag) do begin
    plot,tlag,ev_lag,title='Exp Var vs lag (ev_lag)',xtitle='lag(wks)',ytitle='Exp Var'
    oplot,[tlag(ip)],[ev_lag(ip)],psym=2,col=55,noclip=1,thick=2,symsize=2
 
-   plot,tctrl,ev_ctrl,title='Exp Var vs ctrl (ev_ctrl) @ lag='+string(nlag,format='(i0)'),xtitle='controls', ytitle='Exp Var', $
+   plot,tctrl,ev_ctrl,title='Exp Var vs ctrl (ev_ctrl) @ lag='+string(nlag-1,format='(i0)'),xtitle='controls', ytitle='Exp Var', $
         xticks=(nctrl-1), xtickv=tctrl, xtickname=fctrl, xrange=[tctrl_min,tctrl_max],xstyle=1
    for i=0,nctrl-1 do begin
       oplot,[tctrl(i)],[ev_ctrl(i)],psym=2,col=cc(i),thick=2,symsize=2
    endfor
 
-   print,'Enter lag to plot ... (1-'+string(nlag,format='(i0)')+')?'
+   print,'Enter lag to plot ... (0-'+string(nlag-1,format='(i0)')+')?'
    read,ip 
-   ip = ip - 1  ; IDL counts from zero
 
 endwhile
 

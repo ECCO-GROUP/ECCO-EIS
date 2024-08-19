@@ -1,4 +1,4 @@
-pro rd_ptracer, ff, irec, trc
+pro rd_ptracer, ff, ifile, trc
 ; Read and plot a record of a state_2d_set1 file
 
 common emu_grid, nx, ny, nr, xc, yc, rc, dxc, dyc, drc, $
