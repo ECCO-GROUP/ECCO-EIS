@@ -234,7 +234,36 @@ echo
 sleep 2
 
 # ***************************************
-# 7) Select what EMU Input Files to download 
+# 7) Set batch command
+
+echo "----------------------"
+echo "EMU uses scripts (pbs_*.sh) to run some of its tools as batch jobs for "
+echo "PBS (Portable Batch System). The PBS commands in these scripts, "
+echo "installed in EMU's User Interface directory "
+echo $emu_userinterface_dir
+echo "may need to be revised for different batch systems and/or different hosts. "
+echo "Alternatively, these scripts can be run interactively if sufficient "
+echo "resources are available."
+echo
+echo "Enter the command for submitting batch jobs (e.g., qsub, sbatch, "
+echo "bsub <, condor_submit, msub) or press the ENTER key to have EMU "
+echo "run its batch scripts interactively ... ?"
+read ftext
+
+echo 
+if [[ -z ${ftext} ]]; then
+    batch_command=bash
+    echo "EMU's batch job scripts will be run interactively."
+else
+    batch_command=${ftext}
+    echo "Command to submit EMU's batch job scripts will be: ${batch_command}"
+fi
+echo 
+
+sleep 2 
+
+# ***************************************
+# 8) Select what EMU Input Files to download 
 
 echo "----------------------"
 echo "EMU's Input Files total 1.1 TB, of which (directory)"
@@ -251,9 +280,11 @@ echo "   2) Files (~195 GB) needed for Adjoint and Modified Simultion Tools"
 echo "   3) Files (~370 GB) needed for Forward Gradient Tool"
 echo "   4) Files (~380 GB) needed for Tracer Tool"
 echo "   5) Files (~465 GB) needed for Attribution Tool" 
-echo "or press the ENTER key to skip this step. Input Files can be downloaded later "
-echo "using shell script"
+echo "or press the ENTER key to skip this step, which can take a while" 
+echo "(~13 hours if downloading all input files.) Alternatively, the Input "
+echo "Files can be downloaded later using the shell script"
 echo "   ${emu_userinterface_dir}/emu_download_input.sh "
+echo "which provides an option to conduct the task in batch mode."
 echo 
 echo "Enter Input Files download choice ... ?"
 read emu_download 
@@ -296,7 +327,7 @@ ${Earthdata_username}
 ${WebDAV_password}
 ${emu_input_dir}
 ${emu_download}
-
+1
 EOF
     emu_download_input_pid=$!
     bg_pids+=($emu_download_input_pid)
@@ -321,33 +352,6 @@ sleep 2
 
 # ***************************************
 # 9) Install EMU's Programs 
-
-# .......................................
-# Set batch command
-
-echo "----------------------"
-echo "EMU uses scripts (pbs_*.sh) to run some of its tools as batch jobs for "
-echo "PBS (Portable Batch System). The PBS commands in these scripts may need"
-echo "to be revised for different batch systems and/or different hosts. "
-echo "Alternatively, these scripts can be run interactively if sufficient "
-echo "resources are available."
-echo
-echo "Enter the command for submitting batch jobs (e.g., qsub, sbatch, "
-echo "bsub <, condor_submit, msub) or press the ENTER key to have EMU "
-echo "run its batch scripts interactively ... ?"
-read ftext
-
-echo 
-if [[ -z ${ftext} ]]; then
-    batch_command=bash
-    echo "EMU's batch job scripts will be run interactively."
-else
-    batch_command=${ftext}
-    echo "Command to submit EMU's batch job scripts will be: ${batch_command}"
-fi
-echo 
-
-sleep 2 
 
 # ------------------
 goto_native() {
