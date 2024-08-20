@@ -13,7 +13,7 @@ umask 022
 #=================================
 
 #=================================
-# Set program specific pafameters 
+# Set program specific parameters 
 nprocs=EMU_NPROC
 emu_dir=EMU_DIR
 emu_input_dir=EMU_INPUT_DIR

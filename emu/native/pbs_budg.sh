@@ -15,7 +15,7 @@ umask 022
 set -e  # Exit immediately if any command fails
 
 #=================================
-# Set program specific pafameters 
+# Set program specific parameters 
 emu_dir=EMU_DIR
 emu_input_dir=EMU_INPUT_DIR
 

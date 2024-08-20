@@ -2,9 +2,6 @@
 
 umask 022
 
-# Record the start time
-start_time=$(date +%s)
-
 #=================================
 # Download input files needed by EMU
 #=================================
@@ -106,19 +103,19 @@ if [[ ! $emu_choice -eq 0 ]]; then
     echo " " 
 fi
 
-echo "Done user input. Press ENTER key to begin download which can take a while ... "
-read ftemp
+# ---------------------------------------
+# 3.5) Choose between interactive download or batch 
+
+
+echo "Downloading EMU input can take a while (~13 hours depending on choice) ... "
+echo 
+echo "Choose to download interactively (1) or by batch job (2) ... (1/2)?"
+read fmode 
 echo " "
+echo "Done with user input."
 
 # ---------------------------------------
-# 4) Download Chosen EMU input 
-
-forcing_dir=${emu_input_dir}/forcing
-if [[ ! -d "${forcing_dir}" ]]; then
-    mkdir ${forcing_dir}
-fi
-
-# Download individual directories
+# Code to Download individual directories
 goto_download_indiv() {
     dum=$1/$2
     if [[ ! -d "${dum}" ]]; then
@@ -133,77 +130,110 @@ goto_download_indiv() {
     fi
 }
 
-# Download small input 
-
-# input_init
-goto_download_indiv ${forcing_dir} "input_init" 4 "input_init"
-
-# forcing_weekly
-goto_download_indiv ${forcing_dir} "forcing_weekly" 4 "other/flux-forced/forcing_weekly"
-
-# mask
-goto_download_indiv ${forcing_dir} "mask" 4 "other/flux-forced/mask"
-
-# xx
-goto_download_indiv ${forcing_dir} "xx" 4 "other/flux-forced/xx"
-
-
-# emu_ref
-if [[ $emu_choice -eq 0 || $emu_choice -eq 1 || $emu_choice -eq 3  || $emu_choice -eq 5 ]]; then
-
-    goto_download_indiv ${emu_input_dir} "emu_ref" 7 "other/flux-forced/emu_input/emu_ref"
-
-fi
-
-# forcing 
-if [[ $emu_choice -eq 0 || $emu_choice -eq 2 || $emu_choice -eq 3 ]]; then
-
-    goto_download_indiv "${forcing_dir}/other/flux-forced" "forcing" 6 "other/flux-forced/forcing"
-
-fi
-
-# state_weekly
-if [[ $emu_choice -eq 0 || $emu_choice -eq 4 ]]; then
-
-    goto_download_indiv "${forcing_dir}/other/flux-forced" "state_weekly" 6 "other/flux-forced/state_weekly"
-
-# Create circulation fields for adjoint tracer 
-
-    goto_download_indiv "${emu_input_dir}" "scripts" 8 "other/flux-forced/emu_input/emu_misc/scripts"
-
-    adstateweeklydir=${forcing_dir}/other/flux-forced/state_weekly_rev_time_227808
-    if [ ! -d "${adstateweeklydir}" ]; then 
-	echo "Generating adjoint tracer input by reverseintime_all.sh"
-	tempdir=$PWD
-	cd ${forcing_dir}/other/flux-forced
-	ln -sf ${emu_input_dir}/scripts/* .
-	sh -xv ./reverseintime_all.sh
-	cd $tempdir
-    fi
-fi
-
-# emu_msim
-if [[ $emu_choice -eq 0 || $emu_choice -eq 5 ]]; then
-
-    goto_download_indiv ${emu_input_dir} "emu_msim" 7 "other/flux-forced/emu_input/emu_msim"
-
-fi
-
 # ---------------------------------------
-# 5) End
+# 4) Download Chosen EMU input 
 
-# Record the end time
-end_time=$(date +%s)
+if [[ $fmode -eq 1 ]]; then 
 
-# Calculate the difference from start_time
-elapsed_time=$((end_time - start_time))
+    echo "Downloading EMU input interactively ... "
 
-hours=$((elapsed_time / 3600))
-minutes=$(((elapsed_time % 3600) / 60))
-seconds=$((elapsed_time % 60))
+    # Record the start time
+    start_time=$(date +%s)
 
-echo " "
-echo "Successfully set up EMU input by emu_download_input.sh"
-printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
-echo "emu_download_input.sh execution complete. $(date)"
-echo " "
+    # Create forcing directory if not present 
+    forcing_dir=${emu_input_dir}/forcing
+    if [[ ! -d "${forcing_dir}" ]]; then
+	mkdir ${forcing_dir}
+    fi
+
+    # Download small input 
+
+    # input_init
+    goto_download_indiv ${forcing_dir} "input_init" 4 "input_init"
+
+    # forcing_weekly
+    goto_download_indiv ${forcing_dir} "forcing_weekly" 4 "other/flux-forced/forcing_weekly"
+
+    # mask
+    goto_download_indiv ${forcing_dir} "mask" 4 "other/flux-forced/mask"
+
+    # xx
+    goto_download_indiv ${forcing_dir} "xx" 4 "other/flux-forced/xx"
+
+
+    # emu_ref
+    if [[ $emu_choice -eq 0 || $emu_choice -eq 1 || $emu_choice -eq 3  || $emu_choice -eq 5 ]]; then
+
+	goto_download_indiv ${emu_input_dir} "emu_ref" 7 "other/flux-forced/emu_input/emu_ref"
+
+    fi
+
+    # forcing 
+    if [[ $emu_choice -eq 0 || $emu_choice -eq 2 || $emu_choice -eq 3 ]]; then
+
+	goto_download_indiv "${forcing_dir}/other/flux-forced" "forcing" 6 "other/flux-forced/forcing"
+
+    fi
+
+    # state_weekly
+    if [[ $emu_choice -eq 0 || $emu_choice -eq 4 ]]; then
+
+	goto_download_indiv "${forcing_dir}/other/flux-forced" "state_weekly" 6 "other/flux-forced/state_weekly"
+
+	# Create circulation fields for adjoint tracer 
+
+	goto_download_indiv "${emu_input_dir}" "scripts" 8 "other/flux-forced/emu_input/emu_misc/scripts"
+
+	adstateweeklydir=${forcing_dir}/other/flux-forced/state_weekly_rev_time_227808
+	if [ ! -d "${adstateweeklydir}" ]; then 
+	    echo "Generating adjoint tracer input by reverseintime_all.sh"
+	    tempdir=$PWD
+	    cd ${forcing_dir}/other/flux-forced
+	    ln -sf ${emu_input_dir}/scripts/* .
+	    sh -xv ./reverseintime_all.sh
+	    cd $tempdir
+	fi
+    fi
+
+    # emu_msim
+    if [[ $emu_choice -eq 0 || $emu_choice -eq 5 ]]; then
+
+	goto_download_indiv ${emu_input_dir} "emu_msim" 7 "other/flux-forced/emu_input/emu_msim"
+
+    fi
+
+    # ---------------------------------------
+    # 5) End
+
+    # Record the end time
+    end_time=$(date +%s)
+
+    # Calculate the difference from start_time
+    elapsed_time=$((end_time - start_time))
+
+    hours=$((elapsed_time / 3600))
+    minutes=$(((elapsed_time % 3600) / 60))
+    seconds=$((elapsed_time % 60))
+
+    echo " "
+    echo "Successfully set up EMU input by emu_download_input.sh"
+    printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
+    echo "emu_download_input.sh execution complete. $(date)"
+    echo " "
+
+else
+    echo "Downloading EMU input in batch mode (pbs_emu_download_input.sh) by "
+    echo "submitting pbs_emu_download_input.sh to batch system "
+    echo "with Earthdata credentials and choice of download files ... "
+
+    cp ./pbs_emu_download_input.sh ./pbs_emu_download_input_actual.sh 
+    sed -i -e "s|EARTHDATA_USERNAME|${Earthdata_username}|g" ./pbs_emu_download_input_actual.sh 
+    sed -i -e "s|WEBDAV_PASSWORD|${WebDAV_password}|g" ./pbs_emu_download_input_actual.sh 
+    sed -i -e "s|EMU_CHOICE|${emu_choice}|g" ./pbs_emu_download_input_actual.sh 
+    
+    BATCH_COMMAND ./pbs_emu_download_input_actual.sh    
+
+    # Delete file with Earthdata credentials 
+    rm ./pbs_emu_download_input_actual.sh    
+fi 
+

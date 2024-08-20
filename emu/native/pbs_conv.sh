@@ -13,7 +13,7 @@ umask 022
 #=================================
 
 #=================================
-# Set program specific pafameters 
+# Set program specific parameters 
 emu_dir=EMU_DIR
 
 rundir=YOURDIR
