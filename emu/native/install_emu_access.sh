@@ -56,6 +56,9 @@ cp -p -f ${emu_dir}/emu/${emu_version}/emu_* ${useraccessdir}
 cp -p -f ${emu_dir}/emu/${emu_version}/pbs_* ${useraccessdir}
 cp -p -f ${emu_dir}/emu/${emu_version}/misc_* ${useraccessdir}
 
+# copy emu_plot
+cp -p -f -r ${emu_dir}/emu/emu_plot/* ${useraccessdir}
+
 # ----------------------------------------
 # Setup emu environment variables
 currentdir=$PWD

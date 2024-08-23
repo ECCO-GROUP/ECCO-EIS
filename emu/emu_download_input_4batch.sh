@@ -4,6 +4,12 @@ umask 022
 
 #=================================
 # Download input files needed by EMU
+#
+# Simplified version of emu_download_input.sh for pbs_emu_download_input.sh. 
+# This has the same input in the same order but does not do batch. 
+# This also moves the Earthdata credentials check to after all terminal input 
+# is read, in case wget disrupts the heredoc. (At NAS, wget must be done
+# on login nodes via ssh which disrupts the heredoc.) 
 #=================================
 
 echo " "
@@ -30,35 +36,15 @@ cd ${useraccessdir}
 # ---------------------------------------
 # 1) Enter Earthdata username & password
 
-URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
-
-while true; do
     # Prompt for username
     echo
-    read -p "Enter your Earthdata username: " Earthdata_username
+    echo "Enter your Earthdata username: " 
+    read Earthdata_username
 
     # Prompt for password
-    read -p "Enter your WebDAV password: " WebDAV_password
-
-
-    # Disable exit on error
-    set +e
-
-    # Check credentials using wget --spider
-    OUTPUT=$(wget --spider --user="$Earthdata_username" --password="$WebDAV_password" "$URL" 2>&1)
-
-    # Enable exit on error
-    set -e 
-
-    # Check the exit status of wget
-    if echo "$OUTPUT" | grep -Ei "Remote file exists and could contain further links" > /dev/null 2>&1; then
-#        echo "Earthdata/WebDAV Credentials confirmed"
-        break
-    else
-	echo
-        echo "Invalid username and/or password. Try again."
-    fi
-done
+    echo
+    echo "Enter your WebDAV password: " 
+    read WebDAV_password
 
 # ---------------------------------------
 # 2) Select directory for EMU
@@ -66,14 +52,6 @@ done
 echo " "
 echo "Enter directory name to place EMU Input (emu_input_dir) ... ?"
 read emu_input_dir
-
-# Check if emu_input_dir exists
-if [[ ! -d "${emu_input_dir}" ]]; then
-    echo " "
-    echo "Directory " ${emu_input_dir} " does not exist."
-    echo "Creating " ${emu_input_dir} " ..... "
-    mkdir ${emu_input_dir} 
-fi
 
 # Convert emu_input_dir to absolute pathname 
 emu_input_dir=$(readlink -f "$emu_input_dir")
@@ -106,29 +84,14 @@ echo ""
 echo "Enter choice ... (0-5)?"
 read emu_choice 
 
-while [[ ${emu_choice} -lt 0 || ${emu_choice} -gt 5 ]] ; do 
-    echo 
-    echo "Choice must be 0-5."
-    read emu_choice
-done
-
-echo
+echo 
 echo "Choice is "$emu_choice
-if [[ ! $emu_choice -eq 0 ]]; then
+
+if [[ ${emu_choice} -lt 0 || ${emu_choice} -gt 5 ]]; then
     echo
-    echo "Rerun this script $0 to download additional EMU input, if necessary."
+    echo "Choice must be one of 0-5."
+    exit 
 fi
-
-# ---------------------------------------
-# 3.5) Choose between interactive download or batch 
-
-echo
-echo "Downloading EMU input can take a while (~13 hours depending on choice) ... "
-echo 
-echo "Choose to download interactively (1) or by batch job (2) ... (1/2)?"
-read fmode 
-echo 
-echo "Done with user input."
 
 # ---------------------------------------
 # Code to Download individual directories
@@ -149,8 +112,25 @@ goto_download_indiv() {
 # ---------------------------------------
 # 4) Download Chosen EMU input 
 
-if [[ $fmode -eq 1 ]]; then 
+# Check Earthdata credentials
+URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
+    # Disable exit on error
+    set +e
 
+    # Check credentials using wget --spider
+    OUTPUT=$(wget --spider --user="$Earthdata_username" --password="$WebDAV_password" "$URL" 2>&1)
+
+    # Enable exit on error
+    set -e 
+
+    # Check the exit status of wget
+    if ! echo "$OUTPUT" | grep -Ei "Remote file exists and could contain further links" > /dev/null 2>&1; then
+	echo 
+        echo "Invalid Earthdata username and/or WebDAV password."
+	exit 
+    fi
+
+# Begin download
     echo
     echo "Downloading EMU input interactively ... "
 
@@ -203,7 +183,7 @@ if [[ $fmode -eq 1 ]]; then
 
 	adstateweeklydir=${forcing_dir}/other/flux-forced/state_weekly_rev_time_227808
 	if [ ! -d "${adstateweeklydir}" ]; then 
-	    echo
+	    echo 
 	    echo "Generating adjoint tracer input by reverseintime_all.sh"
 	    tempdir=$PWD
 	    cd ${forcing_dir}/other/flux-forced
@@ -233,28 +213,9 @@ if [[ $fmode -eq 1 ]]; then
     minutes=$(((elapsed_time % 3600) / 60))
     seconds=$((elapsed_time % 60))
 
-    echo " "
+    echo 
     echo "Successfully set up EMU input by emu_download_input.sh"
     printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
-    echo "emu_download_input.sh execution complete. $(date)"
-    echo " "
-
-else
-    echo 
-    echo "Downloading EMU input in batch mode (pbs_emu_download_input.sh) by "
-    echo "submitting pbs_emu_download_input.sh to batch system "
-    echo "with Earthdata credentials and choice of download files ... "
+    echo "emu_download_input_4batch.sh execution complete. $(date)"
     echo 
 
-    cp ./pbs_emu_download_input.sh ./pbs_emu_download_input_actual.sh 
-    sed -i -e "s|EARTHDATA_USERNAME|${Earthdata_username}|g" ./pbs_emu_download_input_actual.sh 
-    sed -i -e "s|WEBDAV_PASSWORD|${WebDAV_password}|g" ./pbs_emu_download_input_actual.sh 
-    sed -i -e "s|EMU_CHOICE|${emu_choice}|g" ./pbs_emu_download_input_actual.sh 
-    
-    BATCH_COMMAND ./pbs_emu_download_input_actual.sh    
-
-    # Delete file with Earthdata credentials 
-    rm ./pbs_emu_download_input_actual.sh    
-fi 
-
-cd ${currentdir}

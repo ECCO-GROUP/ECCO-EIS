@@ -26,12 +26,11 @@ emu_choice=EMU_CHOICE
 # cd to setup_dir and run emu_download_input.sh 
 cd ${emu_userinterface_dir}
 
-./emu_download_input.sh <<EOF 
+./emu_download_input_4batch.sh <<EOF 
 ${Earthdata_username}
 ${WebDAV_password}
 ${emu_input_dir}
 ${emu_choice}
-1
 EOF
 
 

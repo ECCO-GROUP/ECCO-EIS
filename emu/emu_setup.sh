@@ -1,5 +1,8 @@
 #!/bin/bash -e 
 
+# This version, for singularity, uses setup scripts from Github instead 
+# those in the sif file. 
+
 umask 022
 
 # Record the start time
@@ -92,13 +95,6 @@ while true; do
     set -e 
 
     # Check the exit status of wget
-#    if echo "$OUTPUT" | grep -Ei "Authorization failed|Authentication Failed"; then
-#        echo "Invalid username and/or password. Please try again."
-#    else
-#        echo "Earthdata Credentials confirmed"
-#        break
-#    fi
-
     if echo "$OUTPUT" | grep -Ei "Remote file exists and could contain further links" > /dev/null 2>&1; then
 #        echo "Earthdata/WebDAV Credentials confirmed"
         break
@@ -140,9 +136,10 @@ sleep 1
 # 3) Select directory for storing EMU's User Interface 
 
 echo "----------------------"
-echo "Enter directory name (emu_userinterface_dir) to install EMU's User Interface"
-echo "(~2 MB) or press the ENTER key to use the same directory as EMU's Programs "
-echo "(emu_dir) chosen above .... ? "
+#echo "Enter directory name (emu_userinterface_dir) to install EMU's User Interface"
+#echo "(~2 MB) or press the ENTER key to use the same directory as EMU's Programs "
+#echo "(emu_dir) chosen above .... ? "
+echo "Enter directory name (emu_userinterface_dir) to install EMU's User Interface (~2 MB) ... ?"
 read ftext 
 
 if [[ -z ${ftext} ]]; then
@@ -162,7 +159,6 @@ emu_userinterface_dir=$(readlink -f "$emu_userinterface_dir")
 echo
 echo "EMU's User Interface will be installed in " 
 echo $emu_userinterface_dir
-
 echo
 sleep 1
 
@@ -171,9 +167,10 @@ sleep 1
 # 4) Select directory for storing EMU's Input Files 
 
 echo "----------------------"
-echo "Enter directory name (emu_input_dir) to download up to 1.1 TB of EMU's Input "
-echo "Files or press the ENTER key to use the same directory as EMU's Programs "
-echo "(emu_dir) chosen above .... ? "
+#echo "Enter directory name (emu_input_dir) to download up to 1.1 TB of EMU's Input "
+#echo "Files or press the ENTER key to use the same directory as EMU's Programs "
+#echo "(emu_dir) chosen above .... ? "
+echo "Enter directory name (emu_input_dir) to download up to 1.1 TB of EMU's Input ... ?"
 read ftext 
 
 if [[ -z ${ftext} ]]; then
@@ -207,6 +204,13 @@ fi
 cd temp_setup
 setup_dir=$PWD
 
+echo
+echo "************************"
+echo "NOTE: See *.log files in ${setup_dir} should this script fail."
+echo "************************"
+echo 
+sleep 1 
+
 # ***************************************
 # 6) Select type of installation for EMU's Programs
 
@@ -237,12 +241,12 @@ sleep 2
 # 7) Set batch command
 
 echo "----------------------"
-echo "EMU uses scripts (pbs_*.sh) to run some of its tools as batch jobs for "
-echo "PBS (Portable Batch System). The PBS commands in these scripts, "
-echo "installed in EMU's User Interface directory "
+echo "EMU uses batch scripts to run some of its tools in PBS (Portable "
+echo "Batch System). The PBS commands in these shell scripts (pbs_*.sh),"
+echo "installed in EMU's User Interface directory (emu_userinterface_dir)"
 echo $emu_userinterface_dir
 echo "may need to be revised for different batch systems and/or different hosts. "
-echo "Alternatively, these scripts can be run interactively if sufficient "
+echo "Alternatively, these shell scripts can be run interactively if sufficient "
 echo "resources are available."
 echo
 echo "Enter the command for submitting batch jobs (e.g., qsub, sbatch, "
@@ -267,7 +271,7 @@ sleep 2
 
 echo "----------------------"
 echo "EMU's Input Files total 1.1 TB, of which (directory)"
-echo "   175 GB (emu_ref) is needed by Sampling, Forward Gradient, Budget, and Attribution"
+echo "   175 GB (emu_ref) is needed by Sampling, Forward Gradient, Adjoint, Tracer, Budget, and Attribution"
 echo "   195 GB (forcing) is needed by Forward Gradient, Adjoint, Modified Simultion"
 echo "   380 GB (state_weekly) is needed by Tracer"
 echo "   290 GB (emu_msim) is needed by Attribution" 
@@ -276,15 +280,20 @@ echo
 echo "Choose among the following to download ... "
 echo "   0) All Input Files (1.1 TB) "
 echo "   1) Files (~175 GB) needed for Sampling and Budget Tools"
-echo "   2) Files (~195 GB) needed for Adjoint and Modified Simultion Tools" 
-echo "   3) Files (~370 GB) needed for Forward Gradient Tool"
-echo "   4) Files (~380 GB) needed for Tracer Tool"
-echo "   5) Files (~465 GB) needed for Attribution Tool" 
+echo "   2) Files (~195 GB) needed for Modified Simultion Tools" 
+echo "   3) Files (~370 GB) needed for Adjoint and Forward Gradient Tool"
+echo "   4) Files (~465 GB) needed for Attribution Tool" 
+echo "   5) Files (~555 GB) needed for Tracer Tool"
 echo "or press the ENTER key to skip this step, which can take a while" 
-echo "(~13 hours if downloading all input files.) Alternatively, the Input "
-echo "Files can be downloaded later using the shell script"
+echo "(~13 hours if downloading all input files.) "
+echo 
+echo "EMU's Input Files can be downloaded later with shell script"
 echo "   ${emu_userinterface_dir}/emu_download_input.sh "
-echo "which provides an option to conduct the task in batch mode."
+echo "by entering the same EMU Input Files directory chosen above" 
+echo "(emu_input_dir) when prompted. See "
+echo "   ${emu_userinterface_dir}/README_download_input "
+echo "for additional detail, including options to download the input"
+echo "in batch mode."
 echo 
 echo "Enter Input Files download choice ... ?"
 read emu_download 
@@ -394,18 +403,19 @@ goto_native() {
 
 # .......................................
 # End of user input for native installation 
-    echo "----------------------"
+    echo "**********************"
     echo " End of user input to set up EMU "
     echo " Rest of this script is conducted without user input." 
     echo 
-    echo " Upon completion of this script, EMU can be run by entering command " 
+    echo " EMU can be run by entering command " 
     echo "   ${emu_userinterface_dir}/emu "
-    echo " See "
+    echo " upon completion of this script and downloading EMU input"
+    echo " if done separately. See "
     echo "   ${emu_userinterface_dir}/README" 
     echo " for a brief description, including tools for interactively "
     echo " reading and plotting the Tools' results."
-    echo "----------------------"
     echo 
+    sleep 2 
 
 # .......................................
 # Installing EMU natively on host system
@@ -484,6 +494,23 @@ EOF
 
 # ------------------
 goto_singularity() {
+# .......................................
+# Download EMU source code from github
+# (To use up-to-date scripts from github than those from sif.) 
+    echo "----------------------"
+    echo "Installing EMU programs and shell scripts from GitHub to directory "
+    echo ${emu_dir}
+    echo
+
+    cd ${emu_dir}
+    log_file="${setup_dir}/download_emu_source.log"
+   (
+    git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
+    mv ECCO-EIS/emu .  
+    rm -rf ECCO-EIS  
+    ) > "$log_file" 2>> "$log_file"    
+
+# .......................................
     cd $setup_dir
 
 # .......................................
@@ -497,23 +524,13 @@ goto_singularity() {
 	--cut-dirs=8 https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced/emu_input/emu_misc/emu.sif 
     chmod a+x ${emu_dir}/emu.sif
     singularity_image=${emu_dir}/emu.sif
-#    singularity_image=/net/b230-304-t3/ecco_nfs_1/shared/EMU/emu_dir/emu_sandbox
-
 
 # .......................................
-# Get scripts from emu Singularity image 
+# Get shell scripts from EMU 
     
-   /bin/rm -f my_commands.sh
-   echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
-   echo 'cd /inside_out'                    >> my_commands.sh
-
-# Get shell scripts 
-   echo 'cp -f ${emu_dir}/emu/singularity/install_emu_access.sh .'  >> my_commands.sh
-   echo 'cp -f ${emu_dir}/emu/singularity/install_openmpi.sh .'  >> my_commands.sh
-   echo 'cp -f ${emu_dir}/emu/emu_download_input.sh  .'  >> my_commands.sh
-
-   singularity exec --bind ${PWD}:/inside_out \
-       ${singularity_image} /inside_out/my_commands.sh
+    cp -f ${emu_dir}/emu/singularity/install_emu_access.sh .
+    cp -f ${emu_dir}/emu/singularity/install_openmpi.sh .
+    cp -f ${emu_dir}/emu/emu_download_input.sh  .
 
 # .......................................
 # Download EMU Input Files 
@@ -628,18 +645,19 @@ fi
 
 # .......................................
 # End of user input for singularity installation 
-   echo "----------------------"
+   echo "**********************"
    echo " End of user input to set up EMU "
    echo " Rest of this script is conducted without user input." 
    echo 
-   echo " Upon completion of this script, EMU can be run by entering command " 
+   echo " EMU can be run by entering command " 
    echo "   ${emu_userinterface_dir}/emu "
-   echo " See "
+   echo " upon completion of this script and downloading EMU input"
+   echo " if done separately. See "
    echo "   ${emu_userinterface_dir}/README" 
    echo " for a brief description, including tools for interactively "
    echo " reading and plotting the Tools' results."
-   echo "----------------------"
    echo 
+   sleep 2
 
 # .......................................
 # Install EMU User Interface 
@@ -678,27 +696,6 @@ else
    echo "This should not happen ... "
    exit 1
 fi
-
-# ***************************************
-# 10) Install EMU_PLOT
-
-echo "----------------------"
-echo "Downloading EMU_PLOT on host system in directory "
-echo ${emu_userinterface_dir}
-
-# Download EMU source code from github
-cd ${emu_userinterface_dir}
-log_file="./setup_emu_plot.log"
-(
-    git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
-    mv ECCO-EIS/emu/emu_plot/* .  
-    rm -rf ECCO-EIS  
-) > "$log_file" 2>> "$log_file"    
-
-sed -i -e "s|PUBLICDIR|${emu_userinterface_dir}|g" ./README_plot
-sed -i -e "s|PUBLICDIR|${emu_userinterface_dir}|g" ./*/README_*
-
-echo
 
 # ***************************************
 # 11) Monitor background task completion 
@@ -771,5 +768,6 @@ printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
 echo
 echo "Enter following command to run EMU " 
 echo "   ${emu_userinterface_dir}/emu "
+echo "after downloading EMU Input Files if it was skipped earlier."
 echo "----------------------"
 

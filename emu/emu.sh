@@ -6,6 +6,52 @@
 
 umask 022
 
+# Make sure PWD is not where this script is (emu_userinterface_dir)
+script_path=$(readlink -f "$0")
+script_dir=$(dirname "$script_path")
+
+if [ "$script_dir" == "$PWD" ]; then
+    echo 
+    echo "***************************************"
+    echo "EMU cannot be run from the same directory as its user interface." 
+    echo "  viz., pwd = $PWD  " 
+    echo "is not allowed. Change directories and try again;" 
+    echo "  e.g., cd ~/ "
+    echo "        $script_path "
+    echo "***************************************"
+    echo 
+    exit 
+fi
+
+# emu_type.sh
+if [ -e "PUBLICDIR/emu_type.sh" ]; then
+    bash PUBLICDIR/emu_type.sh
+fi
+
+export emu_dir=EMU_DIR
+export emu_input_dir=EMU_INPUT_DIR
+
+# Set directory names for the tool. 
+echo ${emu_dir} > ./tool_setup_dir
+echo ${emu_input_dir} > ./input_setup_dir
+
+# Make sure PATH includes current directory. 
+if [[ ":$PATH:" != *":.:"* ]]; then
+    # Add current directory to the PATH
+    export PATH="$PATH:."
+fi
+
+#=================================
+# Master shell script for EMU
+#=================================
+
+returndir=${PWD}
+
+#if [ ! -d emu_temp ]; then
+#    echo "Creating EMU temporary directory ... "
+
+if (${script_dir} -eq pwd)
+
 # emu_type.sh
 if [ -e "PUBLICDIR/emu_type.sh" ]; then
     bash PUBLICDIR/emu_type.sh
