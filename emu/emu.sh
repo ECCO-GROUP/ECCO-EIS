@@ -6,6 +6,7 @@
 
 umask 022
 
+# ----------------------
 # Make sure PWD is not where this script is (emu_userinterface_dir)
 script_path=$(readlink -f "$0")
 script_dir=$(dirname "$script_path")
@@ -23,11 +24,14 @@ if [ "$script_dir" == "$PWD" ]; then
     exit 
 fi
 
-# emu_type.sh
+# ----------------------
+# Echo type of EMU implementation (emu_type.sh)
 if [ -e "PUBLICDIR/emu_type.sh" ]; then
     bash PUBLICDIR/emu_type.sh
 fi
 
+# ----------------------
+# Set EMU directories
 export emu_dir=EMU_DIR
 export emu_input_dir=EMU_INPUT_DIR
 
@@ -42,45 +46,8 @@ if [[ ":$PATH:" != *":.:"* ]]; then
 fi
 
 #=================================
-# Master shell script for EMU
-#=================================
 
 returndir=${PWD}
-
-#if [ ! -d emu_temp ]; then
-#    echo "Creating EMU temporary directory ... "
-
-if (${script_dir} -eq pwd)
-
-# emu_type.sh
-if [ -e "PUBLICDIR/emu_type.sh" ]; then
-    bash PUBLICDIR/emu_type.sh
-fi
-
-export emu_dir=EMU_DIR
-export emu_input_dir=EMU_INPUT_DIR
-
-# Set directory names for the tool. 
-echo ${emu_dir} > ./tool_setup_dir
-echo ${emu_input_dir} > ./input_setup_dir
-
-# Make sure PATH includes current directory. 
-if [[ ":$PATH:" != *":.:"* ]]; then
-    # Add current directory to the PATH
-    export PATH="$PATH:."
-fi
-
-#=================================
-# Master shell script for EMU
-#=================================
-
-returndir=${PWD}
-
-#if [ ! -d emu_temp ]; then
-#    echo "Creating EMU temporary directory ... "
-#    mkdir emutemp
-#fi
-#cd emutemp
 
 echo " "
 echo " ECCO Modeling Utilities (EMU) Version 1.0a ... "
