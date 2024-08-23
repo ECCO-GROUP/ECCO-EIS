@@ -21,6 +21,7 @@ useraccessdir=$(dirname "$script_path")
 current_script="$(basename "$0")"
 find . -type f -name '*.*' ! -name "$current_script" -exec sed -i -e 's|PUBLICDIR|'"${useraccessdir}"'|g'  {} +
 sed -i -e "s|PUBLICDIR|${useraccessdir}|g" ./README*
+sed -i -e "s|PUBLICDIR|${useraccessdir}|g" ./*/README_*
 
 # --------------------------------------------------
 # Specify variable names 

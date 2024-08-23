@@ -30,6 +30,9 @@ From: ubuntu:22.04
     apt-get install -y csh tcsh netcdf-bin python3        	    
     apt-get install -y parallel locales
 
+    # Add fuse2fs installation
+    apt-get install -y e2fsprogs fuse2fs
+    
     # Generate locale
     locale-gen en_US.UTF-8
     update-locale LANG=en_US.UTF-8
@@ -103,4 +106,3 @@ From: ubuntu:22.04
     
 %help 
     This is EMU in a Singularity container. 
-
