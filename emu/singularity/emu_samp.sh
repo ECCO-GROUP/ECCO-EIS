@@ -24,8 +24,7 @@ if [[ ! -d $fdum ]]; then
     echo " "
     echo "ABORT: EMU Input for Sampling Tool not found;"
     echo $fdum
-    echo "Run PUBLICDIR/emu_download_input.sh"
-    echo "using ${emu_input_dir} as 'directory name to place EMU Input'" 
+    echo "Run PUBLICDIR/emu_input_setup.sh"
     echo "to download emu_ref needed for the Budget Tool." 
     exit 1
 fi

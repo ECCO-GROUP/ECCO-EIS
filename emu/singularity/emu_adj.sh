@@ -18,14 +18,17 @@ echo "************************************"
 
 echo ${PWD} > emu.fcwd 
 
-# Step 0: Check required EMU Input 
+# ------------------------------------------
+# Check setup 
+
+# Check required EMU Input 
 fdum=${emu_input_dir}/forcing/other/flux-forced/forcing
 if [[ ! -d $fdum ]]; then 
-    echo " "
+    echo 
+    echo "**********************"
     echo "ABORT: EMU Input for Adjoint Tool not found;"
     echo $fdum
-    echo "Run PUBLICDIR/emu_download_input.sh"
-    echo "using ${emu_input_dir} as 'directory name to place EMU Input'" 
+    echo "Run PUBLICDIR/emu_input_setup.sh"
     echo "to download forcing needed for the Adjoint Tool." 
     exit 1
 fi

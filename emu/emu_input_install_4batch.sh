@@ -5,8 +5,7 @@ umask 022
 #=================================
 # Download input files needed by EMU
 #
-# Simplified version of emu_download_input.sh for pbs_emu_download_input.sh. 
-# This has the same input in the same order but does not do batch. 
+# Simplified version of emu_input_install.sh for pbs_input_setup.sh. 
 # This also moves the Earthdata credentials check to after all terminal input 
 # is read, in case wget disrupts the heredoc. (At NAS, wget must be done
 # on login nodes via ssh which disrupts the heredoc.) 
@@ -22,16 +21,12 @@ echo "After obtaining an Earthdata account WebDAV password can be found at https
 echo "-------------------------------------------------------------------------------------------------------"
 
 # ----------------------------------------
-# ID path to EMU useraccess files 
+# EMU useraccess directory
 
-# Get the full path of this script
-script_path=$(readlink -f "$0")
-
-# Get the directory containing the script
-useraccessdir=$(dirname "$script_path")
+emu_userinterface_dir=PUBLICDIR
 
 currentdir=$PWD
-cd ${useraccessdir}
+cd ${emu_userinterface_dir}
 
 # ---------------------------------------
 # 1) Enter Earthdata username & password
@@ -49,14 +44,12 @@ cd ${useraccessdir}
 # ---------------------------------------
 # 2) Select directory for EMU
 #    Input files will be placed in subdirectories. 
-echo " "
-echo "Enter directory name to place EMU Input (emu_input_dir) ... ?"
-read emu_input_dir
 
-# Convert emu_input_dir to absolute pathname 
-emu_input_dir=$(readlink -f "$emu_input_dir")
+emu_input_dir=EMU_INPUT_DIR
 
-echo " "
+# 
+echo
+echo "----------------------"
 echo "EMU input files will be placed in ... "
 echo $emu_input_dir
 
@@ -64,6 +57,7 @@ echo $emu_input_dir
 # 3) Select what to download 
 
 echo
+echo "----------------------"
 echo "Choosing what EMU input to download ... "
 echo 
 echo "EMU's Input Files total 1.1 TB, of which (directory)"
@@ -82,15 +76,15 @@ echo "   4) Files (~465 GB) needed for Attribution Tool"
 echo "   5) Files (~555 GB) needed for Tracer Tool"
 echo ""
 echo "Enter choice ... (0-5)?"
-read emu_choice 
+read emu_input 
 
 echo 
-echo "Choice is "$emu_choice
+echo "Choice is "$emu_input
 
-if [[ ${emu_choice} -lt 0 || ${emu_choice} -gt 5 ]]; then
+if [[ ${emu_input} -lt 0 || ${emu_input} -gt 5 ]]; then
     echo
     echo "Choice must be one of 0-5."
-    exit 
+    exit 1
 fi
 
 # ---------------------------------------
@@ -99,7 +93,7 @@ goto_download_indiv() {
     dum=$1/$2
     if [[ ! -d "${dum}" ]]; then
 # input_init
-	wget -P $1 -r --no-parent --user $Earthdata_username \
+	ssh pfe wget -P $1 -r --no-parent --user $Earthdata_username \
 	    --password $WebDAV_password -nH \
 	    --cut-dirs=$3 https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/$4
     else
@@ -118,7 +112,7 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     set +e
 
     # Check credentials using wget --spider
-    OUTPUT=$(wget --spider --user="$Earthdata_username" --password="$WebDAV_password" "$URL" 2>&1)
+    OUTPUT=$(ssh pfe wget --spider --user="$Earthdata_username" --password="$WebDAV_password" "$URL" 2>&1)
 
     # Enable exit on error
     set -e 
@@ -127,7 +121,7 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     if ! echo "$OUTPUT" | grep -Ei "Remote file exists and could contain further links" > /dev/null 2>&1; then
 	echo 
         echo "Invalid Earthdata username and/or WebDAV password."
-	exit 
+	exit 1
     fi
 
 # Begin download
@@ -149,31 +143,31 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     goto_download_indiv ${forcing_dir} "input_init" 4 "input_init"
 
     # forcing_weekly
-    goto_download_indiv ${forcing_dir} "forcing_weekly" 4 "other/flux-forced/forcing_weekly"
+    goto_download_indiv ${forcing_dir} "other/flux-forced/forcing_weekly" 4 "other/flux-forced/forcing_weekly"
 
     # mask
-    goto_download_indiv ${forcing_dir} "mask" 4 "other/flux-forced/mask"
+    goto_download_indiv ${forcing_dir} "other/flux-forced/mask" 4 "other/flux-forced/mask"
 
     # xx
-    goto_download_indiv ${forcing_dir} "xx" 4 "other/flux-forced/xx"
+    goto_download_indiv ${forcing_dir} "other/flux-forced/xx" 4 "other/flux-forced/xx"
 
 
     # emu_ref
-    if [[ $emu_choice -eq 0 || $emu_choice -eq 1 || $emu_choice -eq 3  || $emu_choice -eq 4 || $emu_choice -eq 5 ]]; then
+    if [[ $emu_input -eq 0 || $emu_input -eq 1 || $emu_input -eq 3  || $emu_input -eq 4 || $emu_input -eq 5 ]]; then
 
 	goto_download_indiv ${emu_input_dir} "emu_ref" 7 "other/flux-forced/emu_input/emu_ref"
 
     fi
 
     # forcing 
-    if [[ $emu_choice -eq 0 || $emu_choice -eq 2 || $emu_choice -eq 3 ]]; then
+    if [[ $emu_input -eq 0 || $emu_input -eq 2 || $emu_input -eq 3 ]]; then
 
 	goto_download_indiv "${forcing_dir}/other/flux-forced" "forcing" 6 "other/flux-forced/forcing"
 
     fi
 
     # state_weekly
-    if [[ $emu_choice -eq 0 || $emu_choice -eq 5 ]]; then
+    if [[ $emu_input -eq 0 || $emu_input -eq 5 ]]; then
 
 	goto_download_indiv "${forcing_dir}/other/flux-forced" "state_weekly" 6 "other/flux-forced/state_weekly"
 
@@ -194,7 +188,7 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     fi
 
     # emu_msim
-    if [[ $emu_choice -eq 0 || $emu_choice -eq 4 ]]; then
+    if [[ $emu_input -eq 0 || $emu_input -eq 4 ]]; then
 
 	goto_download_indiv ${emu_input_dir} "emu_msim" 7 "other/flux-forced/emu_input/emu_msim"
 
@@ -214,8 +208,9 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     seconds=$((elapsed_time % 60))
 
     echo 
-    echo "Successfully set up EMU input by emu_download_input.sh"
+    echo "----------------------"
+    echo "Successfully set up EMU input by emu_input_install_4batch.sh"
     printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
-    echo "emu_download_input_4batch.sh execution complete. $(date)"
+    echo "emu_input_install_4batch.sh execution complete. $(date)"
     echo 
 

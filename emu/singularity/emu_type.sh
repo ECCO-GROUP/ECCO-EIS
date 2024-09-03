@@ -5,9 +5,18 @@ echo " ****************** "
 echo "  This version of EMU is implemented in Singularity "
 echo " ****************** "
 
+# Check availablity of singularity 
+if ! command -v singularity &> /dev/null; then
+    echo 
+    echo "**********************"
+    echo " ABORT: Command singularity not found."
+    exit 1
+fi
 
 if [ ! -f "PUBLICDIR/emu_env.singularity" ] ; then
-    echo " File PUBLICDIR/emu_env.singularity not found. "
+    echo 
+    echo "**********************"
+    echo " ABORT: File PUBLICDIR/emu_env.singularity not found. "
     echo " EMU is not correctly set up. " 
     exit 1 
 else
@@ -45,6 +54,8 @@ else
 	echo " EMU compatible mpiexec "
 	echo ${native_mpiexec}
 	echo " not found. "
+	echo " Run PUBLICDIR/emu_openmpi_setup.sh"
+	echo " to install EMU compatible OpenMPI." 
 	check=false
     fi
 
@@ -66,6 +77,7 @@ else
 	echo "   Command to submit batch job: ${batch_command}"
 	echo "   Number of CPU cores used for MITgcm: ${emu_nproc}"
     else
+	echo
 	echo "EMU is not correctly set up. " 
 	exit 1
     fi

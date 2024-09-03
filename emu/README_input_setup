@@ -1,0 +1,29 @@
+
+===========================================
+Downloading EMU Input: A Brief Description
+===========================================
+
+Instead of downloading during EMU setup by emu_setup.sh, EMU's Input
+Files can be downloaded separately using shell script
+   	       	    
+    PUBLICDIR/emu_input_setup.sh 
+    
+This shell script also provides an option to download the input files
+in batch mode. To do so in batch, PBS commands in batch script
+
+    PUBLICDIR/pbs_input_setup.sh 
+
+which emu_input_setup.sh submits to the batch system, should be
+modified as necessary for the host computing environment before
+running emu_input_setup.sh. Commands in
+
+    PUBLICDIR/emu_input_install_4batch.sh 
+
+which this PBS script invokes should also be examined. Tailored for
+systems at NAS, "wget" in this script is conducted by login nodes
+using syntax "ssh pfe wget", as NAS compute nodes do not have internet
+access. The command "ssh pfe wget" in this file should be changed for
+different hosts. 
+
+========================================
+

@@ -126,7 +126,7 @@ case ftool of
 ; 1) Sampling Tool
    'samp': begin 
       print,'Reading Sampling Tool output .. ' 
-      plot_samp,frun, smp, smp_mn, smp_sec
+      plot_samp,frun, smp, smp_mn, smp_hr
    end
 
 ; 2) Foward Gradient Tool

@@ -7,30 +7,6 @@
 umask 022
 
 # ----------------------
-# Make sure PWD is not where this script is (emu_userinterface_dir)
-script_path=$(readlink -f "$0")
-script_dir=$(dirname "$script_path")
-
-if [ "$script_dir" == "$PWD" ]; then
-    echo 
-    echo "***************************************"
-    echo "EMU cannot be run from the same directory as its user interface." 
-    echo "  viz., pwd = $PWD  " 
-    echo "is not allowed. Change directories and try again;" 
-    echo "  e.g., cd ~/ "
-    echo "        $script_path "
-    echo "***************************************"
-    echo 
-    exit 
-fi
-
-# ----------------------
-# Echo type of EMU implementation (emu_type.sh)
-if [ -e "PUBLICDIR/emu_type.sh" ]; then
-    bash PUBLICDIR/emu_type.sh
-fi
-
-# ----------------------
 # Set EMU directories
 export emu_dir=EMU_DIR
 export emu_input_dir=EMU_INPUT_DIR
@@ -43,6 +19,37 @@ echo ${emu_input_dir} > ./input_setup_dir
 if [[ ":$PATH:" != *":.:"* ]]; then
     # Add current directory to the PATH
     export PATH="$PATH:."
+fi
+
+# ----------------------
+# Make sure PWD is not where this script is (emu_userinterface_dir)
+emu_userinterface_dir=PUBLICDIR
+#script_path=$(readlink -f "$0")
+#script_dir=$(dirname "$script_path")
+
+if [[ "$PWD" == "$emu_userinterface_dir" ]] || 
+   [[ "$PWD" == "$emu_dir" ]] ||
+   [[ "$PWD" == "$emu_input_dir" ]] ; then
+    echo 
+    echo "***************************************"
+    echo " EMU cannot be run from within EMU's directories; "
+    echo "   User Interface: ${emu_userinterface_dir}"
+    echo "   Programs: ${emu_dir}"
+    echo "   Input Files: ${emu_input_dir} "
+    echo
+    echo " For example, pwd = $emu_userinterface_dir  " 
+    echo " is not allowed when running EMU. Change directories and try again;" 
+    echo "   e.g., cd ~/ "
+    echo "         ${emu_userinterface_dir}/emu "
+    echo "***************************************"
+    echo 
+    exit 
+fi
+
+# ----------------------
+# Echo type of EMU implementation (emu_type.sh)
+if [ -e "PUBLICDIR/emu_type.sh" ]; then
+    bash PUBLICDIR/emu_type.sh
 fi
 
 #=================================

@@ -57,9 +57,9 @@ if [ ! -f emu_env.singularity ] ; then
     emu_dir=$(dirname "${singularity_image}")
 
 # --------------------------------------------------
-# Set EMU Input directory (output of emu_download_input.sh) 
+# Set EMU Input directory (output of emu_input_setup.sh) 
     echo 
-    echo "Is EMU Input downloaded by emu_download_input.sh located in the same directory as the image at"
+    echo "Is EMU Input downloaded by emu_input_setup.sh located in the same directory as the image at"
     echo "${emu_dir}"
     echo 
     echo "Press ENTER key if the same or enter an alternate directory if otherwise ... ?"
@@ -74,7 +74,7 @@ if [ ! -f emu_env.singularity ] ; then
     if [ ! -d "${forcingdir}" ]; then 
 	echo 
 	echo "EMU Input Files not found in ${emu_input_dir}."
-	echo "Make sure to run emu_download_input.sh to download EMU Input Files."
+	echo "Make sure to run emu_input_setup.sh to download EMU Input Files."
 #	/bin/rm emu_env.singularity
 #	exit 1
     fi
@@ -92,6 +92,9 @@ if [ ! -f emu_env.singularity ] ; then
 
 # --------------------------------------------------
 # EMU image compatible native mpiexec 
+    echo 
+    echo "Enter the pathname for EMU compatible native mpi directory ... ?"
+    read native_ompi
     echo 
     echo "Enter the pathname for EMU compatible native mpiexec ... ?"
     read native_mpiexec
@@ -214,6 +217,7 @@ find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|EMU_DIR|/ecco|g
 find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|SINGULARITY_IMAGE|${singularity_image}|g"  {} +
 find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|EMU_INPUT_DIR|${emu_input_dir}|g"  {} +
 find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|NATIVE_MPIEXEC|${native_mpiexec}|g"  {} +
+find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|NATIVE_OMPI|${native_ompi}|g" {} +
 find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|BATCH_COMMAND|${batch_command}|g" {} +
 
 # Set nproc in PBS scripts 

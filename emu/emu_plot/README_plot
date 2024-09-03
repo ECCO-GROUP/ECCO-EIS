@@ -7,7 +7,7 @@ EMU provides programs for interactively reading and plotting EMU
 output in select programming environments;
    IDL (idl) 
    MATLAB (under development)
-   Python (under developemnt) 
+   Python (python) 
 
 How to run EMU_PLOT 
    Execute program emu_plot.??? found in sub-directories of the
