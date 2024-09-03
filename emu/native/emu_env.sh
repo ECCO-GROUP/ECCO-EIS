@@ -50,9 +50,9 @@ if [ ! -f ./emu_env.native ] ; then
 
     echo $emu_dir > ./tool_setup_dir
 
-# Set EMU Input directory (output of emu_download_input.sh) 
+# Set EMU Input directory (output of emu_input_setup.sh) 
     echo 
-    echo "Is EMU Input downloaded by emu_download_input.sh also located in this directory?"
+    echo "Is EMU Input downloaded by emu_input_setup.sh also located in this directory?"
     echo "${emu_dir}"
     echo 
     echo "Press ENTER key if the same or enter an alternate directory if otherwise ... ?"
@@ -67,7 +67,7 @@ if [ ! -f ./emu_env.native ] ; then
     if [ ! -d "${forcingdir}" ]; then 
 	echo 
 	echo "EMU input not found in ${emu_input_dir}."
-	echo "Make sure to run emu_download_input.sh to download EMU Input Files."
+	echo "Make sure to run emu_input_setup.sh to download EMU Input Files."
 #	/bin/rm emu_env.native
 #	exit 1
     fi
@@ -88,7 +88,7 @@ if [ ! -f ./emu_env.native ] ; then
     if [ ! -d "${forcingdir}" ]; then 
 	echo 
 	echo "EMU Input Files not found in ${emu_input_dir}."
-	echo "Make sure to run emu_download_input.sh to download EMU Input Files."
+	echo "Make sure to run emu_input_setup.sh to download EMU Input Files."
 #	/bin/rm emu_env.singularity
 #	exit 1
     fi

@@ -1,0 +1,30 @@
+
+===========================================
+Downloading and compiling OpenMPI for EMU Singularity
+===========================================
+
+Instead of downloading and compiling during EMU setup by emu_setup.sh,
+OpenMPI for EMU Singularity can be installed separately using shell
+script
+   	       	    
+    PUBLICDIR/emu_openmpi_setup.sh 
+    
+This shell script also provides an option to conduct the installation
+in batch mode. To do so in batch, PBS commands in batch script
+
+    PUBLICDIR/pbs_openmpi_setup.sh 
+
+which emu_openmpi_setup.sh submits to the batch system, should be
+modified as necessary for the host computing environment before
+running emu_openmpi_setup.sh. Commands in
+
+    PUBLICDIR/emu_openmpi_install_4batch.sh 
+
+which this PBS script invokes should also be examined. Tailored for
+systems at NAS, "wget" in this script is conducted by login nodes
+using syntax "ssh pfe wget", as NAS compute nodes do not have internet
+access. The command "ssh pfe wget" in this file should be changed for
+different hosts. 
+
+========================================
+

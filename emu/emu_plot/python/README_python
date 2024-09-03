@@ -7,7 +7,7 @@ Python version of EMU Plotting Tool.
 
 How to run EMU_PLOT 
    Execute program emu_plot.py in Python and follow its prompts;  
-   >>>runpy.run_path('PUBLICDIR/idl/emu_plot.py')
+   >>>runpy.run_path('PUBLICDIR/python/emu_plot.py')
    
 For detailed description: 
    See the EMU User Guide; 

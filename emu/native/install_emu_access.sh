@@ -47,6 +47,7 @@ emu_version='native'
 
 cp -p ${emu_dir}/emu/emu*.sh ${useraccessdir}
 ln -sf ${useraccessdir}/emu.sh ${useraccessdir}/emu
+cp -p ${emu_dir}/emu/pbs*.sh ${useraccessdir}
 cp -p ${emu_dir}/emu/README* ${useraccessdir}
 cp -p ${emu_dir}/emu/Guide*.pdf ${useraccessdir}
 cp -p ${emu_dir}/emu/misc*.sh ${useraccessdir}

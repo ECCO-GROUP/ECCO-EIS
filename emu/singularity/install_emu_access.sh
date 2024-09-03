@@ -56,6 +56,7 @@ currentdir=$PWD
 cd ${useraccessdir}
 
 cp -p ${emu_dir}/emu/emu*.sh .
+cp -p ${emu_dir}/emu/pbs*.sh .
 cp -p ${emu_dir}/emu/README*  .
 cp -p ${emu_dir}/emu/Guide*.pdf .
 cp -p ${emu_dir}/emu/misc*.sh .
@@ -64,6 +65,7 @@ emu_version="singularity"
 cp -p -f ${emu_dir}/emu/${emu_version}/emu_* .
 cp -p -f ${emu_dir}/emu/${emu_version}/pbs_* .
 cp -p -f ${emu_dir}/emu/${emu_version}/misc_* .
+cp -p -f ${emu_dir}/emu/${emu_version}/README* .
 
 ln -sf ${useraccessdir}/emu.sh ${useraccessdir}/emu
 

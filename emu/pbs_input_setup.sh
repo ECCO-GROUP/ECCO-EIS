@@ -4,11 +4,12 @@
 #PBS -j oe
 #PBS -o ./
 #PBS -m bea
+#PBS -k od
 
 umask 022
 
 #=================================
-# PBS script to run emu_download_input.sh in batch mode 
+# PBS script to run emu_input_install_4batch.sh in batch mode 
 #=================================
 
 set -e  # Exit immediately if any command fails
@@ -20,17 +21,16 @@ emu_userinterface_dir=PUBLICDIR
 
 Earthdata_username=EARTHDATA_USERNAME
 WebDAV_password=WEBDAV_PASSWORD
-emu_choice=EMU_CHOICE
+emu_input=EMU_INPUT
 
 #=================================
-# cd to setup_dir and run emu_download_input.sh 
+# cd to setup_dir and run emu_input_install_4batch.sh 
 cd ${emu_userinterface_dir}
 
-./emu_download_input_4batch.sh <<EOF 
+./emu_input_install_4batch.sh <<EOF 
 ${Earthdata_username}
 ${WebDAV_password}
-${emu_input_dir}
-${emu_choice}
+${emu_input}
 EOF
 
 
