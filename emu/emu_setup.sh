@@ -41,7 +41,7 @@ echo
 echo " Users should not move or alter these directories or their files unless "
 echo " noted otherwise (e.g., conforming batch scripts pbs_*.sh for the host " 
 echo " system, installed in the User Interface directory). Once installed, "
-echo " any users of the host system should be able to utilize the installed files "
+echo " any user of the host system should be able to utilize the installed files "
 echo " and programs; Separate installations for different users are not necessary. "
 echo 
 echo " Installation requires obtaining a NASA Earthdata account for downloading "

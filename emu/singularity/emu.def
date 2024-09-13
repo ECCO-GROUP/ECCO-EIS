@@ -2,8 +2,8 @@ Bootstrap: library
 From: ubuntu:22.04
 
 %files
-    hello.f /opt
-    emu.tar /opt 
+#    hello.f /opt
+#    emu.tar /opt 
     nproc.tar /opt 
 
 %environment
@@ -61,10 +61,6 @@ From: ubuntu:22.04
     export LD_LIBRARY_PATH=$OMPI_DIR/lib:$LD_LIBRARY_PATH
     export MANPATH=$OMPI_DIR/share/man:$MANPATH
 
-# Compile hello.f 
-    echo "Compiling MPI test application /opt/hello.f ..."
-    cd /opt && mpif77 -o hello.x hello.f
-
 # Untar ad_input_code.f (nproc.tar) 
     cd /opt
     tar -xvf nproc.tar 
@@ -74,12 +70,18 @@ From: ubuntu:22.04
     mkdir /ecco
     cd /ecco
 
-# 2) Untar emu
-    tar -xvf /opt/emu.tar
-    rm /opt/emu.tar
+# 2) Get emu
+    git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
+    mv ECCO-EIS/emu .  
+    rm -rf ECCO-EIS  
+
+# Compile hello.f 
+    cp /ecco/emu/singularity/hello.f /opt
+    echo "Compiling MPI test application /opt/hello.f ..."
+    cd /opt && mpif77 -o hello.x hello.f
 
 # 3) Compile emu
-    cd emu
+    cd /ecco/emu
     mkdir exe
     make all
 
