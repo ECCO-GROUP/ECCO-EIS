@@ -1,0 +1,36 @@
+
+===========================================
+Setting up ECCO Modeling Utilities (EMU) 
+===========================================
+
+EMU can be installed by downloading and executing its setup shell
+script emu_setup.sh. Do the following and follow the script's prompt; 
+
+   wget https://raw.githubusercontent.com/ECCO-GROUP/ECCO-EIS/main/emu/emu_setup.sh
+   chmod +x ./emu_setup.sh
+   ./emu_setup.sh
+
+The shell script will install EMU's Programs (~1GB), its User
+Interface (~2MB), and download its Input Files (~1TB) to
+user-specified directories.
+
+Users should not move or alter these directories or their files unless
+noted otherwise (e.g., conforming batch scripts pbs_*.sh for the host
+system, installed in the User Interface directory). Once installed,
+any user of the host system should be able to utilize the installed
+files and programs; Separate installations for different users are not
+necessary.
+
+Installation requires obtaining a NASA Earthdata account for
+downloading files from https://ecco.jpl.nasa.gov/drive/. Enter your
+Earthdata username and WebDAV password (*NOT* your Earthdata password)
+when prompted by the script. The WebDAV password can be found at this
+URL after logging in with your Earthdata username and Earthdata
+password, or click the 'Back to WebDAV Credentials' button when
+browsing files at the URL.
+
+See the README file that will be installed in the User Interface directory 
+for details of EMU, including instructions on how to use it.
+
+========================================
+
