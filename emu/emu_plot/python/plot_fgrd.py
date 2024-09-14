@@ -74,7 +74,7 @@ def plot_fgrd(frun):
         pfile = 1
         while pfile >= 1 and pfile <= naa_2d_day:
             print()
-            pfile = int(input(f"Enter file # to read ... (1-{naa_2d_day})?"))
+            pfile = int(input(f"Enter file # to read ... (1-{naa_2d_day} or -1 to exit)?"))
             if pfile < 1 or pfile > naa_2d_day:
                 break
             ifile = pfile-1
@@ -103,7 +103,7 @@ def plot_fgrd(frun):
             pfile = 1
             while pfile >= 1 and pfile <= naa_2d_mon:
                 print()
-                pfile = int(input(f"Enter file # to read ... (1-{naa_2d_mon})?"))
+                pfile = int(input(f"Enter file # to read ... (1-{naa_2d_mon} or -1 to exit)?"))
                 if pfile < 1 or pfile > naa_2d_mon:
                     break
                 ifile = pfile-1
@@ -124,7 +124,7 @@ def plot_fgrd(frun):
             pfile = 1
             while pfile >= 1 and pfile <= naa_3d_mon:
                 print()
-                pfile = int(input(f"Enter file # to read ... (1-{naa_3d_mon})?"))
+                pfile = int(input(f"Enter file # to read ... (1-{naa_3d_mon} or -1 to exit)?"))
                 if pfile < 1 or pfile > naa_3d_mon:
                     break
                 ifile = pfile-1

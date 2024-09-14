@@ -88,7 +88,7 @@ def rd_ptracer(ff):
     # Loop among files
     while idum >= 1 and idum <= n_ff:
         print('')
-        idum = int(input(f'Enter file # to read ... (1-{n_ff})? '))
+        idum = int(input(f'Enter file # to read ... (1-{n_ff} or -1 to exit)? '))
         ifile = idum - 1
         if ifile < 0 or ifile >= n_ff:
             break

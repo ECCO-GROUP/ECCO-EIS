@@ -64,7 +64,7 @@ if (fmd eq 'd' or fmd eq 'D') then begin
    pfile = 1
    while (pfile ge 1 and pfile le naa_2d_day) do begin
       print,''
-      print,'Enter file # to read ... (1-'+string(naa_2d_day, format='(i0)')+')?'
+      print,'Enter file # to read ... (1-'+string(naa_2d_day, format='(i0)')+' or -1 to exit)?'
       read, pfile
       if (pfile lt 1) or (pfile gt naa_2d_day) then break 
       ifile=pfile-1

@@ -97,7 +97,7 @@ idum = 0
 while (idum ge 0 and idum le lag0-lagmax) do begin 
 
    print,''
-   print,'Enter lag (# of weeks) to plot ... (0-' + string(lag0-lagmax,format='(i0)') + ')?'
+   print,'Enter lag (# of weeks) to plot ... (0-' + string(lag0-lagmax,format='(i0)') + ' or -1 to exit)?'
    read,idum
    irec = lag0 - idum 
    if (irec lt lagmax or irec gt lag0) then break

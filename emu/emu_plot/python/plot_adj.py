@@ -125,7 +125,7 @@ def plot_adj(frun):
     idum = 0
     while 0 <= idum <= (lag0 - lagmax):
         print('')
-        user_input = input(f'Enter lag (# of weeks) to plot ... (0-{lag0 - lagmax})? ')
+        user_input = input(f'Enter lag (# of weeks) to plot ... (0-{lag0 - lagmax} or -1 to exit)? ')
 
         try:
             idum = int(user_input)

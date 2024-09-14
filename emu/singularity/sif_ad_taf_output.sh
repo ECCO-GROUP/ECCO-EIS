@@ -6,59 +6,16 @@ umask 022
 # Obtain ad_input_code.f for TAF 
 #====================================
 
-echo " "
-echo "Creating ad_input_code.f for EMU (singularity) ... "
-echo " "
+#echo " "
+#echo "Creating ad_taf_output.f for EMU (singularity) ... "
+#echo " "
 
 # ----------------------------------------
-# ID path to EMU tools
 
-# Get the full path name of this script (located in emu/singularity) 
-script_path=$(readlink -f "$0")
-
-# Get the directory containing the script (full path to emu/singularity)
-singularity_dir=$(dirname "$script_path")
-
-# Get the parent directory of emudir (full path to parent directory of emu)
-emu_dir=$(dirname "$(dirname "$singularity_dir")")
-
-cd $emu_dir
-
-# ----------------------------------------
-# Specify nproc
-echo "Choose number of CPU cores (nproc) to use for MITgcm employed by EMU." 
-echo "Choose among the following nproc ... "
-echo " "
-echo "   13"
-echo "   36"
-echo "   48"
-echo "   68"
-echo "   72"
-echo "   96"
-echo "  192"
-echo "  360"
-echo " "
-echo "Enter choice for nproc ... ?"
-
-read emu_nproc
-
-if [ "$emu_nproc" -ne  13 ] && \
-   [ "$emu_nproc" -ne  36 ] && \
-   [ "$emu_nproc" -ne  48 ] && \
-   [ "$emu_nproc" -ne  68 ] && \
-   [ "$emu_nproc" -ne  72 ] && \
-   [ "$emu_nproc" -ne  96 ] && \
-   [ "$emu_nproc" -ne 192 ] && \
-   [ "$emu_nproc" -ne 360 ]; then 
-    echo "Invalid choice for nproc ... " $emu_nproc
-    exit 1 
-else
-    echo "nproc will be ... " $emu_nproc
-    echo " "
-fi
+return_dir=$PWD
 
 # Make directory for executables
-exedir=~/Temp/nproc/${emu_nproc}
+exedir=$1
 echo "ad_input ad_output in directory: " ${exedir}
 
 # 0) Test if WORKDIR already exists. If so, skip downloading.
@@ -89,11 +46,6 @@ if [ ! -d WORKDIR ]; then
     rm -rf ECCO-v4-Configurations
     cd flux-forced
 
-# 6) Copy to emu_dir flux-forced directories with files needed for emu
-    cp -rf namelist ${emu_dir}
-    cp -rf namelist_offline_ptracer ${emu_dir}
-    cp -rf scripts ${emu_dir}
-
 # End step 0) 
 else
     cd WORKDIR/MITgcm/V4r4/flux-forced
@@ -119,6 +71,6 @@ fi
 cp -f ${exedir}/ad_input_code.f .
 make adtafonly
 cp ad_taf_output.f ${exedir}
-cd $emu_dir
+cd $return_dir
 #
 #

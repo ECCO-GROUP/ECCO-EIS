@@ -81,14 +81,14 @@ From: ubuntu:22.04
 #    Forward and adjoint of flux-forced V4r4
 #    Forward and adjoint of passive tracer code 
     cd singularity
-    echo "13" | ./emu_ad_input_code.sh 
-    echo "36" | ./emu_ad_input_code.sh 
-    echo "48" | ./emu_ad_input_code.sh 
-    echo "68" | ./emu_ad_input_code.sh 
-    echo "72" | ./emu_ad_input_code.sh 
-    echo "96" | ./emu_ad_input_code.sh 
-    echo "192" | ./emu_ad_input_code.sh 
-    echo "360" | ./emu_ad_input_code.sh 
+    echo "13" | ./sif_ad_input_code.sh 
+    echo "36" | ./sif_ad_input_code.sh 
+    echo "48" | ./sif_ad_input_code.sh 
+    echo "68" | ./sif_ad_input_code.sh 
+    echo "72" | ./sif_ad_input_code.sh 
+    echo "96" | ./sif_ad_input_code.sh 
+    echo "192" | ./sif_ad_input_code.sh 
+    echo "360" | ./sif_ad_input_code.sh 
 
 # 5) Clean up MITgcm compilation 
 #    cd $emu_dir

@@ -230,7 +230,7 @@ def plot_conv(frun):
         plt.show()
     
         # Ask for new lag input
-        ip = int(input(f'Enter lag to plot ... (0-{nlag-1})? ')) 
+        ip = int(input(f'Enter lag to plot ... (0-{nlag-1} or -1 to exit)? ')) 
 
         if not (0 <= ip <= nlag-1):
             break
