@@ -21,7 +21,7 @@ landg = where(dumg eq 0, nlandg) ; index where it is dry
 ; Loop among files 
 while (idum ge 1 and idum le n_ff) do begin
    print,''
-   print,'Enter file # to read ... (1-'+string(n_ff,format='(i0)')+')?'
+   print,'Enter file # to read ... (1-'+string(n_ff,format='(i0)')+' or -1 to exit)?'
    read, idum
    ifile=idum-1
    if (ifile lt 0 or ifile gt n_ff-1) then break 

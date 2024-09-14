@@ -1,0 +1,25 @@
+
+===========================================
+Creating EMU Singularity image 
+===========================================
+
+NOTE: EMU's sif image (emu.sif), used by the Singularity version of
+      EMU, is available as part of EMU (downloaded by emu_setup.sh)
+      and users should not have to create one themselves.  Creating
+      emu.sif requires a TAF license.
+
+EMU's sif image (emu.sif) can be created by shell script
+sif_create.sh.
+
+   wget https://raw.githubusercontent.com/ECCO-GROUP/ECCO-EIS/main/emu/singularity/sif_create.sh
+   chmod +x ./sif_create.sh
+   ./sif_create.sh 
+
+This shell script will 
+  1) Download EMU source code, 
+  2) Download and configure MITgcm, 
+  3) Use TAF to create the adjoint of MITgcm from 2), 
+  4) Create a sif image (emu.sif) with executables of 1), 2) and 3). 
+
+===========================================
+

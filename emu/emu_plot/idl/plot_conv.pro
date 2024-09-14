@@ -162,7 +162,7 @@ while (ip ge 0 and ip le nlag-1) do begin
       oplot,[tctrl(i)],[ev_ctrl(i)],psym=2,col=cc(i),thick=2,symsize=2
    endfor
 
-   print,'Enter lag to plot ... (0-'+string(nlag-1,format='(i0)')+')?'
+   print,'Enter lag to plot ... (0-'+string(nlag-1,format='(i0)')+' or -1 to exit)?'
    read,ip 
 
 endwhile
