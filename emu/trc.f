@@ -498,8 +498,8 @@ c Get 0/1 mask
       call mask01_3d(dum3d,x1,x2,y1,y2,z1,z2)
 
 c Save area for naming mask file 
-      write(floc_loc,'(5(f6.1,"_"),f6.1,a4)')
-     $     x1,x2,y1,y2,z1,z2,'-gmn'
+      write(floc_loc,'(5(f6.1,"_"),f6.1)')
+     $     x1,x2,y1,y2,z1,z2
 
       call StripSpaces(floc_loc)
       fmask = 'trc3d.' // trim(floc_loc)
