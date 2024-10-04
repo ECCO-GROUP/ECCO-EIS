@@ -53,6 +53,7 @@ def plot_msim(frun):
     
     # Search for all subdirectories
     entries = glob.glob(os.path.join(frun_output, '*'))
+    entries.sort()
     
     # Initialize the counter
     subdir_count = 0
@@ -65,6 +66,7 @@ def plot_msim(frun):
     if subdir_count != 0:
         # Count total number of .data files in the subdirectories
         files = glob.glob(os.path.join(frun_output, '*/*.data'))
+        files.sort()
         total_file_count = len(files)
         
         if total_file_count != 0:
@@ -83,6 +85,7 @@ def plot_msim(frun):
                     
                     # Search for all files ending with .data in the directory
                     files = glob.glob(os.path.join(entry, '*.data'))
+                    files.sort()
                     
                     # Count the number of .data files
                     file_count = len(files)

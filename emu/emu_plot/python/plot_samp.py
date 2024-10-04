@@ -18,6 +18,7 @@ def plot_samp(frun):
     fdum = 'samp.out_'
     fdum_all = fdum + '*'
     aa = glob.glob(os.path.join(ff, fdum_all))
+    aa.sort()
 
 #    print(f"Files matching {fdum_all}: {aa}")  # Debugging print
 
@@ -61,6 +62,7 @@ def plot_samp(frun):
     # Read samp.step_? (time-step)
     fdum = 'samp.step_' + frec
     aa = glob.glob(os.path.join(ff, fdum))
+    aa.sort()
 
     if len(aa) == 0:
         print()

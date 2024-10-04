@@ -28,16 +28,19 @@ def plot_fgrd(frun):
     # Search for files matching the pattern
     fdum = 'state_2d_set1_day.*.data'
     aa_2d_day = glob.glob(os.path.join(ff, fdum))
+    aa_2d_day.sort()
     naa_2d_day = len(aa_2d_day)
     print(f"{naa_2d_day:6d} files of {fdum}")
 
     fdum = 'state_2d_set1_mon.*.data'
     aa_2d_mon = glob.glob(os.path.join(ff, fdum))
+    aa_2d_mon.sort()
     naa_2d_mon = len(aa_2d_mon)
     print(f"{naa_2d_mon:6d} files of {fdum}")
 
     fdum = 'state_3d_set1_mon.*.data'
     aa_3d_mon = glob.glob(os.path.join(ff, fdum))
+    aa_3d_mon.sort()
     naa_3d_mon = len(aa_3d_mon)
     print(f"{naa_3d_mon:6d} files of {fdum}")
 
