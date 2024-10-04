@@ -581,7 +581,7 @@ def get_timestep(fname, fprefix):
         # Extract the number part starting from the dot position
         if dot_pos != -1:
             # Extract the number as a substring after the dot
-            number_string = fname[dot_pos + 1:]
+            number_string = fname[dot_pos + 1:-5]
             
             try:
                 # Convert the number string to an integer (removes preceding zeros)
