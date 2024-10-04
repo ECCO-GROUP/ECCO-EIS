@@ -27,6 +27,7 @@ try:
     # Search for files matching the pattern emu_env.* but not emu_env.sh
     pattern = os.path.join(emu_access_dir, 'emu_env.*')
     files = glob.glob(pattern)
+    files.sort()
     filtered_files = [f for f in files if not f.endswith('.sh')]
     
     # Check if only one file matches the criteria

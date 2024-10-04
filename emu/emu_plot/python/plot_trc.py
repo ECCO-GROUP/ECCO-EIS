@@ -26,12 +26,14 @@ def plot_trc(frun):
     # Find and count monthly mean files
     fdum = 'ptracer_mon_mean.*.data'
     aa_mon = glob.glob(os.path.join(frun_output, fdum))
+    aa_mon.sort()
     naa_mon = len(aa_mon)
     print(f'Detected {naa_mon:6} files of {fdum}')
     
     # Find and count snapshot files
     fdum = 'ptracer_mon_snap.*.data'
     aa_snap = glob.glob(os.path.join(frun_output, fdum))
+    aa_snap.sort()
     naa_snap = len(aa_snap)
     print(f'Detected {naa_snap:6} files of {fdum}')
     

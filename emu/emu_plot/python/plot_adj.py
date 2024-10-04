@@ -53,6 +53,7 @@ def plot_adj(frun):
 
     # Search for files matching the pattern
     aa = glob.glob(search_pattern)
+    aa.sort()
     naa = len(aa)
 
     if naa != 1:

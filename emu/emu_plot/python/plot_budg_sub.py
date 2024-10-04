@@ -115,6 +115,7 @@ def rd_budg_msk(fdir):
     # ID mask files
     ff = os.path.join(fdir, 'emu_budg.msk3d_*')
     fmsk = glob.glob(ff)
+    fmsk.sort()
     nmsk = len(fmsk)
     
     if nmsk == 0:
@@ -173,6 +174,7 @@ def rd_budg_mkup(fdir, budg_msk):
     # Find budget makeup files
     ff = os.path.join(fdir, 'emu_budg.mkup_*')
     fmkup = glob.glob(ff)
+    fmkup.sort()
     nmkup = len(fmkup)
 
     if nmkup == 0:

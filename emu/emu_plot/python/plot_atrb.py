@@ -25,6 +25,7 @@ def plot_atrb(frun):
     fdum = 'atrb.out_'
     fdum_all = fdum + '*'
     aa = glob.glob(os.path.join(ff, fdum_all))
+    aa.sort()
 
     if len(aa) != 1:
         print()
@@ -66,6 +67,7 @@ def plot_atrb(frun):
 
     fdum = 'atrb.step_' + frec
     aa = glob.glob(os.path.join(ff, fdum))
+    aa.sort()
 
     if len(aa) == 0:
         print('*********************************************')
