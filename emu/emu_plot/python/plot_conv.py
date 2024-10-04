@@ -227,7 +227,7 @@ def plot_conv(frun):
         plt.xlim(tctrl_min, tctrl_max)
     
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
     
         # Ask for new lag input
         ip = int(input(f'Enter lag to plot ... (0-{nlag-1} or -1 to exit)? ')) 
