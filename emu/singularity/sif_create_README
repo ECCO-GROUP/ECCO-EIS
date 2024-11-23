@@ -1,12 +1,13 @@
 
 ===========================================
-Creating EMU Singularity image 
+Creating EMU Singularity image emu.sif
 ===========================================
 
-NOTE: EMU's sif image (emu.sif), used by the Singularity version of
+NOTE: EMU's sif file (emu.sif), used by the Singularity version of
       EMU, is available as part of EMU (downloaded by emu_setup.sh)
       and users should not have to create one themselves.  Creating
-      emu.sif requires a TAF license.
+      emu.sif requires a TAF license. The script to create emu.sif is
+      available here for completeness and for future reference.
 
 EMU's sif image (emu.sif) can be created by shell script
 sif_create.sh.

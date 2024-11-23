@@ -63,6 +63,7 @@ tar -cvf nproc.tar nproc
 
 # ----------------------------------------
 # 4) Create sif file 
+# Executables for 1), 2), and 3) will be compiled within the sif file. 
 
 cp -f ./emu/singularity/sif.def . 
 singularity build --fakeroot emu.sif sif.def

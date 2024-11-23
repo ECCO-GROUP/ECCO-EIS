@@ -114,7 +114,6 @@ echo " "
 if [ $new_compilation -eq 0 ]; then 
     mkdir build_trc
     cd build_trc
-    /bin/cp -f ../code_offline_ptracer/OFFLINE_OPTIONS.h.fwd ../code_offline_ptracer/OFFLINE_OPTIONS.h 
 #    ../../../tools/genmake2 -mods=../code_offline_ptracer -optfile=../../../tools/build_options/linux_amd64_ifort+mpi_ice_nas -mpi
     ../../../tools/genmake2 -mods=../code_offline_ptracer -optfile=../code/linux_amd64_ifort+mpi_ice_nas -mpi
     make depend
@@ -122,6 +121,7 @@ else
     cd build_trc
     make clean
 fi 
+/bin/cp -f ../code_offline_ptracer/OFFLINE_OPTIONS.h.fwd ../code_offline_ptracer/OFFLINE_OPTIONS.h 
 /bin/rm SIZE.h
 ln -sf ${emu_dir}/emu/emu_input/nproc/${emu_nproc}/SIZE.h .
 make all
@@ -136,7 +136,6 @@ echo " "
 if [ $new_compilation -eq 0 ]; then 
     mkdir build_trc_ad
     cd build_trc_ad
-    /bin/cp -f ../code_offline_ptracer/OFFLINE_OPTIONS.h.adj ../code_offline_ptracer/OFFLINE_OPTIONS.h 
 #    ../../../tools/genmake2 -mods=../code_offline_ptracer -optfile=../../../tools/build_options/linux_amd64_ifort+mpi_ice_nas -mpi
     ../../../tools/genmake2 -mods=../code_offline_ptracer -optfile=../code/linux_amd64_ifort+mpi_ice_nas -mpi
     make depend
@@ -144,6 +143,7 @@ else
     cd build_trc_ad
     make clean
 fi
+/bin/cp -f ../code_offline_ptracer/OFFLINE_OPTIONS.h.adj ../code_offline_ptracer/OFFLINE_OPTIONS.h 
 /bin/rm SIZE.h
 ln -sf ${emu_dir}/emu/emu_input/nproc/${emu_nproc}/SIZE.h .
 make all
