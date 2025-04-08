@@ -104,7 +104,7 @@ hour26yr=$(grep -i "HOUR26YR_FWD" "mitgcm_timing.nml" | awk -F '=' '{print $2}' 
 echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'                   >> my_commands.sh
 echo 'cp -f ${emu_dir}/emu/data_emu ./data_msim ' >> my_commands.sh
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 sed -i -e "s|NSTEP_EMU|227903|g" ./data_msim
 
@@ -162,7 +162,7 @@ echo "ln -sf \${emu_dir}/emu/emu_input/nproc/${nprocs}/data.exch2 . "   >> ./my_
 #python3 mkdir_subdir_diags.py
 echo "python3 /emu_input_dir/forcing/input_init/tools/mkdir_subdir_diags.py "  >> ./my_commands.sh    
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # ------------------------------------------
@@ -171,6 +171,8 @@ singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/ins
 target_dir=$PWD
 declare -i n_replace
 n_replace=1
+declare -i n_unique
+n_unique=1
 # Counter starts from 1, otherwise encountered failure with bash -e
 
 # Check to see if there are any files at all in source_dir
@@ -195,6 +197,10 @@ for sourceFile in ${source_dir}/* ; do
   # Count replacement file
     ((n_replace++))  
     echo 'Replacement file ... '${fileName}
+  else
+  # Count unique file
+    ((n_unique++))  
+    echo 'Unique file ... '${fileName}
   fi
 done
 
@@ -202,6 +208,8 @@ fi # end block for src_count check
 
 (( n_replace -=1 ))
 echo "Total # of files to be replaced ... " ${n_replace}
+(( n_unique -=1 ))
+echo "Total # of unique files to be added ... " ${n_unique}
 echo " "
 
 # ------------------------------------------
@@ -259,6 +267,7 @@ echo " "  >> ./msim.info
 
 # Loop through files in source_dir
 n_replace=1
+n_unique=1
 # If there are no files to replace skip replacement 
 if [[ "${src_count}" -ne 0 ]]; then
     
@@ -277,12 +286,22 @@ if [[ "${src_count}" -ne 0 ]]; then
 	    # link the file from the source directory to the target directory
 #	    ln -s ${sourceFile} ${target_dir}
 	    cp -L ${sourceFile} ${target_dir}
+	else
+	    # Count unique file
+	    ((n_unique++))  
+	    echo 'Adding ... '${fileName}
+	    echo 'Adding ... '${fileName} >> ./msim.info
+	    # link the file from the source directory to the target directory
+	    cp -L ${sourceFile} ${target_dir}
 	fi
     done
 fi
 (( n_replace -=1 ))
     echo "Total # of files replaced ... " ${n_replace}
     echo "Total # of files replaced ... " ${n_replace} >> ./msim.info
+(( n_unique -=1 ))
+    echo "Total # of unique files added ... " ${n_unique}
+    echo "Total # of unique files added ... " ${n_unique} >> ./msim.info
 
 # Create subdirectories according to set up.
 #python3 mkdir_subdir_diags.py  # Moved ahead of file modification 

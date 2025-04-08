@@ -57,7 +57,7 @@ fi
 returndir=${PWD}
 
 echo " "
-echo " ECCO Modeling Utilities (EMU) Version 1.0a ... "
+echo " ECCO Modeling Utilities (EMU) Version 1.1a ... "
 echo " See PUBLICDIR/README "
 
 # echo emu_note.sh
@@ -77,8 +77,9 @@ echo "  5) Tracer (trc); Computes passive tracer evolution."
 echo "  6) Budget (budg); Evaluates budget time-series from model output."
 echo "  7) Modified Simulation (msim); Re-runs model with modified input."
 echo "  8) Attribution (atrb); Evaluates state time-series by control type."
+echo "  9) Auxillary (aux); Generate example user input files for other EMU tools."
 echo " "
-echo "Enter choice ... (1-8)?"
+echo "Enter choice ... (1-9)?"
 
 read emu_choice
 
@@ -139,6 +140,13 @@ elif [ "$emu_choice" -eq 8 ]; then
     echo "choice is 8) Attribution Tool (atrb)"
     echo "See PUBLICDIR/README_atrb"
     bash PUBLICDIR/emu_atrb.sh
+
+elif [ "$emu_choice" -eq 9 ]; then
+    echo "Auxillary Tools" > emu.lock
+    echo "choice is 9) Auxillary Tools (aux)"
+    echo "See PUBLICDIR/README_aux"
+    bash PUBLICDIR/emu_aux.sh
+
 else
     echo "Invalid choice ... " $emu_choice
 fi

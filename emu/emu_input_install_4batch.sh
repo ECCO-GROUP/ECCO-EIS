@@ -18,6 +18,9 @@ echo "--------------------------------------------------------------------------
 echo "Users will need to obtain a NASA Earthdata account at https://ecco.jpl.nasa.gov/drive/"
 echo "Use the Username and WebDAV password (not Earthdata password) below to proceed." 
 echo "After obtaining an Earthdata account WebDAV password can be found at https://ecco.jpl.nasa.gov/drive/"
+echo " "
+echo "This program (pbs_input_setup.sh/emu_input_install_4batch.sh) can be run again in case of incomplete "
+echo "downloads or downloading new files from ECCO Drive. "
 echo "-------------------------------------------------------------------------------------------------------"
 
 # ----------------------------------------
@@ -88,20 +91,71 @@ if [[ ${emu_input} -lt 0 || ${emu_input} -gt 5 ]]; then
 fi
 
 # ---------------------------------------
+# Log the run
+echo "**************************************" >> "${emu_input_dir}/download.log"
+date >> "${emu_input_dir}/download.log"
+echo "Running emu_input_install_4batch.sh with choice ${emu_input} " >> "${emu_input_dir}/download.log"
+
+# ---------------------------------------
 # Code to Download individual directories
 goto_download_indiv() {
-    dum=$1/$2
-    if [[ ! -d "${dum}" ]]; then
-# input_init
-	ssh pfe wget -P $1 -r --no-parent --user $Earthdata_username \
-	    --password $WebDAV_password -nH \
-	    --cut-dirs=$3 https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/$4
+    local target_dir="$1/$2"
+    local base_dir="$1"
+    local cut_dirs="$3"
+    local remote_path="$4"
+    local dryrun="${5:-false}"  # Optional: pass 'true' to simulate
+    local log_file="${base_dir}/download.log"
+
+    echo
+    echo "Checking and updating directory: $target_dir"
+    mkdir -p "$target_dir"
+
+    local before_files=$(find "$target_dir" -type f | wc -l)
+    local before_size=$(du -sb "$target_dir" | cut -f1)
+
+    # Dry-run mode: simulate the wget call
+    if [[ "$dryrun" == "true" ]]; then
+        echo "Dry-run mode enabled."
+        echo "Would run:"
+        echo "ssh pfe wget -r -np -nH -N -c -P $base_dir --cut-dirs=$cut_dirs --no-verbose ..."
+        return
+    fi
+
+    # Perform download and append to log
+    ssh pfe wget -r -np -nH -N -c \
+        --no-verbose \
+        -P "$base_dir" \
+        --cut-dirs="$cut_dirs" \
+        --user "$Earthdata_username" \
+        --password "$WebDAV_password" \
+        "https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/$remote_path" \
+        -a "$log_file"
+
+    local after_files=$(find "$target_dir" -type f | wc -l)
+    local after_size=$(du -sb "$target_dir" | cut -f1)
+
+    if [[ $after_files -eq $before_files && $after_size -eq $before_size ]]; then
+        echo "Directory is already up to date: $target_dir"
+        echo "$(date): Up-to-date: $target_dir" >> "$log_file"
     else
-	echo
-	echo "Directory already exists: " $dum
-	echo "Skipping downloading " $2
+        echo "Downloaded or updated $((after_files - before_files)) file(s), total size now $after_size bytes: $target_dir"
+        echo "$(date): Updated $target_dir ($((after_files - before_files)) new files)" >> "$log_file"
     fi
 }
+
+#goto_download_indiv() {
+#    dum=$1/$2
+#    if [[ ! -d "${dum}" ]]; then
+## input_init
+#	ssh pfe wget -P $1 -r --no-parent --user $Earthdata_username \
+#	    --password $WebDAV_password -nH \
+#	    --cut-dirs=$3 https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/$4
+#    else
+#	echo
+#	echo "Directory already exists: " $dum
+#	echo "Skipping downloading " $2
+#    fi
+#}
 
 # ---------------------------------------
 # 4) Download Chosen EMU input 
@@ -140,40 +194,51 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     # Download small input 
 
     # input_init
-    goto_download_indiv ${forcing_dir} "input_init" 4 "input_init"
+    goto_download_indiv ${forcing_dir} "input_init" 4 "input_init/" &
 
     # forcing_weekly
-    goto_download_indiv ${forcing_dir} "other/flux-forced/forcing_weekly" 4 "other/flux-forced/forcing_weekly"
+    goto_download_indiv ${forcing_dir} "other/flux-forced/forcing_weekly" 4 "other/flux-forced/forcing_weekly/" &
 
     # mask
-    goto_download_indiv ${forcing_dir} "other/flux-forced/mask" 4 "other/flux-forced/mask"
+    goto_download_indiv ${forcing_dir} "other/flux-forced/mask" 4 "other/flux-forced/mask/" &
 
     # xx
-    goto_download_indiv ${forcing_dir} "other/flux-forced/xx" 4 "other/flux-forced/xx"
+    goto_download_indiv ${forcing_dir} "other/flux-forced/xx" 4 "other/flux-forced/xx/" &
 
 
     # emu_ref
     if [[ $emu_input -eq 0 || $emu_input -eq 1 || $emu_input -eq 3  || $emu_input -eq 4 || $emu_input -eq 5 ]]; then
 
-	goto_download_indiv ${emu_input_dir} "emu_ref" 7 "other/flux-forced/emu_input/emu_ref"
+	goto_download_indiv ${emu_input_dir} "emu_ref" 7 "other/flux-forced/emu_input/emu_ref/" &
 
     fi
 
     # forcing 
     if [[ $emu_input -eq 0 || $emu_input -eq 2 || $emu_input -eq 3 ]]; then
 
-	goto_download_indiv "${forcing_dir}/other/flux-forced" "forcing" 6 "other/flux-forced/forcing"
+	goto_download_indiv "${forcing_dir}/other/flux-forced" "forcing" 6 "other/flux-forced/forcing/" &
+
+    fi
+
+    # emu_msim
+    if [[ $emu_input -eq 0 || $emu_input -eq 4 ]]; then
+
+	goto_download_indiv ${emu_input_dir} "emu_msim" 7 "other/flux-forced/emu_input/emu_msim/" &
 
     fi
 
     # state_weekly
     if [[ $emu_input -eq 0 || $emu_input -eq 5 ]]; then
 
-	goto_download_indiv "${forcing_dir}/other/flux-forced" "state_weekly" 6 "other/flux-forced/state_weekly"
+	goto_download_indiv "${forcing_dir}/other/flux-forced" "state_weekly" 6 "other/flux-forced/state_weekly/" &
+	pid_state_weekly_1 =$!
 
 	# Create circulation fields for adjoint tracer 
 
-	goto_download_indiv "${emu_input_dir}" "scripts" 8 "other/flux-forced/emu_input/emu_misc/scripts"
+	goto_download_indiv "${emu_input_dir}" "scripts" 8 "other/flux-forced/emu_input/emu_misc/scripts/" &
+	pid_state_weekly_2 =$!
+
+	wait $pid_state_weekly_1 $pid_state_weekly_2
 
 	adstateweeklydir=${forcing_dir}/other/flux-forced/state_weekly_rev_time_227808
 	if [ ! -d "${adstateweeklydir}" ]; then 
@@ -182,20 +247,15 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
 	    tempdir=$PWD
 	    cd ${forcing_dir}/other/flux-forced
 	    ln -sf ${emu_input_dir}/scripts/* .
-	    sh -xv ./reverseintime_all.sh
+	    bash -xv ./reverseintime_all.sh
 	    cd $tempdir
 	fi
     fi
 
-    # emu_msim
-    if [[ $emu_input -eq 0 || $emu_input -eq 4 ]]; then
-
-	goto_download_indiv ${emu_input_dir} "emu_msim" 7 "other/flux-forced/emu_input/emu_msim"
-
-    fi
-
     # ---------------------------------------
     # 5) End
+
+    wait
 
     # Record the end time
     end_time=$(date +%s)
@@ -213,4 +273,13 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
     echo "emu_input_install_4batch.sh execution complete. $(date)"
     echo 
+
+    # ---------------------------------------
+    # Log the run
+    echo " " >> "${emu_input_dir}/download.log"
+    date >> "${emu_input_dir}/download.log"
+    echo "End running emu_input_install_4batch.sh with choice ${emu_input} " >> "${emu_input_dir}/download.log"
+    printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds >> "${emu_input_dir}/download.log"
+    echo "**************************************" >> "${emu_input_dir}/download.log"
+    echo " " >> "${emu_input_dir}/download.log"
 

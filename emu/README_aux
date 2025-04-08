@@ -1,0 +1,44 @@
+
+============================================
+EMU Auxillary Tools: A Brief Description
+============================================
+
+What the Tool does:
+   This Tool generates examples of what other EMU tools employ as
+   user input files. The example input files include; 
+
+   1) Masks defining objective function [misc_mask.sh], 
+   2) Replacement files for Modified Simulation Tool; 
+      a) File (file named 'data') specifying model integration period
+         (i.e., start and duration) [misc_msim_data.sh], 
+      b) File (file named 'data.diagnostics') specifying diagnostic
+         output (i.e., variable and its temporal and spatial
+         sampling) [misc_msim_diagnostics.sh], 
+      c) Time-mean forcing files in place of ECCO's time-variable
+         estimates [misc_msim_forcing.sh],
+      d) Initial condition file with time-mean state in place of
+         ECCO's estimate [misc_msim_ic.sh], 
+      e) Initial condition file with the end state from another
+         simulation and corresponding 'data' file specifying model
+         integration period [misc_pickup.sh], 
+
+    Item 1) is provided for reference only; EMU's individual tools
+    provide the same utility. 
+
+    Item 2a) should *NOT* be used in conjunction with 2e) as one will
+    overwrite what the other creates.
+
+How to run the Tool:
+   Execute command emu (linked to emu.sh) and select Auxillary Tool
+   (tool #9).
+
+Output:
+   Files are generated in user-defined directories prompted by the
+   tool. 
+
+For detailed description: 
+   See Sections 1, 2.x, and 3.x of the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+============================================
+

@@ -102,10 +102,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 
 c Strings for naming output directory
       character*256 dir_out   ! output directory
@@ -293,10 +295,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 
 c 
       real*4 dum2d(nx,ny)
@@ -433,10 +437,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 
 c Common variables for all budgets
       real*4 etan(nx,ny,nmonths+1)
@@ -879,10 +885,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 
 c Common variables for all budgets
       real*4 etan(nx,ny,nmonths+1)
@@ -1423,10 +1431,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 
 c Common variables for all budgets
       real*4 etan(nx,ny,nmonths+1)
@@ -1873,10 +1883,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 
 c Common variables for all budgets
       real*4 etan(nx,ny,nmonths+1)  ! ETAN snapshot 
@@ -2843,81 +2855,6 @@ c Convert to native
 c 
 c ============================================================
 c 
-      subroutine convert2gcmfaces(fx, u1,u2,u3,u4,u5)
-c Convert native nx*ny array to gcmfaces array
-      integer nx, ny, nr
-      parameter (nx=90, ny=1170, nr=50)
-
-c native version 
-      real*4 fx(nx,ny)
-
-c gcmfaces version
-      real*4 u1(nx,3*nx), u2(nx,3*nx), u3(nx,nx)
-      real*4 u4(3*nx,nx), u5(3*nx,nx)
-
-c ------------------------------------
-
-      u1(:,:) = fx(:,1:3*nx)
-      u2(:,:) = fx(:,3*nx+1:6*nx)
-      u3(:,:) = fx(:,6*nx+1:7*nx)
-
-      do j=1,nx
-         joff = 7*nx+1
-         u4(1:nx,j)        = fx(:,3*(j-1)+joff)
-         u4(nx+1:2*nx,j)   = fx(:,3*(j-1)+1+joff)
-         u4(2*nx+1:3*nx,j) = fx(:,3*(j-1)+2+joff)
-      enddo
-
-      do j=1,nx
-         joff = 10*nx+1
-         u5(1:nx,j)        = fx(:,3*(j-1)+joff)
-         u5(nx+1:2*nx,j)   = fx(:,3*(j-1)+1+joff)
-         u5(2*nx+1:3*nx,j) = fx(:,3*(j-1)+2+joff)
-      enddo
-
-      return
-      end subroutine convert2gcmfaces 
-c 
-c ============================================================
-c 
-      subroutine convert4gcmfaces(fx, u1,u2,u3,u4,u5)
-c Convert gcmfaces array to native nx*ny array 
-c (Reverse of convert2gcmfaces.)
-      integer nx, ny, nr
-      parameter (nx=90, ny=1170, nr=50)
-
-c native version 
-      real*4 fx(nx,ny)
-
-c gcmfaces version
-      real*4 u1(nx,3*nx), u2(nx,3*nx), u3(nx,nx)
-      real*4 u4(3*nx,nx), u5(3*nx,nx)
-
-c ------------------------------------
-
-      fx(:,1:3*nx)      = u1(:,:) 
-      fx(:,3*nx+1:6*nx) = u2(:,:) 
-      fx(:,6*nx+1:7*nx) = u3(:,:) 
-
-      do j=1,nx
-         joff = 7*nx+1
-         fx(:,3*(j-1)+joff)   = u4(1:nx,j)        
-         fx(:,3*(j-1)+1+joff) = u4(nx+1:2*nx,j)   
-         fx(:,3*(j-1)+2+joff) = u4(2*nx+1:3*nx,j) 
-      enddo
-
-      do j=1,nx
-         joff = 10*nx+1
-         fx(:,3*(j-1)+joff)   = u5(1:nx,j)       
-         fx(:,3*(j-1)+1+joff) = u5(nx+1:2*nx,j)  
-         fx(:,3*(j-1)+2+joff) = u5(2*nx+1:3*nx,j)
-      enddo
-
-      return
-      end subroutine convert4gcmfaces
-c 
-c ============================================================
-c 
       subroutine calc_uv_conv_smpl(u1,u2,u3,u4,u5, v1,v2,v3,v4,v5,
      $     c1,c2,c3,c4,c5)
 c Compute SIMPLE horizontal convergence
@@ -2971,184 +2908,6 @@ c Convergence
 
       return
       end subroutine calc_uv_conv_smpl
-c 
-c ============================================================
-c 
-      subroutine exch_uv_llc(u1,u2,u3,u4,u5, v1,v2,v3,v4,v5,
-     $     u1h,u2h,u3h,u4h,u5h, v1h,v2h,v3h,v4h,v5h)
-
-c Fill halos of vector field in gcmfaces array
-
-      integer nx, ny, nr
-      parameter (nx=90, ny=1170, nr=50)
-
-c gcmfaces version
-      real*4 u1(nx,3*nx), u2(nx,3*nx), u3(nx,nx)
-      real*4 u4(3*nx,nx), u5(3*nx,nx)
-
-      real*4 v1(nx,3*nx), v2(nx,3*nx), v3(nx,nx)
-      real*4 v4(3*nx,nx), v5(3*nx,nx)
-
-c gcmfaces with halos 
-      real*4 u1h(nx+2,3*nx+2), u2h(nx+2,3*nx+2)
-      real*4 u3h(nx+2,nx+2)
-      real*4 u4h(3*nx+2,nx+2), u5h(3*nx+2,nx+2)
-
-      real*4 v1h(nx+2,3*nx+2), v2h(nx+2,3*nx+2)
-      real*4 v3h(nx+2,nx+2)
-      real*4 v4h(3*nx+2,nx+2), v5h(3*nx+2,nx+2)
-
-c Temporary storage of just halos 
-      real*4 u1hx(2,3*nx+2), u1hy(nx+2,2)
-      real*4 u2hx(2,3*nx+2), u2hy(nx+2,2)
-      real*4 u3hx(2,nx+2),   u3hy(nx+2,2)
-      real*4 u4hx(2,nx+2),   u4hy(3*nx+2,2)
-      real*4 u5hx(2,nx+2),   u5hy(3*nx+2,2)
-
-      real*4 v1hx(2,3*nx+2), v1hy(nx+2,2)
-      real*4 v2hx(2,3*nx+2), v2hy(nx+2,2)
-      real*4 v3hx(2,nx+2),   v3hy(nx+2,2)
-      real*4 v4hx(2,nx+2),   v4hy(3*nx+2,2)
-      real*4 v5hx(2,nx+2),   v5hy(3*nx+2,2)
-
-c ------------------------------------
-
-c First exchange as scalar
-      call exch_t_n_llc(u1,u2,u3,u4,u5, u1h,u2h,u3h,u4h,u5h)
-      call exch_t_n_llc(v1,v2,v3,v4,v5, v1h,v2h,v3h,v4h,v5h)
-      
-c Temporarily save scalar halos to correct vector halos 
-      u1hx(1,:) = u1h(1,:)
-      u1hx(2,:) = u1h(nx+2,:)
-      u1hy(:,1) = u1h(:,1)
-      u1hy(:,2) = u1h(:,3*nx+2)
-
-      u2hx(1,:) = u2h(1,:)
-      u2hx(2,:) = u2h(nx+2,:)
-      u2hy(:,1) = u2h(:,1)
-      u2hy(:,2) = u2h(:,3*nx+2)
-
-      u3hx(1,:) = u3h(1,:)
-      u3hx(2,:) = u3h(nx+2,:)
-      u3hy(:,1) = u3h(:,1)
-      u3hy(:,2) = u3h(:,nx+2)
-
-      u4hx(1,:) = u4h(1,:)
-      u4hx(2,:) = u4h(3*nx+2,:)
-      u4hy(:,1) = u4h(:,1)
-      u4hy(:,2) = u4h(:,nx+2)
-
-      u5hx(1,:) = u5h(1,:)
-      u5hx(2,:) = u5h(3*nx+2,:)
-      u5hy(:,1) = u5h(:,1)
-      u5hy(:,2) = u5h(:,nx+2)
-c 
-      v1hx(1,:) = v1h(1,:)
-      v1hx(2,:) = v1h(nx+2,:)
-      v1hy(:,1) = v1h(:,1)
-      v1hy(:,2) = v1h(:,3*nx+2)
-
-      v2hx(1,:) = v2h(1,:)
-      v2hx(2,:) = v2h(nx+2,:)
-      v2hy(:,1) = v2h(:,1)
-      v2hy(:,2) = v2h(:,3*nx+2)
-
-      v3hx(1,:) = v3h(1,:)
-      v3hx(2,:) = v3h(nx+2,:)
-      v3hy(:,1) = v3h(:,1)
-      v3hy(:,2) = v3h(:,nx+2)
-
-      v4hx(1,:) = v4h(1,:)
-      v4hx(2,:) = v4h(3*nx+2,:)
-      v4hy(:,1) = v4h(:,1)
-      v4hy(:,2) = v4h(:,nx+2)
-
-      v5hx(1,:) = v5h(1,:)
-      v5hx(2,:) = v5h(3*nx+2,:)
-      v5hy(:,1) = v5h(:,1)
-      v5hy(:,2) = v5h(:,nx+2)
-
-c Correct vector halos
-      u1h(1,:)      = v1hx(1,:)
-      u1h(:,3*nx+2) = -v1hy(:,2)
-      v1h(1,:)      = -u1hx(1,:)
-      v1h(:,3*nx+2) = u1hy(:,2)
-
-      u2h(nx+2,:) =  v2hx(2,:)
-      v2h(nx+2,:) = -u2hx(2,:)
-
-      u3h(1,:)    =  v3hx(1,:)
-      v3h(1,:)    = -u3hx(1,:)
-      u3h(:,nx+2) = -v3hy(:,2)
-      v3h(:,nx+2) =  u3hy(:,2)
-
-      u4h(:,1) = -v4hy(:,1)
-      v4h(:,1) =  u4hy(:,1)
-
-      u5h(1,:)    = v5hx(1,:)
-      u5h(:,nx+2) = -v5hy(:,2)
-      v5h(1,:)    = -u5hx(1,:)
-      v5h(:,nx+2) = u5hy(:,2)
-
-      return
-      end subroutine exch_uv_llc
-c 
-c ============================================================
-c 
-      subroutine exch_t_n_llc(c1,c2,c3,c4,c5, c1h,c2h,c3h,c4h,c5h)
-
-c Fill halos of scalar field in gcmfaces array
-
-      integer nx, ny, nr
-      parameter (nx=90, ny=1170, nr=50)
-
-c gcmfaces version
-      real*4 c1(nx,3*nx), c2(nx,3*nx), c3(nx,nx)
-      real*4 c4(3*nx,nx), c5(3*nx,nx)
-
-c gcmfaces with halos 
-      real*4 c1h(nx+2,3*nx+2), c2h(nx+2,3*nx+2)
-      real*4 c3h(nx+2,nx+2)
-      real*4 c4h(3*nx+2,nx+2), c5h(3*nx+2,nx+2)
-
-c ------------------------------------
-
-c First fill interior (non-halo)
-      c1h(2:nx+1,2:3*nx+1) = c1(:,:)
-      c2h(2:nx+1,2:3*nx+1) = c2(:,:)
-      c3h(2:nx+1,2:nx+1)   = c3(:,:)
-      c4h(2:3*nx+1,2:nx+1) = c4(:,:)
-      c5h(2:3*nx+1,2:nx+1) = c5(:,:)
-
-c Fill halo
-      do j=1,3*nx
-         c1h(1,j+1) = c5(3*nx+1-j,nx)
-         c1h(nx+2,j+1) = c2(1,j)
-
-         c2h(1,j+1) = c1(nx,j)
-         c2h(nx+2,j+1) = c4(3*nx+1-j,1)
-
-         c4h(j+1,1) = c2(nx,3*nx+1-j)
-         c4h(j+1,nx+2) = c5(j,1)
-
-         c5h(j+1,1) = c4(j,nx)
-         c5h(j+1,nx+2) = c1(1,3*nx+1-j)
-      enddo
-
-      do i=1,nx
-         c1h(i+1,3*nx+2) = c3(1,nx+1-i)
-         c2h(i+1,3*nx+2) = c3(i,1)
-         c4h(1,i+1) = c3(nx,i)
-         c5h(1,i+1) = c3(nx+1-i,nx)
-
-         c3h(1,i+1) = c1(nx+1-i,3*nx)
-         c3h(i+1,1) = c2(i,3*nx)
-         c3h(nx+2,i+1) = c4(1,i)
-         c3h(i+1,nx+2) = c5(1,nx+1-i)
-      enddo
-
-      return
-      end subroutine exch_t_n_llc
 c 
 c ============================================================
 c Subroutines for boundary fluxes 

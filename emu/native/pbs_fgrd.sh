@@ -43,7 +43,7 @@ mpiexec -np ${nprocs} /u/scicon/tools/bin/mbind.x ./v4r4_flx.x
 
 ln -sf ${emu_dir}/emu/exe/fgrd.x .
 
-./fgrd.x ${emu_input_dir}/emu_ref 
+./fgrd.x EMU_REF
 
 #=================================
 # Move result to output dirctory 

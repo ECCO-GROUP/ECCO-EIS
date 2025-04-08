@@ -22,7 +22,7 @@ native_mpiexec=NATIVE_MPIEXEC
 # Run hello.x that's inside singularity image
 
 ${native_mpiexec} -np ${nprocs} \
-    singularity exec --bind .:/inside_out ${singularity_image} /opt/hello.x 
+    singularity exec -e --bind .:/inside_out ${singularity_image} /opt/hello.x 
 
 echo " "
 echo "************************************"

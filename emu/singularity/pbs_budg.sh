@@ -40,7 +40,7 @@ echo 'ln -sf ${emu_dir}/emu/exe/do_budg.x . '   >> my_commands.sh
 echo 'b_ncpus=26 '                             >> my_commands.sh
 echo 'seq $b_ncpus | parallel -j $b_ncpus -u --joblog conv.log "echo {} | ./do_budg.x /emu_input_dir /inside_alt ${b_ncpus} {}" '  >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      --bind ${source_dir}:/inside_alt:ro ${singularity_image} /inside_out/my_commands.sh
 
 echo "Completed do_budg.x successfully ... " 
@@ -57,7 +57,7 @@ echo './do_budg_flx_combine.x '                          >> my_commands.sh
 echo 'mkdir parallel '                                   >> my_commands.sh
 echo 'mv *budg*_0* parallel '                            >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      --bind ${source_dir}:/inside_alt:ro ${singularity_image} /inside_out/my_commands.sh
 
 echo "Completed do_budg_flx_combine.x successfully ... " 

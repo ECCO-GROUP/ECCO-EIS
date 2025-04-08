@@ -40,7 +40,7 @@ echo 'echo "**** Step 1: Tool Setup"'    >> my_commands.sh
 echo 'echo "     Running setup_trc.sh"'  >> my_commands.sh
 echo '${emu_dir}/emu/setup_trc.sh'       >> my_commands.sh
 
-singularity exec --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # Initialize my_commands.sh
@@ -56,7 +56,7 @@ cp -f PUBLICDIR/mitgcm_timing.nml .
 echo /emu_input_dir > ./input_setup_dir
 echo './trc.x'                           >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 if [ -f "trc.dir_out" ] && [ -f "pbs_trc.sh" ]; then
@@ -88,7 +88,7 @@ echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'               >> my_commands.sh
 echo '${emu_dir}/emu/singularity/do_trc_prep.sh'   >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 cd ${returndir}

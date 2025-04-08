@@ -33,7 +33,7 @@ echo 'cd /inside_out' >> my_commands.sh
 echo "ln -sf \${emu_dir}/emu/exe/nproc/${nprocs}/v4r4_flx_ad.x . "  >> my_commands.sh
 echo "ln -sf \${emu_dir}/emu/emu_input/nproc/${nprocs}/data.exch2 . "        >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 /bin/rm -f my_commands.sh
@@ -49,7 +49,7 @@ start_time=$(date +%s)
 # ---------------------------
 
 ${native_mpiexec} -np ${nprocs}  --use-hwthread-cpus \
-    singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro \
+    singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro \
     --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh
 
 echo 'Sucessfully ran MITgcm_ad (v4r4_flx_ad.x) ... '
@@ -94,6 +94,7 @@ mv adj.info ${adoutdir}
 PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_C'
 PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_S'
 PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_W'
+PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_T'
 
 #=================================
 # Delete tape files

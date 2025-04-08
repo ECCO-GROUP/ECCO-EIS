@@ -45,7 +45,7 @@ echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'               >> my_commands.sh
 echo '${emu_dir}/emu/setup_adj.sh'        >> my_commands.sh
 
-singularity exec --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # Step 2: Specification
@@ -61,7 +61,7 @@ cp -f PUBLICDIR/mitgcm_timing.nml .
 echo /emu_input_dir > ./input_setup_dir
 echo './adj.x'                           >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 if [ -f "adj.dir_out" ] && [ -f "pbs_adj.sh" ]; then
@@ -90,7 +90,7 @@ echo 'cd /inside_out'                   >> my_commands.sh
 echo '${emu_dir}/emu/singularity/setup_forcing.sh' >> my_commands.sh
 echo '${emu_dir}/emu/singularity/do_adj_prep.sh' >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 cd ${returndir}

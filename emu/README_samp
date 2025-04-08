@@ -5,8 +5,9 @@ EMU Sampling Tool: A Brief Description
 
 What the Tool does:
    The Tool extracts time-series of a user-defined variable of the
-   ECCO estimate, V4r4. The Tool is useful for assessing the fidelity
-   of this model and is part of ECCO Modeling Utilities (EMU). See
+   ECCO estimate, V4r4, that can either be the state or control
+   (forcing). The Tool is useful for assessing the fidelity of this
+   model and is part of ECCO Modeling Utilities (EMU). See
    PUBLICDIR/README
    for additional tools. 
 

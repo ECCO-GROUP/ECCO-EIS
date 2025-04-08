@@ -155,7 +155,7 @@ if [ ! -f emu_env.singularity ] ; then
    echo '    echo "$item" >> ./n_exe.txt '  >> my_commands.sh
    echo 'done '                             >> my_commands.sh
 
-   singularity exec --bind ${useraccessdir}:/inside_out \
+   singularity exec -e --bind ${useraccessdir}:/inside_out \
        ${singularity_image} /inside_out/my_commands.sh
 
 # Search available executables (compiled by native/emu_compile_mdl.sh)
@@ -227,7 +227,7 @@ find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|EMU_NPROC|${emu
 echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'                    >> my_commands.sh
 echo "head -n 1 \${emu_dir}/emu/emu_input/nproc/${emu_nproc}/PBS_nodes"   >> my_commands.sh
-choose_nodes=$(singularity exec --bind ${useraccessdir}:/inside_out \
+choose_nodes=$(singularity exec -e --bind ${useraccessdir}:/inside_out \
        ${singularity_image} /inside_out/my_commands.sh )
 find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|CHOOSE_NODES|${choose_nodes}|g" {} +
 
@@ -239,7 +239,7 @@ find . -name '*.sh' ! -name "$current_script" -exec sed -i -e "s|CHOOSE_NODES|${
    echo "cp -f \${emu_dir}/emu/emu_input/nproc/${emu_nproc}/mitgcm_timing.nml ." >> my_commands.sh
    echo "\${emu_dir}/emu/exe/check_timing.x  " >> my_commands.sh
    
-   singularity exec --bind ${useraccessdir}:/inside_out \
+   singularity exec -e --bind ${useraccessdir}:/inside_out \
        ${singularity_image} /inside_out/my_commands.sh
 
 exit 0

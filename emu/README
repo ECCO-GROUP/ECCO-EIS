@@ -17,6 +17,7 @@ What EMU does:
    6) Budget (budg); Evaluates contributions to a quantity's budget.
    7) Modified Simulation (msim); Runs V4r4 with modified input.
    8) Attribution (atrb); Evaluates state time-series by control type. 
+   9) Auxillary (aux): Generate example user input files for other EMU tools.
 
    For brief descriptions of each, see individual README files, 
    PUBLICDIR/README_***
@@ -25,6 +26,10 @@ What EMU does:
    EMU also provides programs for interactively reading and plotting
    EMU's output in select programming environments. See 
    PUBLICDIR/README_plot 
+
+   See 
+   PUBLICDIR/README_references
+   for references. 
 
 How to run EMU:
    Execute command 

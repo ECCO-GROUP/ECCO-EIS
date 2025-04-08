@@ -1,8 +1,18 @@
       program mask
 c -----------------------------------------------------
-c Standalone program to create simple rectilinear mask
-c using subroutines cr8_mask2d and cr8_mask3d. 
+c Standalone program to create simple masks for EMU. This program is
+c provided for reference purpose only; All EMU tools include options to
+c run the equivalent of this program. This program provides options to
+c create masks for 
+c  1) Areal mean over a horizontal region (subroutine cr8_mask2d)
+c  2) Volume mean over a 3d region (subroutine cr8_mask3d)
+c  3) Horizontal volume transport (subroutine cr8_mask_section)
 c     
+c Usage:
+c     ./mask.x EMU_INPUT_DIR
+c where EMU_INPUT_DIR is EMU input directory (specified when setting up
+c EMU with emu_setup.sh).
+c
 c 19 June 2024, Ichiro Fukumori (fukumori@jpl.nasa.gov)
 c -----------------------------------------------------
       external StripSpaces
@@ -11,20 +21,10 @@ c files
       common /tool/f_inputdir
       character*130 file_in, file_out  ! file names 
 
-c model arrays
-      integer nx, ny, nr
-      parameter (nx=90, ny=1170, nr=50)
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
-      common /grid/xc, yc, rc, bathy, ibathy
-
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
-      real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
-      integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
-
 c Mask 
-      integer imsk 
-      character*256 fmask
+      integer imsk, iref 
+      character*256 fmask, fmask_w, fmask_s
+      real*4 x1,x2,y1,y2,z1,z2
 
 c --------------
 c Set directory where external tool files exist
@@ -52,29 +52,41 @@ c Save OBJF information for reference.
 
 c --------------
 c Choose 2d or 3d mask 
-      write (6,"(3x,a)") 
-     $ 'Choose mean of horizontal area (2d) or volume (3d) ... (2/3)?'
+      write (6,"(3x,a)") 'Choose mask(s) for horizontal ' //
+     $     'area mean (1), volume mean (2),' 
+      write (6,"(3x,a)")
+     $ '  or horizontal volume transport (3) ... (1/2/3)?'
       read (5,*) imsk 
 
-      if (imsk.eq.2) then
 c --------------
 c Horizontal area mean (2d)
+      if (imsk.eq.1) then
          write(6,"(3x,a,/)")
      $        '... Mask will be for horizontal area mean (2d).'
          write(51,"(3x,a,/)")
      $        '... Mask will be for horizontal area mean (2d).'
 
-         call cr8_mask2d(fmask)
+         call cr8_mask2d(fmask,x1,x2,y1,y2,iref)
 
-      else 
 c --------------
 c Volume mean (3d)
+      elseif (imsk.eq.2) then 
          write(6,"(3x,a,/)")
      $        '... Mask will be for volume mean (3d).'
          write(51,"(3x,a,/)")
      $        '... Mask will be for volume mean (3d).'
 
-         call cr8_mask3d(fmask)
+         call cr8_mask3d(fmask,x1,x2,y1,y2,z1,z2,iref)
+
+c --------------
+c Horizontal volume transport (3d)
+      elseif (imsk.eq.3) then 
+         write(6,"(3x,a,/)")
+     $        '... Mask will be for horizontal volume transport.'
+         write(51,"(3x,a,/)")
+     $        '... Mask will be for horizontal volume transport.'
+
+         call cr8_mask_section(fmask_w,fmask_s,x1,x2,y1,y2,z1,z2)
 
       endif 
 
