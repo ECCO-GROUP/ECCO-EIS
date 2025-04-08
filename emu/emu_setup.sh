@@ -33,6 +33,7 @@ echo "   5) Tracer (trc); Computes passive tracer evolution."
 echo "   6) Budget (budg); Evaluates budget time-series from model output."
 echo "   7) Modified Simulation (msim); Re-runs model with modified input."
 echo "   8) Attribution (atrb); Evaluates state time-series by control type."
+echo "   9) Auxillary (aux): Generate example user input files for other EMU tools."
 echo
 echo "************************"
 echo " This script will install EMU's Programs (~1GB), its User Interface (~2MB), "
@@ -694,7 +695,7 @@ goto_singularity() {
     echo '    echo "$item" >> ./n_exe.txt '  >> my_commands.sh
     echo 'done '                             >> my_commands.sh
 
-    singularity exec --bind ${PWD}:/inside_out \
+    singularity exec -e --bind ${PWD}:/inside_out \
 	${singularity_image} /inside_out/my_commands.sh
 
     # Search available executables (compiled by singularity/emu_compile_mdl.sh)

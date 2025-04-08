@@ -1,0 +1,42 @@
+Version 2.0a (04/08/2025)
+   - Added sampling of control (forcing) to Sampling Tool (samp). 
+
+   - Can start model integration from the beginning of any year
+     (1992-2017) for Forward Gradient (fgrd) and Adjoint (adj) Tools,
+     and not just from 1992.
+
+   - Added volume transport as a menu-driven choice for objective
+     function for Sampling (samp), Adjoint (adj), and Attribution
+     (atrb) Tools.
+
+   - Added Auxillary Tool (aux), a collection of tools that generates
+     examples of what other EMU Tools employ as user input. This
+     includes replacement files for the Modified Simulation Tool
+     (msim);
+       a) Specify model integration period (start and duration), 
+       b) Specify diagnostic state output (variable and its sampling), 
+       c) Replace forcing with its time-mean,
+       d) Replace model initial condition with the state's time-mean,
+       e) Specify the end state from another simulation as the initial
+          condition for another simulation. 
+     
+   - Revised Modified Simulation Tool (msim) to copy all files from
+     the user directory to the Tool's run directory, allowing, for
+     example, starting the model integration from the end state of
+     another integration.
+   
+   - Allow Forward Gradient Tool (fgrd) to use runs other than the
+     ECCO estimate (emu_ref) as a reference, such as results of the
+     Modified Simulation Tool (msim). This option allows the Foward
+     Gradient Tool to compare simulations started from the same year
+     to minimize numerical errors associated with restarting the model
+     from different years.
+
+   - Revised EMU Input File download scripts (emu_input_install.sh,
+     emu_input_install_4batch.sh);
+       a) Download in parallel as background jobs, 
+       b) Only download new files (-N) and resume partial downloads
+          (-c). 
+
+   - Runs singularity with the -e option to minimize conflict with the
+     host's environment.

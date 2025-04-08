@@ -61,6 +61,7 @@ mv adj.info ${adoutdir}
 PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_C'
 PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_S'
 PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_W'
+PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_T'
 
 #=================================
 # Delete tape files

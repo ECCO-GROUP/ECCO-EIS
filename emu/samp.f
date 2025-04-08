@@ -22,16 +22,26 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
       
 c Objective function 
       integer nvar, mvar    ! number of OBJF variables 
       parameter (nvar=5)    
       character*72 f_var(nvar), f_unit(nvar)
       common /objfvar/f_var, f_unit
+
+c Control 
+      integer nctrl                    ! number of controls 
+      parameter (nctrl=8) 
+      character*256 f_xx(nctrl), f_xx_unit(nctrl)
+
+      integer isamp
+      character*256 isamp_arg
 
 c Strings for naming output directory
       character*256 floc_time ! OBJF time-period
@@ -60,9 +70,13 @@ c OBJF
       character*256 fmask
 
 c --------------
+c Choose to sample State (1) or Control (2) 
+      call getarg(1,isamp_arg)
+      read(isamp_arg,*) isamp
+
+c --------------
 c Read directory with state to sample 
-      call getarg(1,f_statedir)
-      write(6,*) 'State will be read from : ',trim(f_statedir)
+      call getarg(2,f_statedir)
 
 c --------------
 c Set directory where tool files exist
@@ -75,7 +89,7 @@ c Get model grid info
       call grid_info
       
 c --------------
-c Variable name
+c Sate Variable name
       f_var(1) = 'SSH'
       f_var(2) = 'OBP'   
       f_var(3) = 'THETA'    
@@ -86,10 +100,30 @@ c Variable name
       f_unit(2) = '(equivalent sea level m)'   
       f_unit(3) = '(deg C)'    
       f_unit(4) = '(PSU)'     
-      f_unit(5) = '(m/s)'   
+      f_unit(5) = '(ij-velocity; m/s)'   
 
 c --------------
-c Interactive specification of perturbation 
+c Control (Forcing) Variable name
+      f_xx(1) = 'empmr'
+      f_xx(2) = 'pload'   
+      f_xx(3) = 'qnet'    
+      f_xx(4) = 'qsw'     
+      f_xx(5) = 'saltflux'
+      f_xx(6) = 'spflx'   
+      f_xx(7) = 'tauu'    
+      f_xx(8) = 'tauv'    
+
+      f_xx_unit(1) = '(upward kg/m^2/s)'
+      f_xx_unit(2) = '(downward N/m^2)'   
+      f_xx_unit(3) = '(upward W/m^2)'    
+      f_xx_unit(4) = '(upward W/m^2)'    
+      f_xx_unit(5) = '(upward g/m^2/s)'
+      f_xx_unit(6) = '(downard g/m^2/s)'
+      f_xx_unit(7) = '(westward N/m^2)'
+      f_xx_unit(8) = '(southward N/m^2)'
+
+c --------------
+c Interactive specification of what to sample 
       write (6,"(/,a,/)") 'Evaluating model time-series ... '
       write (6,*) 'Define objective function (OBJF) ... '
 
@@ -103,7 +137,15 @@ c Save OBJF information for reference.
      $     'Sampling Tool objective function (OBJF) specification'
       write(51,"(a,/)") '***********************'
 
-      write(51,"(a,2x,a,/)") 'State sampled from ', trim(f_statedir)
+      if (isamp.ne.2) then 
+         write(6,*) 'State will be sampled from : ',trim(f_statedir)
+         write(51,"(/,a,2x,a,/)")
+     $        'State sampled from ', trim(f_statedir)
+      else
+         write(6,*) 'Control will be sampled from : ',trim(f_statedir)
+         write(51,"(/,a,2x,a,/)")
+     $        'Control sampled from ', trim(f_statedir)
+      endif
 
 c --------------
 c Set up data.ecco with OBJF specification
@@ -114,6 +156,12 @@ c Set up data.ecco with OBJF specification
 cif      f_command = 'cp -f ./do_samp.csh_orig ./do_samp.csh'
 cif      call execute_command_line(f_command, wait=.true.)
 
+c --------------
+      if (isamp.ne.2) then 
+
+c *********************** Sampling State **********************
+      write(6,"(/,a)") 'Sampling State ..... '
+      
 c --------------
 c Define OBJF's VARIABLE 
       write (6,*) 'Available VARIABLES are ... '
@@ -225,6 +273,108 @@ c Define new OBJF variable
       end do  ! End defining OBJF 
 
       close (51)
+
+      else 
+c *********************** Sampling Control **********************
+      write(6,"(/,a)") 'Sampling Control ..... '
+
+c --------------
+c Define OBJF's VARIABLE 
+      write (6,*) 'Available VARIABLES are ... '
+      do i=1,nctrl
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_xx(i)),trim(f_xx_unit(i))
+      enddo
+
+c --------------
+c Control is weekly
+      fmd = 'w'
+
+      write(6,"(/,3x,a,a)") 'fmd = ',fmd
+      write(51,"(/,3x,a,a)") 'fmd = ',fmd
+      
+      write(6,"(3x,a)") '==> Sampling weekly means ... '
+      write(51,"(3x,a)") '==> Sampling weekly means ... '
+      mvar = nctrl
+      floc_time = 'w'
+      f_command = 'sed -i -e '//
+     $        '"s|OBJF_PRD|week|g" ./data.ecco'
+
+      call execute_command_line(f_command, wait=.true.)
+
+c Create dummy temporal mask
+      fmask='objf_mask_T'
+      INQUIRE(FILE=trim(fmask), EXIST=f_exist)
+      if (f_exist) then
+         f_command = 'rm -f ' // trim(fmask)
+         call execute_command_line(f_command, wait=.true.)
+      endif
+      open(60,file='./' // fmask,form='unformatted',access='stream')
+      write(60) tmask
+      close(60)
+
+c Loop among OBJF variables 
+      nobjf = 0 ! number of OBJF variables 
+      iobjf = 1
+      write(f1,"(i1)") 1 
+      call StripSpaces(f1)
+
+      do while (iobjf .ge. 1 .and. iobjf .le. mvar) 
+
+         write (6,"(/,a)") '------------------'
+         write (6,"(3x,a,i1,a,i1,a,i1,a)")
+     $     'Choose OBFJ variable (v in Eq 1 of Guide) # ',
+     $        nobjf+1,' ... (1-',mvar,')?'
+         write(6,"(3x,a)") '(Enter 0 to end variable selection)'
+
+         read (5,*) iobjf
+
+         if (iobjf.ge.1 .and. iobjf.le.mvar) then 
+c Process OBJF variable 
+         nobjf = nobjf + 1
+
+         write(6,"(3x,a,i2,1x,a,a)") 'OBJF variable ',
+     $        nobjf, 'is ',trim(f_xx(iobjf))
+
+         write(51,"(/,a)") '------------------'
+         write(51,"(a,i2,a,a)") 'OBJF variable # ',nobjf
+         write(51,"(3x,'iobjf = ',i2)") iobjf
+         write(51,"(3x,a,a,1x,a/)") ' --> OBJF variable : ',
+     $        trim(f_xx(iobjf)),trim(f_xx_unit(iobjf))
+
+c Create data.ecco entries for new variable, if not the first
+         if (nobjf .ne. 1) then 
+            write(f0,"(i2)") nobjf-1
+            write(f1,"(i2)") nobjf
+
+            call StripSpaces(f0)
+            call StripSpaces(f1)
+
+c Duplicate entries for new variable in data.ecco 
+c e.g., sed -e '/(1)/{p;s|(1)|(2)|}' data.ecco 
+            f_command = 'sed -i -e '//
+     $        '"/(' // trim(f0) // ')/{p;s|(' // trim(f0) //
+     $         ')|(' // trim(f1) // ')|}" ./data.ecco'
+            call execute_command_line(f_command, wait=.true.)
+         else
+            write(floc_var,"(i2)") iobjf
+            call StripSpaces(floc_var)
+         endif
+
+c Define new OBJF variable 
+         call objf_ctrl(f1,iobjf,floc_loc)
+
+         else if (nobjf .eq. 0) then
+            write(6,*) 'Invalid selection ... Terminating.'
+            stop
+         endif 
+
+      end do  ! End defining OBJF 
+
+      close (51)
+
+      endif 
+c ************ End Choosing Sampling State/Control ***************
 
 c Create output directory before sampling 
       write(f_command,1001) trim(floc_time),

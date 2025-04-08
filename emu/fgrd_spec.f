@@ -24,6 +24,8 @@ c Perturbation (perturbation variable, location, time, amplitude)
       real*4 pert_a, pert_x, pert_y
       namelist /PERT_SPEC/ pert_v, pert_i, pert_j, pert_t, pert_a
 
+      integer pert_h
+
       integer check_v, check_i, check_j, check_t, check_a, check_d
 
 c 
@@ -43,9 +45,14 @@ c
 
       integer i
       character*256 setup
+      character*256 f_input   ! full path to emu_input_dir
+      character*256 f_emuref  ! full path to emu_ref
 
 c Integration time 
-      integer iend, nsteps
+      parameter(max_files=1000)
+      integer pkuphrs(max_files), n_pkuphrs
+
+      integer niter0, iend, nsteps
       parameter(nsteps=227903) ! max steps of V4r4
       integer nTimesteps, nHours, hour26yr
       character*24 fstep 
@@ -291,10 +298,61 @@ c amplitude
 
 c --------------
 c Set integration time 
-      write(6,*) 'V4r4 integrates 312-months from ' //
+      write(6,*) 'V4r4 can integrate 312-months from ' //
      $     '1/1/1992 12Z to 12/31/2017 12Z'
-      write(6,"(a,i0,a)") 'which requires ', hour26yr,
+      write(6,"(a,i0,a,/)") 'which requires ', hour26yr,
      $     ' hours wallclock time.'
+
+c ......................................
+c Allow integration start time other than 1/1/1992 12Z
+c First ID year of perturbation
+      pert_h = pert_t*24*7  ! time-step (hour) 
+
+c Read full pathname to emu_ref directory
+      call getarg(1,f_input)
+
+c Create full pathname to emu_ref directory 
+c (where pickup files are)
+      f_emuref = trim(f_input) // '/emu_ref'
+
+c Get time-stamp for all pickup files
+      call get_pkup_hours(f_emuref, pkuphrs, n_pkuphrs) 
+
+c Find latest pickup file before perturbation. 
+      niter0 = 1
+      niter0_yr = 1
+      toff = 7*24  ! assure entire 7-day perturbation is within domain
+      do i=1,n_pkuphrs
+         if (pkuphrs(i).gt.pert_h-toff) exit 
+         niter0 = pkuphrs(i)
+         niter0_yr = i+1  ! 1 is 1992
+      enddo
+
+      idum = 1992+(niter0_yr-1)
+      idum_day = INT( (pert_h-niter0)/24 ) 
+      write(6,'(/,a,i0,a,i0)')
+     $     'Chosen perturbation is week of year day ',
+     $     idum_day,' of year ', idum 
+      write(6,'(a,i0,a)')
+     $     'Enter year to begin integration ... (1992-',idum,')?'
+      read (5,*) idum
+      niter0_yr = idum - 1992  + 1
+      if (niter0_yr.eq.1) then
+         niter0 = 1
+      else
+         niter0 = pkuphrs(niter0_yr-1)
+      endif      
+
+      write(6,'(a,i10,a)') 'Model will be integrated from ',
+     $     niter0,' (1992 hours)'
+      write(6,'(a,i4,/)') 'i.e., 01 January ',1992+(niter0_yr-1)
+
+      write(51,'(a,i10,a)') 'Model will be integrated from ',
+     $     niter0,' (1992 hours)'
+      write(51,'(a,i4,/)') 'i.e., 01 January ',1992+(niter0_yr-1)
+
+c ......................................
+c Set integration end time
       write(6,*) 'Enter number of months to integrate (Max t in Eq 2)'
      $     //'... (1-312)?'
       read(5,*) iend
@@ -316,6 +374,12 @@ c     to make sure computation is complete,.
       if (nTimesteps .gt. nsteps) nTimesteps=nsteps
 
       f_command = 'cp -f data_emu data'
+      call execute_command_line(f_command, wait=.true.)
+
+      write(fstep,'(i24)') niter0
+      call StripSpaces(fstep)
+      f_command = 'sed -i -e "s|NITER0_EMU|'//
+     $     trim(fstep) //'|g" data'
       call execute_command_line(f_command, wait=.true.)
 
       write(fstep,'(i24)') nTimesteps

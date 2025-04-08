@@ -13,6 +13,11 @@ echo " "
 echo "************************************"
 echo "    EMU Sampling Tool (native) "
 echo "************************************"
+echo 
+echo " The Sampling Tool extract time-series of a user specified variable "
+echo " of the ECCO estimate. The variable can be either the model's state "
+echo " or its control (forcing). "
+echo " See PUBLICDIR/README_samp "
 
 returndir=$PWD
 
@@ -23,7 +28,7 @@ if [[ ! -d $fdum ]]; then
     echo "ABORT: EMU Input for Sampling Tool not found;"
     echo $fdum
     echo "Run PUBLICDIR/emu_input_setup.sh"
-    echo "to download emu_ref needed for the Budget Tool." 
+    echo "to download emu_ref." 
     exit 1
 fi
 
@@ -36,11 +41,31 @@ ${emu_dir}/emu/setup_samp.sh
 # Step 2: Specification
 echo " "
 echo "**** Step 2: Specification"
-echo " "
 
-# Specify directory with state files
-source_dir=${emu_input_dir}/emu_ref/diags
-echo "By default, tool will sample EMU reference run from state files in directory "
+# Specify whether to sample State or Control 
+echo " "
+while true; do
+    echo "Sample State (1) or Control (2) .... (1/2)?"
+    read isamp
+    if [[ "$isamp" == "1" || "$isamp" == "2" ]]; then
+        break
+    else
+        echo "Invalid input. Enter 1 or 2."
+    fi
+done
+
+if [[ "$isamp" == "1" ]]; then 
+    echo "   Sampling State ... "
+    # Default directory with state files
+    source_dir=${emu_input_dir}/emu_ref/diags
+else
+    echo "   Sampling Control (forcing) ... "
+    # Default directory with state files
+    source_dir=${emu_input_dir}/forcing/other/flux-forced/forcing_weekly
+fi
+
+echo " "
+echo "By default, tool will sample EMU reference run from directory "
 echo ${source_dir}
 echo " " 
 echo "Press ENTER key to continue or enter an alternate directory if sampling another run ... ?"
@@ -62,8 +87,9 @@ else
     echo ${source_dir}
 fi
 
-echo "     Running samp.x"
-./samp.x  ${source_dir}
+echo " " 
+echo "Running samp.x specifying what will be sampled ... "
+./samp.x  ${isamp} ${source_dir}
 
 # Move samp.x output files to rundir (used to be done in samp.x)
 read dummy < ./samp.dir_out

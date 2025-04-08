@@ -263,6 +263,47 @@ c Daily state
 
       enddo
 
+c Weekly control 
+      else if (trim(gencost_avgperiod(1)).eq.'week') then 
+
+      write(6,"(a,/)") 'Sampling weekly control ... '
+      do i=1,nobjf
+
+         fmask = trim(gencost_mask(i)) // 'C'
+         call chk_mask2d(fmask,nx,ny,dum2d,1)
+         if (gencost_barfile(i).eq.'dummy_empmr') then 
+            ffile = 'empmr_weekly_v1'
+         else if (gencost_barfile(i).eq.'dummy_pload') then 
+            ffile = 'pload_weekly_v1'
+         else if (gencost_barfile(i).eq.'dummy_qnet') then 
+            ffile = 'qnet_weekly_v1'
+         else if (gencost_barfile(i).eq.'dummy_qsw') then 
+            ffile = 'qsw_weekly_v1'
+         else if (gencost_barfile(i).eq.'dummy_saltflux') then 
+            ffile = 'saltflux_weekly_v1'
+         else if (gencost_barfile(i).eq.'dummy_spflx') then 
+            ffile = 'spflx_weekly_v1'
+         else if (gencost_barfile(i).eq.'dummy_tauu') then 
+            ffile = 'tauu_weekly_v1'
+         else if (gencost_barfile(i).eq.'dummy_tauv') then 
+            ffile = 'tauv_weekly_v1'
+         else
+            write(6,*) 'This should not happen ... (do_samp.f)'
+            stop
+         endif
+
+         call samp_2d_r4_wgtd(f_statedir,ffile,1,dum2d,
+     $           objf_1,nrec,mobjf_1,istep)
+
+            
+         objf_1 = objf_1*mult_gencost(i)
+         mobjf_1 = mobjf_1*mult_gencost(i)
+
+         objf(1:nrec) = objf(1:nrec) + objf_1(1:nrec)
+         mobjf = mobjf + mobjf_1
+
+      enddo
+
 c Incorrect average specified
       else
          write(6,*) 'This should not happen ... '
@@ -271,7 +312,7 @@ c Incorrect average specified
       endif
 
       return 
-      end subroutine 
+      end subroutine samp_objf
 c 
 c ============================================================
 c 

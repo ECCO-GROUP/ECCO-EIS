@@ -20,7 +20,8 @@ echo " "
 
 # Set up data namelist file to be used by MITgcm (data) 
 # The namelist files will be modified by fgrd_spec.x
-/bin/cp -f ${emu_dir}/emu/data_emu . 
+#/bin/cp -f ${emu_dir}/emu/data_emu .
+/bin/cp -f ${emu_dir}/emu/data_emu_niter0 data_emu 
 
 # 
 #echo " "

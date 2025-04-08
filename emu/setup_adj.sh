@@ -20,7 +20,8 @@ ln -sf ${emu_dir}/emu/exe/adj.x .
 
 # Set up data namelist file to be used by MITgcm (data, data.ecco).
 # The namelist files will be modified by adj.x
-/bin/cp -fp ${emu_dir}/emu/data_emu .
+#/bin/cp -fp ${emu_dir}/emu/data_emu .
+/bin/cp -fp ${emu_dir}/emu/data_emu_niter0 data_emu 
 /bin/cp -fp ${emu_dir}/emu/data.ecco_adj .
 
 ## 

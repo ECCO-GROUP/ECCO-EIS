@@ -48,6 +48,13 @@ fi
 cd ${rundir}
 
 #--------------------------
+echo "***********************" >  ${rundir}/misc_msim_ic.info
+echo "Output of misc_msim_ic.sh"   >> ${rundir}/misc_msim_ic.info
+echo "***********************" >> ${rundir}/misc_msim_ic.info
+
+ls -al ${rundir} > before.txt
+
+#--------------------------
 # Copy and rename data.ctrl.noinitctrl
 echo " "
 echo "Setting data.ctrl replacement ... "
@@ -137,6 +144,29 @@ EOF
 
 #--------------------------
 # End
+
+ls -al ${rundir} > after.txt
+echo " " 
+echo "Changed files:"
+comm -13 <(sort before.txt) <(sort after.txt) \
+| awk '{name=""; for (i=9; i<=NF; i++) name = name $i (i<NF ? " " : ""); print name}' \
+| grep -vE '^(before.txt|after.txt|\.\.?$)' 
+
+echo " "   >> ${rundir}/misc_msim_ic.info
+echo "Modified pickup files with time-mean states using program msim_ic.f "   >> ${rundir}/misc_msim_ic.info
+echo " "   >> ${rundir}/misc_msim_ic.info
+echo "Changed files:"  >> ${rundir}/misc_msim_ic.info
+comm -13 <(sort before.txt) <(sort after.txt) \
+| awk '{name=""; for (i=9; i<=NF; i++) name = name $i (i<NF ? " " : ""); print name}' \
+| grep -vE '^(before.txt|after.txt|\.\.?$)' >> ${rundir}/misc_msim_ic.info
+
+rm before.txt
+rm after.txt
+
+echo " "  >> ${rundir}/misc_msim_ic.info
+echo "Files at end: "   >> ${rundir}/misc_msim_ic.info
+echo "ls -al "$rundir  >> ${rundir}/misc_msim_ic.info
+ls -al $rundir >> ${rundir}/misc_msim_ic.info
 
 cd ${current_dir}
 

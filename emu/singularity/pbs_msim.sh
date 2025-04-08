@@ -39,7 +39,7 @@ start_time=$(date +%s)
 # ---------------------------
 
 ${native_mpiexec} -np ${nprocs}  --use-hwthread-cpus \
-    singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh
+    singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh
 
 # ---------------------------
 echo 'after v4r4_flx.x'

@@ -53,6 +53,13 @@ fi
 cd ${rundir}
 
 #--------------------------
+echo "***********************" >  ${rundir}/misc_msim_ic.info
+echo "Output of misc_msim_ic.sh"   >> ${rundir}/misc_msim_ic.info
+echo "***********************" >> ${rundir}/misc_msim_ic.info
+
+ls -al ${rundir} > before.txt
+
+#--------------------------
 # Copy and rename data.ctrl.noinitctrl
 echo " "
 echo "Setting data.ctrl replacement ... "
@@ -63,7 +70,7 @@ echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'   >> my_commands.sh
 echo 'cp -pf ${emu_dir}/emu/data.ctrl.noinitctrl ./data.ctrl'  >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 #--------------------------
@@ -98,7 +105,7 @@ echo '1 '  >> my_commands.sh
 echo '312 '  >> my_commands.sh
 echo 'EOF'  >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # state_3d_set1_mon*data (UVTS)
@@ -117,7 +124,7 @@ echo '1 ' >> my_commands.sh
 echo '312 ' >> my_commands.sh
 echo 'EOF' >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # GGL90TKE_mon_mean (ggl90tke)
@@ -136,7 +143,7 @@ echo '1 '  >> my_commands.sh
 echo '312 '  >> my_commands.sh
 echo 'EOF'  >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 #--------------------------
@@ -171,11 +178,34 @@ echo 's '  >> my_commands.sh
 echo '1 '  >> my_commands.sh
 echo 'EOF'  >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 #--------------------------
 # End
+
+ls -al ${rundir} > after.txt
+echo " " 
+echo "Changed files:"
+comm -13 <(sort before.txt) <(sort after.txt) \
+| awk '{name=""; for (i=9; i<=NF; i++) name = name $i (i<NF ? " " : ""); print name}' \
+| grep -vE '^(before.txt|after.txt|\.\.?$)' 
+
+echo " "   >> ${rundir}/misc_msim_ic.info
+echo "Modified pickup files with time-mean states using program msim_ic.f "   >> ${rundir}/misc_msim_ic.info
+echo " "   >> ${rundir}/misc_msim_ic.info
+echo "Changed files:"  >> ${rundir}/misc_msim_ic.info
+comm -13 <(sort before.txt) <(sort after.txt) \
+| awk '{name=""; for (i=9; i<=NF; i++) name = name $i (i<NF ? " " : ""); print name}' \
+| grep -vE '^(before.txt|after.txt|\.\.?$)' >> ${rundir}/misc_msim_ic.info
+
+rm before.txt
+rm after.txt
+
+echo " "  >> ${rundir}/misc_msim_ic.info
+echo "Files at end: "   >> ${rundir}/misc_msim_ic.info
+echo "ls -al "$rundir  >> ${rundir}/misc_msim_ic.info
+ls -al $rundir >> ${rundir}/misc_msim_ic.info
 
 cd ${current_dir}
 
@@ -183,6 +213,8 @@ echo " "
 echo "Successfully modified pickup files in directory " ${rundir}
 echo "Use this directory name as input with the Modified Simulation Tool." 
 echo " "
+
+echo "misc_msim_ic.sh execution complete."
 
 
 

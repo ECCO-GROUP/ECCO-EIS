@@ -28,7 +28,7 @@ c Strip spaces from string
          endif
       end do
 
-      end subroutine
+      end subroutine StripSpaces
 c
 c ============================================================
 c 
@@ -70,7 +70,7 @@ c Find (i,j) pair within 10-degrees of (x,y)
             endif
          enddo
       enddo
-      end subroutine
+      end subroutine ijloc
 c 
 c ============================================================
 c 
@@ -130,7 +130,7 @@ c Check mask file is native 2d
       endif
 
       return
-      end
+      end subroutine chk_mask2d
 c 
 c ============================================================
 c 
@@ -192,7 +192,7 @@ c Check mask file is native 3d
       endif
 
       return
-      end
+      end subroutine chk_mask3d
 c 
 c ============================================================
 c 
@@ -257,7 +257,7 @@ c Reset reference to time-mean
       mobjf = dref + mobjf 
 
       return
-      end
+      end subroutine samp_2d_r8
 c 
 c ============================================================
 c 
@@ -322,7 +322,7 @@ c Reset reference to time-mean
       mobjf = dref + mobjf 
 
       return
-      end
+      end subroutine samp_3d
 c 
 c ============================================================
 c 
@@ -402,7 +402,87 @@ c Reset reference to time-mean
       mobjf = sum(wgt2d * dref) + mobjf 
 
       return
-      end
+      end subroutine samp_2d_r8_wgtd
+c 
+c ============================================================
+c 
+      subroutine samp_2d_r4_wgtd(statedir,ffile,irec,
+     $     wgt2d,objf,nrec,mobjf,istep)
+c Sample native 2d real*4 file 
+
+      integer nx, ny
+      parameter (nx=90, ny=1170)
+
+      character(len=*) :: statedir, ffile 
+      integer :: irec
+      real*4 :: wgt2d(nx,ny)
+      real*4 :: objf(*), mobjf
+      integer :: nrec
+      integer :: istep(*)
+
+c 
+      real*4 dum2d(nx,ny), dref(nx,ny)
+      character*256 f_file
+      character*256 f_command 
+      integer ip1, ip2
+
+
+c List input file 
+      f_file = trim(statedir) // '/' // trim(ffile) 
+      f_command = 'ls ' // trim(f_file) // '*.data' //
+     $     ' > samp.dum_data'
+      call execute_command_line(f_command, wait=.true.)
+
+      f_file = 'samp.dum_data'
+      open(50, file=f_file, status='old', action='read')
+
+      nrec = 0
+
+c Read first file as reference 
+         read(50,'(a)',END=999) f_file
+
+         open(52, file=f_file, access='direct',
+     $           recl=nx*ny*4, form='unformatted')
+         read(52,rec=irec) dum2d
+         nrec = nrec + 1
+         dref = dum2d
+         objf(nrec) = 0.
+         close(52)
+
+c Read corresponding time-step
+         ip1 = index(f_file,trim(ffile)) + len(trim(ffile))
+         ip2 = index(f_file,'.data')
+         f_command = trim(f_file(ip1+1:ip2-1))
+         read(f_command,*) istep(nrec)
+
+c Read rest of the files 
+      do 
+c read state of particular instant 
+         read(50,'(a)',END=999) f_file
+
+         open(52, file=f_file, access='direct',
+     $           recl=nx*ny*4, form='unformatted')
+         read(52,rec=irec) dum2d
+         nrec = nrec + 1
+         objf(nrec) = sum( wgt2d * (dum2d-dref) ) 
+         close(52)
+
+c Read corresponding time-step
+         f_command = trim(f_file(ip1+1:ip2-1))
+         read(f_command,*) istep(nrec)
+
+      enddo
+
+ 999  continue
+      close(50)
+
+c Reset reference to time-mean 
+      mobjf = sum(objf(1:nrec))/float(nrec) 
+      objf(1:nrec) = objf(1:nrec) - mobjf
+      mobjf = sum(wgt2d * dref) + mobjf 
+
+      return
+      end subroutine samp_2d_r4_wgtd
 c 
 c ============================================================
 c 
@@ -483,7 +563,7 @@ c Reset reference to time-mean
       mobjf = sum(wgt3d * dref) + mobjf 
 
       return
-      end
+      end subroutine samp_3d_wgtd
 c 
 c ============================================================
 c 
@@ -496,133 +576,7 @@ c Read current working directory from file emu.fcwd
       read(52,'(a)') string 
       close(52)
 
-      end subroutine
-c 
-c ============================================================
-c 
-      subroutine grid_info
-      external StripSpaces
-c files
-      character*256 f_inputdir   
-      common /tool/f_inputdir
-      character*256 file_in, file_out, file_dum  ! file names 
-      logical f_exist
-
-      character*256 f_setup   ! directory where tool files are 
-
-c model arrays
-      integer nx, ny, nr
-      parameter (nx=90, ny=1170, nr=50)
-
-c model arrays
-      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
-      common /grid/xc, yc, rc, bathy, ibathy
-
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
-      real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
-      integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
-
-c --------------
-c Read model grid
-
-cc Directory where tool files exist
-c      open (50, file='tool_setup_dir')
-c      read (50,'(a)') f_setup
-c      close (50)
-
-c
-c      file_in = trim(f_setup) // '/emu/emu_input/XC.data'
-      file_in = trim(f_inputdir) // '/emu_ref/XC.data'
-      inquire (file=trim(file_in), EXIST=f_exist)
-      if (.not. f_exist) then
-         write (6,*) ' **** Error: model grid file = ',
-     $        trim(file_in) 
-         write (6,*) '**** does not exist'
-         stop
-      endif
-      open (50, file=file_in, action='read', access='stream')
-      read (50) xc
-      close (50)
-
-c      file_in = trim(f_setup) // '/emu/emu_input/YC.data'
-      file_in = trim(f_inputdir) // '/emu_ref/YC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) yc
-      close (50)
-
-c      file_in = trim(f_setup) // '/emu/emu_input/RC.data'
-      file_in = trim(f_inputdir) // '/emu_ref/RC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) rc
-      close (50)
-
-c      file_in = trim(f_setup) // '/emu/emu_input/Depth.data'
-      file_in = trim(f_inputdir) // '/emu_ref/Depth.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) bathy
-      close (50)
-      
-c      file_in = trim(f_setup) // '/emu/emu_input/RF.data'
-      file_in = trim(f_inputdir) // '/emu_ref/RF.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) rf   ! depth of layer boundary
-      close (50)
-
-c      file_in = trim(f_setup) // '/emu/emu_input/hFacC.data'
-      file_in = trim(f_inputdir) // '/emu_ref/hFacC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) hfacc
-      close (50)
-
-c      file_in = trim(f_setup) // '/emu/emu_input/RAC.data'
-      file_in = trim(f_inputdir) // '/emu_ref/RAC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) rac 
-      close (50)
-
-c      file_in = trim(f_setup) // '/emu/emu_input/DRF.data'
-      file_in = trim(f_inputdir) // '/emu_ref/DRF.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) drf
-      close (50)
-
-      file_in = trim(f_inputdir) // '/emu_ref/DXG.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) dxg
-      close (50)
-
-      file_in = trim(f_inputdir) // '/emu_ref/DYG.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) dyg
-      close (50)
-
-c Derived quantities
-      kmt(:,:) = 0
-      do i=1,nx
-         do j=1,ny
-            do k=1,nr
-               if (hfacc(i,j,k).ne.0.) kmt(i,j)=k
-            enddo
-         enddo
-      enddo
-
-c Inverse depth
-      ibathy(:,:) = 0.
-      do i=1,nx
-         do j=1,ny
-            if (bathy(i,j).ne.0.) ibathy(i,j)=1./bathy(i,j)
-         enddo
-      enddo
-
-c Volume
-      dvol3d(:,:,:) = 0.
-      do k=1,nr
-         dvol3d(:,:,k) = rac(:,:)*hfacc(:,:,k)*drf(k)
-      enddo
-
-      return
-      end subroutine grid_info
+      end subroutine emu_getcwd
 c 
 c ========================================================
 c
@@ -986,6 +940,13 @@ c Select min/max longitude, latitude, depth
          read(5,*) z2
       end do 
 
+      write(6,'(/,a,2f7.1,2f6.1,2f7.1)')
+     $     'Mask west/east/south/north/bottom/top boundary: ',
+     $     x1,x2,y1,y2,z1,z2
+      write(51,'(/,a,2f7.1,2f6.1,2f7.1)')
+     $     'Mask west/east/south/north/bottom/top boundary: ',
+     $     x1,x2,y1,y2,z1,z2
+
 c Find all (i,j,k) locations that is within volume 
       dumx(:,:) = 0.
       dumy(:,:) = 0.
@@ -1071,10 +1032,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 c 
       real*4 x1,x2,y1,y2
 
@@ -1114,7 +1077,12 @@ c Select min/max longitude, latitude, depth
          write(6,*) 'Enter north most latitude (-90N to 90N)... y2?'
          read(5,*) y2
       end do
-      
+
+      write(6,'(/,a,2f7.1,2f6.1)')
+     $     'Mask west/east/south/north boundary: ',x1,x2,y1,y2
+      write(51,'(/,a,2f7.1,2f6.1)')
+     $     'Mask west/east/south/north boundary: ',x1,x2,y1,y2
+
 c Find all (i,j) locations that is within volume 
       dumx(:,:) = 0.
       dumy(:,:) = 0.
@@ -1174,6 +1142,103 @@ c
 c 
 c ============================================================
 c 
+      subroutine mask01_section(maskC,maskW,maskS,x1,x2,y1,y2)
+c -----------------------------------------------------
+c Create 2d horizontal mask for great circle between model grid 
+c points closest to user-specified end points. 
+c -----------------------------------------------------
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
+
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
+      real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
+      integer kmt(nx,ny)
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
+c 
+      real*4 x1,x2,y1,y2
+      real*4 pt1(2), pt2(2)
+      real*4 maskC(nx,ny), maskW(nx,ny), maskS(nx,ny)
+
+      real*4 dumx(nx,ny), dumy(nx,ny), dum 
+      real*4 dum2d(nx,ny)
+      real*4 vcheck
+
+c ------
+c Area must span at least one model grid pint 
+      write(6,*)
+     $     'Creating mask for great circle from point 1 to point 2.' 
+      write(6,*)
+     $     'Positive transport defined from right to left looking '//
+     $     'from point 1 (former) to point 2 (latter).'
+      write(6,*) '(Will select model grid points closest to '//
+     $     'user-specified points.)'
+
+      vcheck = 0.
+
+      do while (vcheck .eq. 0) 
+
+c ------
+c Select point 1 
+      write(6,*) 'Enter point 1 longitude (-180E to 180E)... x1?'
+      read(5,*) x1
+      x1 = mod(x1+180., 360.) - 180.
+
+      write(6,*) 'Enter point 1 latitude (-90N to 90N)... y1?'
+      read(5,*) y1
+      y1 = mod(y1+90., 180.) - 90.
+
+c Select point 2 
+      write(6,*) 'Enter point 2 longitude (-180E to 180E)... x2?'
+      read(5,*) x2
+      x2 = mod(x2+180., 360.) - 180.
+
+      write(6,*) 'Enter point 2 latitude (-90N to 90N)... y2?'
+      read(5,*) y2
+      y2 = mod(y2+90., 180.) - 90.
+
+c 
+      pt1(1) = x1
+      pt1(2) = y1
+      pt2(1) = x2
+      pt2(2) = y2
+c 
+      write(6,'(/,a,2x,f7.1,1x,f6.1)') 'Point 1 (lon, lat) : ', pt1
+      write(6,'(a,2x,f7.1,1x,f6.1)') 'Point 2 (lon, lat) : ', pt2
+
+      write(51,'(/,a,2x,f7.1,1x,f6.1)') 'Point 1 (lon, lat) : ', pt1
+      write(51,'(a,2x,f7.1,1x,f6.1)') 'Point 2 (lon, lat) : ', pt2
+
+c Create mask 
+      call get_section_line_masks(pt1, pt2, maskC, maskW, maskS)
+      
+c ------
+c Check mask 
+      vcheck = 0.
+      do i=1,nx
+         do j=1,ny
+            vcheck = vcheck + abs(maskW(i,j)) + abs(maskS(i,j))
+         enddo
+      enddo
+      
+      if (vcheck.eq.0.) then
+         write(6,*) 'NG: Section is empty.'
+         write(6,*) 'Section must span at least one grid point. '
+         write(6,*) 'Re-Enter end points ... '
+      endif
+
+      end do  ! end while 
+c 
+      return
+      end subroutine mask01_section
+c 
+c ============================================================
+c 
       subroutine cr8_mask2d(fmask,x1,x2,y1,y2,iref)
 c -----------------------------------------------------
 c Subroutine to create a mask for area-weighting ocean points on the
@@ -1189,10 +1254,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 
 c Mask 
       integer iref
@@ -1225,6 +1292,8 @@ c Option to define mask relative to global mean
 
       if (iref .eq. 1) then
          write(6,"(3x,a,/)")
+     $        '... 2d Mask will be relative to global mean'
+         write(51,"(3x,a,/)")
      $        '... 2d Mask will be relative to global mean'
 
          adum = 0.
@@ -1280,10 +1349,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
 
 c Mask 
       integer iref
@@ -1318,6 +1389,8 @@ c Option to define mask relative to global mean
 
       if (iref .eq. 1) then
          write(6,"(3x,a,/)")
+     $        '... 3d Mask will be relative to global mean'
+         write(51,"(3x,a,/)")
      $        '... 3d Mask will be relative to global mean'
 
          adum = 0.
@@ -1358,6 +1431,148 @@ c Save area for naming mask file
 c 
 c ============================================================
 c 
+      subroutine cr8_mask_section(fmask_w,fmask_s,x1,x2,y1,y2,z1,z2)
+c -----------------------------------------------------
+c Subroutine to create masks for volume transport through a section.
+c     
+c 26 November 2024, Ichiro Fukumori (fukumori@jpl.nasa.gov)
+c -----------------------------------------------------
+      external StripSpaces
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
+
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
+      real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
+      integer kmt(nx,ny)
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
+
+c Mask 
+      real*4 x1,x2,y1,y2,z1,z2
+      real*4 adum
+      real*4 dum3d(nx,ny,nr), dum3d_w(nx,ny,nr), dum3d_s(nx,ny,nr)
+      real*4 dum2d_c(nx,ny), dum2d_w(nx,ny), dum2d_s(nx,ny)
+      real*4 dum2d(nx,ny)
+      real*4 dum1d(nr)
+
+      character*256 floc_loc  ! location (mask) 
+      character*256 fmask_w, fmask_s
+
+c --------------
+c Get horizontal mask (with values of 0/1/-1)
+      call mask01_section(dum2d_c,dum2d_w,dum2d_s,x1,x2,y1,y2)
+
+c Get vertical mask 
+      write(6,'(/,a)') 'Enter depth range.' 
+      write(6,*) '(Will select closest model levels.)'
+
+c Top level 
+      write(6,*) 'Enter minimum depth '//
+     $     '(distance from surface in meters) ... z1?'
+      read(5,*) z1 
+
+c Find closest level to z1
+      dum1d = abs(rc+z1)  ! rc is negative 
+      k1 = 1
+      dum0 = dum1d(k1)
+      do k=2,nr
+         if (dum1d(k).lt.dum0) then
+            dum0=dum1d(k)
+            k1 = k
+         endif
+      end do
+
+c
+      write(6,*) 'Enter maximum depth '//
+     $     '(distance from surface in meters) ... z2?'
+      read(5,*) z2
+      if (z2.lt.z1) then 
+         write(6,*) 'z2 must be larger than z1. Setting z2=z1'
+         z2=z1
+      endif
+
+c Find closest level to z2
+      dum1d = abs(rc+z2)  ! rc is negative 
+      k2 = 1
+      dum0 = dum1d(k2)
+      do k=2,nr
+         if (dum1d(k).lt.dum0) then
+            dum0=dum1d(k)
+            k2 = k
+         endif
+      end do
+
+c
+      write(6,'(/,a,2x,f6.1,1x,f6.1)') 'Min/Max depth : ', z1, z2
+      write(6,'(a,2x,i6,1x,i6)')       '     k levels : ', k1, k2
+ 
+      write(51,'(/,a,2x,f6.1,1x,f6.1)') 'Min/Max depth : ', z1, z2
+      write(51,'(a,2x,i6,1x,i6)')       '     k levels : ', k1, k2
+ 
+c --------------
+c Apply area-weight
+      do i=1,nx
+         do j=1,ny
+            do k=k1,k2
+               dum3d_w(i,j,k) = dyg(i,j)*drf(k)*hfacw(i,j,k)
+     $              *dum2d_w(i,j)
+               dum3d_s(i,j,k) = dxg(i,j)*drf(k)*hfacs(i,j,k)
+     $              *dum2d_s(i,j)
+            enddo
+         enddo
+      enddo
+
+c Save location for naming mask file 
+      write(floc_loc,'(5(f6.1,"_"),f6.1)')
+     $     x1,x2,y1,y2,z1,z2
+      call StripSpaces(floc_loc)
+
+c For reference, write 2d mask for UV; 
+c   0/1 with sign for right-to-left transport in LLC grid
+c   looking from (x1,y1) to (x2,y2)
+      write(6,"(/,a)") '2d masks identifying section (signed 0/1) ...'
+
+      fmask_w = 'mask2d_w.' // trim(floc_loc)
+      write(6,"(3x,2a)")
+     $     '2d w mask: ',trim(fmask_w)
+      open(60,file=trim(fmask_w),form='unformatted',access='stream')
+      write(60) dum2d_w
+      close(60)
+
+      fmask_s = 'mask2d_s.' // trim(floc_loc)
+      write(6,"(3x,2a)")
+     $     '2d s mask: ',trim(fmask_s)
+      open(60,file=trim(fmask_s),form='unformatted',access='stream')
+      write(60) dum2d_s
+      close(60)
+
+c Write 3d mask for UV volume transport (with area weights)
+      write(6,"(/,a)") '3d masks for computing volume transport ... '
+
+      fmask_w = 'mask3d_w.' // trim(floc_loc)
+      write(6,"(3x,2a)")
+     $     'Mask_w (3d): ',trim(fmask_w)
+      open(60,file=trim(fmask_w),form='unformatted',access='stream')
+      write(60) dum3d_w
+      close(60)
+
+      fmask_s = 'mask3d_s.' // trim(floc_loc)
+      write(6,"(3x,2a,/)")
+     $     'Mask_s (3d): ',trim(fmask_s)
+      open(60,file=trim(fmask_s),form='unformatted',access='stream')
+      write(60) dum3d_s
+      close(60)
+
+      return
+      end subroutine cr8_mask_section
+c 
+c ============================================================
+c 
       function rel2abs_fname(rel_fname) result(abs_fname)
 c -----------------------------------------------------
 c Subroutine to change a relative file name (rel_fname) to an absolute
@@ -1386,3 +1601,72 @@ c Combine cwd and relative path to get the absolute path
 
       return
       end function rel2abs_fname
+c 
+c ============================================================
+c 
+      subroutine get_pkup_hours(f_pkup, pkuphrs, n_pkuphrs) 
+c -----------------------------------------------------
+c Subroutine to read in available instances (hours) of pickup files.
+c -----------------------------------------------------
+      implicit none
+      integer, parameter :: max_files = 1000
+c Input 
+      character(len=256) :: f_pkup ! directory with pickup files
+      integer pkuphrs(max_files), n_pkuphrs
+c 
+      integer :: i, ios, count
+      character(len=256) :: line, cmd, fname 
+      character(len=256), dimension(max_files) :: filenames
+
+c Command to list files matching the pattern
+      fname = trim(f_pkup) // '/pickup.*.data'
+      call StripSpaces(fname)
+      cmd = "ls " // trim(fname) // " > file_list.txt"
+      call execute_command_line(trim(cmd))
+
+c Open the file containing the list of filenames
+      open(unit=10, file="file_list.txt", status="old", action="read")
+      count = 0
+
+c Read filenames and extract numbers
+      do i = 1, max_files
+         read(10, '(A)', iostat=ios) line
+         if (ios /= 0) exit     ! Exit if end of file
+         count = count + 1
+
+c Find the position of "pickup." and ".data" and extract the number
+         call extract_pkup_number(line, pkuphrs(count))
+      end do
+      close(10)
+
+      n_pkuphrs = count 
+
+c Output the extracted numbers
+      print *, "Extracted pkuphrs:"
+      do i = 1, count
+         print *, pkuphrs(i)
+      end do
+
+      return
+      end subroutine get_pkup_hours
+c 
+c ============================================================
+c 
+      subroutine extract_pkup_number(filename, number)
+      character(len=*), intent(in) :: filename
+      integer, intent(out) :: number
+      integer :: start_pos, end_pos
+      character(len=20) :: num_str
+
+      start_pos = index(filename, "pickup.") + 7
+      end_pos = index(filename, ".data") - 1
+
+      if (start_pos > 7 .and. end_pos > start_pos) then
+         num_str = filename(start_pos:end_pos)
+         read(num_str, '(I20)') number
+      else
+         number = -1
+      end if
+
+      return
+      end subroutine extract_pkup_number

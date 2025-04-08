@@ -37,7 +37,7 @@ echo 'ln -sf /emu_input_dir/forcing/other/flux-forced/STATE_DIR/* .'   >> my_com
 echo "ln -sf \${emu_dir}/emu/exe/nproc/${nprocs}/FRW_OR_ADJ . "  >> my_commands.sh
 echo "ln -sf \${emu_dir}/emu/emu_input/nproc/${nprocs}/data.exch2 . "  >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # Run tracer executable 
@@ -54,7 +54,7 @@ start_time=$(date +%s)
 # ---------------------------
 
 ${native_mpiexec} -np ${nprocs}  --use-hwthread-cpus \
-    singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro \
+    singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro \
     --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh
 
 # ---------------------------
@@ -93,5 +93,5 @@ echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'               >> my_commands.sh
 echo '#REORDER_PTRACER ${emu_dir}/emu/emu_input/scripts/rename_offline_adj_diags_fn.sh YES '  >> my_commands.sh
 
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh

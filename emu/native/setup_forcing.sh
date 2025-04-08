@@ -14,3 +14,4 @@ ln -sf ${emu_input_dir}/forcing/input_init/error_weight/ctrl_weight/* .
 ln -sf ${emu_input_dir}/forcing/input_init/* .
 ln -sf ${emu_input_dir}/forcing/input_init/tools/* .
 
+ln -sf ${emu_input_dir}/emu_ref/pickup*.data .

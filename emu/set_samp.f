@@ -21,10 +21,12 @@ c model arrays
       real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
       common /grid/xc, yc, rc, bathy, ibathy
 
-      real*4 rf(nr), drf(nr), hfacc(nx,ny,nr)
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
       real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
       integer kmt(nx,ny)
-      common /grid2/rf, drf, hfacc, kmt, dxg, dyg, dvol3d, rac
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
       
 c Objective function 
       integer nvar, mvar    ! number of OBJF variables 

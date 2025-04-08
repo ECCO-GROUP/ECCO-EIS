@@ -154,6 +154,8 @@ fi
 target_dir=$PWD
 declare -i n_replace
 n_replace=1
+declare -i n_unique
+n_unique=1
 # Counter starts from 1, otherwise encountered failure with bash -e
 
 # Check to see if there are any files at all in source_dir
@@ -178,6 +180,10 @@ for sourceFile in ${source_dir}/* ; do
   # Count replacement file
     ((n_replace++))  
     echo 'Replacement file ... '${fileName}
+  else
+  # Count unique file
+    ((n_unique++))  
+    echo 'Unique file ... '${fileName}
   fi
 done
 
@@ -185,6 +191,8 @@ fi # end block for src_count check
 
 (( n_replace -=1 ))
 echo "Total # of files to be replaced ... " ${n_replace}
+(( n_unique -=1 ))
+echo "Total # of unique files to be added ... " ${n_unique}
 echo " "
 
 # ------------------------------------------
@@ -195,7 +203,7 @@ if [[ "${src_count}" -eq 0 ]]; then
     echo " "
     echo "Proceed to run the model ... (Y/N)?"
 else
-    echo "Proceed to replace and run the model ... (Y/N)?"
+    echo "Proceed to replace/add and run the model ... (Y/N)?"
 fi
 read proceed_yn
 echo " "
@@ -242,6 +250,7 @@ echo " "  >> ./msim.info
 
 # Loop through files in source_dir
 n_replace=1
+n_unique=1
 # If there are no files to replace skip replacement 
 if [[ "${src_count}" -ne 0 ]]; then
     
@@ -259,12 +268,22 @@ if [[ "${src_count}" -ne 0 ]]; then
 	    rm -f ${target_dir}/${fileName}
 	    # link the file from the source directory to the target directory
 	    ln -sf ${sourceFile} ${target_dir}
+	else
+	    # Count unique file
+	    ((n_unique++))  
+	    echo 'Adding ... '${fileName}
+	    echo 'Adding ... '${fileName} >> ./msim.info
+	    # link the file from the source directory to the target directory
+	    ln -sf ${sourceFile} ${target_dir}
 	fi
     done
 fi
 (( n_replace -=1 ))
     echo "Total # of files replaced ... " ${n_replace}
     echo "Total # of files replaced ... " ${n_replace} >> ./msim.info
+(( n_unique -=1 ))
+    echo "Total # of unique files added ... " ${n_unique}
+    echo "Total # of unique files added ... " ${n_unique} >> ./msim.info
 
 # Create subdirectories according to set up.
 python3 mkdir_subdir_diags.py
