@@ -82,7 +82,7 @@ From: ubuntu:22.04
 
 # 3) Compile emu
     cd /ecco/emu
-    mkdir exe
+    mkdir -p exe
     make all
 
 # 4) Compile MITgcm used by EMU, viz. 
