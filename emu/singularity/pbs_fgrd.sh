@@ -56,10 +56,10 @@ echo "ln -sf \${emu_dir}/emu/emu_input/nproc/${nprocs}/data.exch2 . "        >> 
 echo "./v4r4_flx.x  "                                                      >> my_commands.sh    
 
 #${native_mpiexec} -np ${nprocs} --hostfile ./my_machine_file \
-#    singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh
+#    singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh
 
 ${native_mpiexec} -np ${nprocs}  --use-hwthread-cpus \
-    singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh
+    singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh
 
 echo 'Sucessfully ran MITgcm (v4r4_flx.x) ... '
 
@@ -75,7 +75,7 @@ echo 'cd /inside_out'                       >> my_commands.sh
 echo 'ln -sf ${emu_dir}/emu/exe/fgrd.x .'    >> my_commands.sh
 echo 'fgrd.x /emu_input_dir'        >> my_commands.sh
 
-singularity exec -e --bind EMU_REF:/emu_input_dir:ro --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh 
+singularity exec --bind EMU_REF:/emu_input_dir:ro --bind ${rundir}:/inside_out ${singularity_image} /inside_out/my_commands.sh 
 
 echo 'Successfully computed forward gradient  ... '
 

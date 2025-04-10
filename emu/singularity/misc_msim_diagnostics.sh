@@ -61,7 +61,7 @@ echo '#!/bin/bash -e' > ${rundir}/my_commands.sh && chmod +x ${rundir}/my_comman
 echo 'cd /inside_out'   >> ${rundir}/my_commands.sh
 echo 'cp -pf ${emu_dir}/emu/data.diagnostics_emu  ./data.diagnostics'    >> ${rundir}/my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 #--------------------------

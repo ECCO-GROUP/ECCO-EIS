@@ -45,7 +45,7 @@ echo 'echo "**** Step 1: Tool Setup"'    >> my_commands.sh
 echo 'echo "     Running setup_samp.sh"' >> my_commands.sh
 echo '${emu_dir}/emu/setup_samp.sh'      >> my_commands.sh
 
-singularity exec -e --bind ${PWD}:/inside_out \
+singularity exec --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # Step 2: Specification
@@ -108,7 +108,7 @@ echo '#!/bin/bash' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'                >> my_commands.sh
 echo "./samp.x ${isamp} /inside_alt"          >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      --bind ${source_dir}:/inside_alt:ro ${singularity_image} /inside_out/my_commands.sh
 
 # Move samp.x output files to rundir (used to be done in samp.x)
@@ -135,7 +135,7 @@ echo 'cd /inside_out'                >> my_commands.sh
 echo 'ln -s ${emu_dir}/emu/exe/do_samp.x .'  >> my_commands.sh
 echo './do_samp.x /inside_alt'          >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      --bind ${source_dir}:/inside_alt:ro ${singularity_image} /inside_out/my_commands.sh
 
 #=================================
