@@ -38,7 +38,7 @@ echo 'echo "**** Step 1: Tool Setup"'    >> my_commands.sh
 echo 'echo "     Running setup_budg.sh"' >> my_commands.sh
 echo '${emu_dir}/emu/setup_budg.sh'      >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # Initialize my_commands.sh for Singularity image
@@ -78,7 +78,7 @@ fi
 echo "     Running budg.x"
 echo "./budg.x /emu_input_dir /inside_alt"  >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      --bind ${source_dir}:/inside_alt:ro ${singularity_image} /inside_out/my_commands.sh
 
 # Initialize my_commands.sh for Singularity image

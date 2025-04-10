@@ -28,7 +28,7 @@ From: ubuntu:22.04
     echo "Installing required packages..."
     apt-get update && apt-get install -y wget git bash gcc gfortran g++ make file vim emacs bzip2
     apt-get install -y csh tcsh netcdf-bin python3        	    
-    apt-get install -y parallel locales
+    apt-get install -y parallel locales time 
 
     # Add fuse2fs installation
     apt-get install -y e2fsprogs fuse2fs

@@ -104,7 +104,7 @@ hour26yr=$(grep -i "HOUR26YR_FWD" "mitgcm_timing.nml" | awk -F '=' '{print $2}' 
 echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'                   >> my_commands.sh
 echo 'cp -f ${emu_dir}/emu/data_emu ./data_msim ' >> my_commands.sh
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 sed -i -e "s|NSTEP_EMU|227903|g" ./data_msim
 
@@ -162,7 +162,7 @@ echo "ln -sf \${emu_dir}/emu/emu_input/nproc/${nprocs}/data.exch2 . "   >> ./my_
 #python3 mkdir_subdir_diags.py
 echo "python3 /emu_input_dir/forcing/input_init/tools/mkdir_subdir_diags.py "  >> ./my_commands.sh    
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # ------------------------------------------

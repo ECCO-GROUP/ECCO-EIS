@@ -33,7 +33,7 @@ echo " "
 echo "**** Step 1: Tool Setup"
 echo "     Running setup_fgrd.sh "
 
-singularity exec -e --bind ${PWD}:/inside_out \
+singularity exec --bind ${PWD}:/inside_out \
      ${singularity_image} bash -c 'cd /inside_out && ${emu_dir}/emu/setup_fgrd.sh '
 
 # Step 2: Specification
@@ -48,7 +48,7 @@ echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'                          >> my_commands.sh
 echo 'ln -sf ${emu_dir}/emu/exe/fgrd_spec.x .' >> my_commands.sh
 echo './fgrd_spec.x /emu_input_dir '                          >> my_commands.sh
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 if [ -f "./fgrd.dir_out" ] && [ -f "./pbs_fgrd.sh" ]; then
@@ -131,7 +131,7 @@ echo 'cd /inside_out'                   >> my_commands.sh
 echo '${emu_dir}/emu/singularity/setup_forcing.sh' >> my_commands.sh
 echo '${emu_dir}/emu/singularity/do_fgrd_pert.sh' >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${rundir}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 cd ${returndir}

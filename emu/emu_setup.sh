@@ -695,7 +695,7 @@ goto_singularity() {
     echo '    echo "$item" >> ./n_exe.txt '  >> my_commands.sh
     echo 'done '                             >> my_commands.sh
 
-    singularity exec -e --bind ${PWD}:/inside_out \
+    singularity exec --bind ${PWD}:/inside_out \
 	${singularity_image} /inside_out/my_commands.sh
 
     # Search available executables (compiled by singularity/emu_compile_mdl.sh)

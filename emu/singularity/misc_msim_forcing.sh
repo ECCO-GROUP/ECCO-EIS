@@ -113,7 +113,7 @@ echo '1992'       >> my_commands.sh
 echo '2017'       >> my_commands.sh
 echo 'EOF'        >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 #--------------------------

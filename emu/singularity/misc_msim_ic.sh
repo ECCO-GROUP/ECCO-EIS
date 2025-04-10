@@ -70,7 +70,7 @@ echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'   >> my_commands.sh
 echo 'cp -pf ${emu_dir}/emu/data.ctrl.noinitctrl ./data.ctrl'  >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 #--------------------------
@@ -105,7 +105,7 @@ echo '1 '  >> my_commands.sh
 echo '312 '  >> my_commands.sh
 echo 'EOF'  >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # state_3d_set1_mon*data (UVTS)
@@ -124,7 +124,7 @@ echo '1 ' >> my_commands.sh
 echo '312 ' >> my_commands.sh
 echo 'EOF' >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 # GGL90TKE_mon_mean (ggl90tke)
@@ -143,7 +143,7 @@ echo '1 '  >> my_commands.sh
 echo '312 '  >> my_commands.sh
 echo 'EOF'  >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 #--------------------------
@@ -178,7 +178,7 @@ echo 's '  >> my_commands.sh
 echo '1 '  >> my_commands.sh
 echo 'EOF'  >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
 
 #--------------------------

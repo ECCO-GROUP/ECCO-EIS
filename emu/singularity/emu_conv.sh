@@ -55,7 +55,7 @@ echo 'cd /inside_out'               >> my_commands.sh
 echo 'ln -sf ${emu_dir}/emu/exe/conv.x . ' >> my_commands.sh
 echo "./conv.x ${emu_input_dir} ${f_adxx} /inside_alt "  >> my_commands.sh
 
-singularity exec -e --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
+singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      --bind ${f_adxx}:/inside_alt:ro ${singularity_image} /inside_out/my_commands.sh
 
 if [ -f "conv.dir_out" ] && [ -f "pbs_conv.sh" ]; then

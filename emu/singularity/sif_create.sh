@@ -36,7 +36,7 @@ singularity build --fakeroot sif_ad_input_code.sif sif_ad_input_code.def
 echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cp -r /ecco/emu/exe/nproc /inside_out'      >> my_commands.sh
      
-singularity exec -e --bind ${PWD}:/inside_out \
+singularity exec --bind ${PWD}:/inside_out \
      sif_ad_input_code.sif /inside_out/my_commands.sh
 
 # ----------------------------------------

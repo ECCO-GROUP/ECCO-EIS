@@ -57,7 +57,7 @@ date
 # Capture the start time
 start_time=$(date +%s)
 
-singularity exec -e --bind ${f_ctrl}:/emu_input_dir:ro --bind ${f_adxx}:/inside_alt:ro \
+singularity exec --bind ${f_ctrl}:/emu_input_dir:ro --bind ${f_adxx}:/inside_alt:ro \
      --bind ${PWD}:/inside_out ${singularity_image} /inside_out/my_commands.sh
 
 # Capture the end time
