@@ -1,6 +1,6 @@
 
 ============================================
-EMU Auxillary Tools: A Brief Description
+EMU Auxiliary Tools: A Brief Description
 ============================================
 
 What the Tool does:
@@ -29,7 +29,7 @@ What the Tool does:
     overwrite what the other creates.
 
 How to run the Tool:
-   Execute command emu (linked to emu.sh) and select Auxillary Tool
+   Execute command emu (linked to emu.sh) and select Auxiliary Tool 
    (tool #9).
 
 Output:
@@ -37,7 +37,7 @@ Output:
    tool. 
 
 For detailed description: 
-   See Sections 1, 2.x, and 3.x of the EMU User Guide; 
+   See Sections 1, 2.9, and 3.9 of the EMU User Guide; 
    PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
 
 ============================================

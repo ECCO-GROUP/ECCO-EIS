@@ -32,6 +32,23 @@ currentdir=$PWD
 cd ${emu_userinterface_dir}
 
 # ---------------------------------------
+# 0) Rename all download.log files, if any, recursively. 
+#    This saves logs from previous download attemps by emu_input_install.sh. 
+#    Will search for ERROR messages later, if any, only in new log files.
+
+find . -type f -name 'download.log' | while read -r file; do
+    # Use stat to get the last modification time in YYYYMMDD_HHMM format
+    timestamp=$(stat -c '%y' "$file" | awk '{print $1"_"$2}' | sed 's/[:-]//g' | cut -c1-13)
+
+    # Construct new file name
+    new_file="${file}_${timestamp}"
+
+    # Rename the file
+    mv "$file" "$new_file"
+    echo "Renamed: $file -> $new_file"
+done
+
+# ---------------------------------------
 # 1) Enter Earthdata username & password
 
     # Prompt for username
@@ -103,7 +120,11 @@ goto_download_indiv() {
     local base_dir="$1"
     local cut_dirs="$3"
     local remote_path="$4"
-    local dryrun="${5:-false}"  # Optional: pass 'true' to simulate
+    local exclude_dir="$5"
+    local exclude_opt=""
+    if [[ -n "$exclude_dir" ]]; then
+	exclude_opt="--reject-regex=/$exclude_dir/"
+    fi
     local log_file="${base_dir}/download.log"
 
     echo
@@ -113,17 +134,12 @@ goto_download_indiv() {
     local before_files=$(find "$target_dir" -type f | wc -l)
     local before_size=$(du -sb "$target_dir" | cut -f1)
 
-    # Dry-run mode: simulate the wget call
-    if [[ "$dryrun" == "true" ]]; then
-        echo "Dry-run mode enabled."
-        echo "Would run:"
-        echo "ssh pfe wget -r -np -nH -N -c -P $base_dir --cut-dirs=$cut_dirs --no-verbose ..."
-        return
-    fi
-
     # Perform download and append to log
     ssh pfe wget -r -np -nH -N -c \
         --no-verbose \
+	--reject "index.html*" \
+	--retry-connrefused --tries=10 --waitretry=5 \
+	$exclude_opt \
         -P "$base_dir" \
         --cut-dirs="$cut_dirs" \
         --user "$Earthdata_username" \
@@ -223,7 +239,36 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     # emu_msim
     if [[ $emu_input -eq 0 || $emu_input -eq 4 ]]; then
 
-	goto_download_indiv ${emu_input_dir} "emu_msim" 7 "other/flux-forced/emu_input/emu_msim/" &
+	# Exclude diags directory 
+	goto_download_indiv ${emu_input_dir} "emu_msim" 7 "other/flux-forced/emu_input/emu_msim/" "diags" &
+
+	# Download diags directory
+	means=(
+	    mean_ALL
+	    mean_IC
+	    mean_oceFWflx
+	    mean_oceSflux_oceSPflx
+	    mean_oceTAUX_oceTAUY
+	    mean_sIceLoadPatmPload_nopabar
+	    mean_TFLUX_oceQsw
+	)
+
+	# Store PIDs of background jobs
+	pids_diags=()
+
+	# Launch diags downloads in background
+	for mean in "${means[@]}"; do
+	    local_path="emu_msim/${mean}/diags"
+	    remote_path="other/flux-forced/emu_input/emu_msim/${mean}/diags/"
+	    
+	    goto_download_indiv ${emu_input_dir} "$local_path" 7 "$remote_path" &
+	    pids_diags+=($!)  # store the PID of just this background job
+	done
+
+	# Wait only for these specific jobs
+	for pid in "${pids_diags[@]}"; do
+	    wait "$pid"
+	done
 
     fi
 
@@ -231,12 +276,12 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     if [[ $emu_input -eq 0 || $emu_input -eq 5 ]]; then
 
 	goto_download_indiv "${forcing_dir}/other/flux-forced" "state_weekly" 6 "other/flux-forced/state_weekly/" &
-	pid_state_weekly_1 =$!
+	pid_state_weekly_1=$!
 
 	# Create circulation fields for adjoint tracer 
 
 	goto_download_indiv "${emu_input_dir}" "scripts" 8 "other/flux-forced/emu_input/emu_misc/scripts/" &
-	pid_state_weekly_2 =$!
+	pid_state_weekly_2=$!
 
 	wait $pid_state_weekly_1 $pid_state_weekly_2
 
@@ -267,13 +312,6 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     minutes=$(((elapsed_time % 3600) / 60))
     seconds=$((elapsed_time % 60))
 
-    echo 
-    echo "----------------------"
-    echo "Successfully set up EMU input by emu_input_install_4batch.sh"
-    printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
-    echo "emu_input_install_4batch.sh execution complete. $(date)"
-    echo 
-
     # ---------------------------------------
     # Log the run
     echo " " >> "${emu_input_dir}/download.log"
@@ -282,4 +320,57 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
     printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds >> "${emu_input_dir}/download.log"
     echo "**************************************" >> "${emu_input_dir}/download.log"
     echo " " >> "${emu_input_dir}/download.log"
+
+    # ---------------------------------------
+    # Check for ERRORs 
+
+    echo " " 
+    echo "----------------------"
+    echo " "
+
+    error_found=false
+
+    # Save the list of download.log files to a variable to avoid subshell
+    log_files=$(find . -type f -name 'download.log')
+
+    for logfile in $log_files; do
+	awk -v logfile="$logfile" '
+    {
+        prev = curr
+        curr = $0
+        if (curr ~ /ERROR 502: Proxy Error/) {
+            print "***** WARNING: 502 Proxy Error detected"
+            print "Log file     : " logfile
+            print "Problem line : " prev
+            print "Error message: " curr
+            print ""
+            error = 1
+        }
+    }
+    END {
+        if (error) {
+            exit 1
+        }
+    }' "$logfile"
+
+	if [[ $? -eq 1 ]]; then
+            error_found=true
+	fi
+    done
+
+    # Print final outcome
+    if $error_found; then
+	echo "***********************"    
+	echo " Error(s) above encountered while downloading EMU input files." 
+	echo " Rerun emu_input_setup.sh to download missing files."
+	echo "***********************"        
+    else
+	echo "Successfully set up EMU input by emu_input_install_4batch.sh"
+    fi
+
+    echo " "
+    printf "Elapsed time: %d:%02d:%02d\n" $hours $minutes $seconds
+    echo "emu_input_install_4batch.sh execution complete. $(date)"
+    echo
+
 

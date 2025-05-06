@@ -112,6 +112,10 @@ singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside
      --bind ${source_dir}:/inside_alt:ro ${singularity_image} /inside_out/my_commands.sh
 
 # Move samp.x output files to rundir (used to be done in samp.x)
+if [[ ! -f ./samp.dir_out ]]; then
+    echo "ERROR: samp.dir_out not found. Aborting."
+    exit 1
+fi
 read dummy < samp.dir_out
 rundir=${dummy}/temp
 mv ./samp.info ${rundir}
