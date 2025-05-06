@@ -92,6 +92,10 @@ echo "Running samp.x specifying what will be sampled ... "
 ./samp.x  ${isamp} ${source_dir}
 
 # Move samp.x output files to rundir (used to be done in samp.x)
+if [[ ! -f ./samp.dir_out ]]; then
+    echo "ERROR: samp.dir_out not found. Aborting."
+    exit 1
+fi
 read dummy < ./samp.dir_out
 rundir=${dummy}/temp
 mv ./samp.info ${rundir}

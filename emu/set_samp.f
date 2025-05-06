@@ -104,6 +104,7 @@ c Define OBJF's VARIABLE
          write (6,"(3x,i2,') ',a,1x,a)")
      $        i,trim(f_var(i)),trim(f_unit(i))
       enddo
+      write (6,"(/,3x,a,/)") 'But first, ... '
 
 c --------------
 c Monthly mean or daily mean 
@@ -111,7 +112,7 @@ c Monthly mean or daily mean
       do while (fmd.ne.'m' .and. fmd.ne.'M' .and.
      $     fmd.ne.'d' .and. fmd.ne.'D') 
 
-         write (6,"(/,3x,a)") 'Monthly or Daily mean ... (m/d)?'
+         write (6,"(3x,a)") 'Select Monthly or Daily mean ... (m/d)?'
          write (6,"(3x,a)")
      $        '(NOTE: daily mean available for SSH and OBP only.)'
          read(5,*) fmd
@@ -201,8 +202,9 @@ c Define new OBJF variable
          call objf_var(f1,iobjf,floc_loc)
 
          else if (nobjf .eq. 0) then
-            write(6,*) 'Invalid selection ... Terminating.'
-            stop
+            write(6,*) 'Invalid selection ... '
+            write(6,*) 'No variable selected ... TERMINATING'
+            stop 1
          endif 
 
       end do  ! End defining OBJF 

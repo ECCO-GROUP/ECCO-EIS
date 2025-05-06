@@ -63,6 +63,10 @@ echo " "
 sleep 3
 
 # Create directory for Tool
+if [[ ! -f ./set_samp.out ]]; then
+    echo "ERROR: set_samp.out not found. Aborting."
+    exit 1
+fi
 f_command=$(cat set_samp.out)
 /bin/rm ./set_samp.out
 

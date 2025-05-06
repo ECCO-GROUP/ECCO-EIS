@@ -77,7 +77,7 @@ echo "  5) Tracer (trc); Computes passive tracer evolution."
 echo "  6) Budget (budg); Evaluates budget time-series from model output."
 echo "  7) Modified Simulation (msim); Re-runs model with modified input."
 echo "  8) Attribution (atrb); Evaluates state time-series by control type."
-echo "  9) Auxillary (aux); Generate example user input files for other EMU tools."
+echo "  9) Auxiliary (aux); Generates user input files for other EMU tools."
 echo " "
 echo "Enter choice ... (1-9)?"
 
@@ -142,8 +142,8 @@ elif [ "$emu_choice" -eq 8 ]; then
     bash PUBLICDIR/emu_atrb.sh
 
 elif [ "$emu_choice" -eq 9 ]; then
-    echo "Auxillary Tools" > emu.lock
-    echo "choice is 9) Auxillary Tools (aux)"
+    echo "Auxiliary Tools" > emu.lock
+    echo "choice is 9) Auxiliary Tools (aux)"
     echo "See PUBLICDIR/README_aux"
     bash PUBLICDIR/emu_aux.sh
 
