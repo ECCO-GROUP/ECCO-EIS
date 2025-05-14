@@ -27,10 +27,6 @@ What EMU does:
    EMU's output in select programming environments. See 
    PUBLICDIR/README_plot 
 
-   See 
-   PUBLICDIR/README_references
-   for references. 
-
 How to run EMU:
    Execute command 
    PUBLICDIR/emu 
@@ -39,6 +35,16 @@ How to run EMU:
 For detailed description: 
    See the EMU User Guide; 
    PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+For references:
+   See 
+   PUBLICDIR/README_references
+
+How to install EMU:
+   See 
+   PUBLICDIR/README_setup
+   or 
+   https://github.com/ECCO-GROUP/ECCO-EIS/blob/main/emu/README_setup   
 
 Copyright: 
    Copyright 2024, by the California Institute of Technology. ALL

@@ -57,15 +57,17 @@ build_or_copy_inventory() {
     else
       misc_build_inventory.sh "$source" "$target"
     fi
+
   elif [[ -f "$source" ]]; then
     echo "Using existing inventory file: $source"
-    cp "$source" "$target"
 
-    # Verify the inventory file has reasonable format
+    # Check the format of the first file entry
     local first_line
-    first_line=$(grep -m1 '^F|' "$target" || true)
+    first_line=$(grep -m1 '^F|' "$source" || true)
+
     if [[ -z "$first_line" ]]; then
       echo "Warning: No file entries found in $source. Skipping format verification."
+      cp "$source" "$target"
     else
       local field_count
       field_count=$(awk -F'|' '{print NF}' <<< "$first_line")
@@ -74,11 +76,18 @@ build_or_copy_inventory() {
         echo "Error: Inventory $source does not include MD5 checksums, but --with-md5 was requested."
         exit 1
       fi
-      if [[ "$with_md5" -eq 0 && "$field_count" -ne 3 && "$field_count" -ne 4 ]]; then
+
+      if [[ "$with_md5" -eq 0 && "$field_count" -eq 4 ]]; then
+        echo "Stripping MD5 checksums from inventory: $source"
+        misc_strip_md5.sh "$source" > "$target"
+      elif [[ "$with_md5" -eq 0 && ("$field_count" -eq 3 || "$field_count" -eq 4) ]]; then
+        cp "$source" "$target"
+      else
         echo "Error: Inventory $source has an unexpected format."
         exit 1
       fi
     fi
+
   else
     echo "Error: $source is neither a directory nor a file."
     exit 1

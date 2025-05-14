@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage:
-#   ./build_inventory.sh [--with-md5] [--nproc N] sourcedir outfile
+#   ./misc_build_inventory.sh [--with-md5] [--nproc N] sourcedir outfile
 # - --with-md5 : include MD5 checksums
 # - --nproc N  : manually set number of parallel processes (optional)
 #
@@ -76,17 +76,17 @@ echo "Building inventory for $sourcedir into $outfile using $nproc parallel proc
 (
   cd "$sourcedir"
 
-  find . -type f > files.list || { echo "Warning: No files found."; touch files.list; }
+  find . -type f > /tmp/files.list || { echo "Warning: No files found."; touch /tmp/files.list; }
 
   if [[ "$with_md5" -eq 0 ]]; then
     # Size only (parallelized)
-    cat files.list | xargs -n 1 -P "$nproc" bash -c '
+    cat /tmp/files.list | xargs -n 1 -P "$nproc" bash -c '
       file="$1"
       printf "F|%s|%s\n" "$(stat -c %s "$file")" "$file"
     ' _ 
   else
     # Size + MD5 (parallelized)
-    cat files.list | xargs -n 1 -P "$nproc" bash -c '
+    cat /tmp/files.list | xargs -n 1 -P "$nproc" bash -c '
       file="$1"
       printf "F|%s|%s|%s\n" "$(stat -c %s "$file")" "$(md5sum "$file" | cut -d" " -f1)" "$file"
     ' _
