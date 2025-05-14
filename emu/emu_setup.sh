@@ -33,7 +33,7 @@ echo "   5) Tracer (trc); Computes passive tracer evolution."
 echo "   6) Budget (budg); Evaluates budget time-series from model output."
 echo "   7) Modified Simulation (msim); Re-runs model with modified input."
 echo "   8) Attribution (atrb); Evaluates state time-series by control type."
-echo "   9) Auxiliary (aux): Generate user input files for other EMU tools."
+echo "   9) Auxiliary (aux): Generates user input files for other EMU tools."
 echo
 echo "************************"
 echo " This script will install EMU's Programs (~1GB), its User Interface (~2MB), "
