@@ -2,7 +2,7 @@
 
 echo ""
 echo "*****************************************************************"
-echo " This is alpha version 2.0 of EMU. " 
+echo " This is alpha version 1.1 of EMU. " 
 echo " See PUBLICDIR/README_UPDATE_NOTES " 
 echo " for a brief description of new features. "
 echo " "
