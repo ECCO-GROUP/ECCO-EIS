@@ -149,10 +149,10 @@ c Check mask file is native 3d
       integer(kind=8) :: f_target
 
 
-      INQUIRE(FILE=fmask_in, SIZE=file_size, EXIST=f_exist)
+      INQUIRE(FILE=trim(fmask_in), SIZE=file_size, EXIST=f_exist) 
 
       if (.not. f_exist) then
-         write(6,*) 'File does not exist ... ',fmask_in
+         write(6,*) 'File does not exist ... ',trim(fmask_in)
          write(6,*) '... aborting'
          stop
       endif
@@ -166,7 +166,7 @@ c Check mask file is native 3d
          stop
       endif
 
-      open(60,file=fmask_in,form='unformatted',access='stream')
+      open(60,file=trim(fmask_in),form='unformatted',access='stream')
       read(60) dum3d
       close(60)
 

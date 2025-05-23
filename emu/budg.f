@@ -493,7 +493,7 @@ c Save mask file name for naming run directory
          call StripSpaces(floc_loc)
 
 c Check mask 
-         call chk_mask3d(fmask,nx,ny,nr,dum3d)
+         call chk_mask3d(fmask,nx,ny,nr,dum3d,1)
 
 c Link input mask to what model expects 
          fdum = 'budg_' // trim(f1) // '_mask_C' 
