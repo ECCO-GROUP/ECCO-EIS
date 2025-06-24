@@ -56,6 +56,11 @@ echo " See the README file that will be installed in the User Interface director
 echo " for details of EMU, including instructions on how to use it."
 echo "************************"
 echo 
+echo "*****************************************************************"
+echo " This is an alpha version of EMU. " 
+echo " Please direct any issues and/or questions to Ichiro Fukumori (fukumori@jpl.nasa.gov). " 
+echo "*****************************************************************"
+echo 
 echo "Press ENTER key to continue ... "
 read ftemp
 
@@ -84,7 +89,8 @@ trap cleanup SIGINT SIGTERM SIGQUIT
 
 echo
 echo "----------------------"
-URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
+#URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
+URL="https://ecco.jpl.nasa.gov/drive"
 
 while true; do
     # Prompt for username
@@ -108,8 +114,20 @@ while true; do
 #        echo "Earthdata/WebDAV Credentials confirmed"
         break
     else
-        echo "Invalid username and/or password. Try again."
-	echo
+	if echo "$OUTPUT" | grep -Ei "Username/Password Authentication Failed|Authorization failed" > /dev/null; then
+            echo "Invalid username and/or password. Try again."
+            echo
+	else
+	    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!"
+            echo "ERROR: wget to $URL. Issue may be with server or client." 
+            echo "       wget returns the following." 
+	    echo 
+            echo "$OUTPUT"
+	    echo 
+	    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	    echo 
+            exit 1
+	fi
     fi
 done
 
