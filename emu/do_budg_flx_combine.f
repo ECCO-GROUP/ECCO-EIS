@@ -5,7 +5,6 @@ c Combines parallel output of do_budg_flx_parallel.f
 c ============================================================
 c
       program do_budg_flx_combine
-      use mysparse 
 c -----------------------------------------------------
 c ALTERNATE VERSION OF do_budg: Computes and save fluxes 
 c through target region faces. 
