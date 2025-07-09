@@ -180,6 +180,15 @@ echo 'echo "from: " ${frun} '                                >> my_commands.sh
 echo '${emu_dir}/emu/exe/do_samp.x ${frun} > ./atrb.prt_7 '  >> my_commands.sh
 echo 'mv ./samp.out_* ./atrb.tmp_7 '                         >> my_commands.sh
 
+# run with everything time-mean (ALL)
+echo 'echo " "   '                                           >> my_commands.sh
+echo 'echo "Sampling time-mean everything run ... " '        >> my_commands.sh
+echo 'fvar="ALL" '                                           >> my_commands.sh
+echo 'frun=${emu_input_dir}/emu_msim/mean_${fvar}/diags '    >> my_commands.sh
+echo 'echo "from: " ${frun} '                                >> my_commands.sh
+echo '${emu_dir}/emu/exe/do_samp.x ${frun} > ./atrb.prt_8 '  >> my_commands.sh
+echo 'mv ./samp.out_* ./atrb.tmp_8 '                         >> my_commands.sh
+
 echo 'echo " "   '                                           >> my_commands.sh
 
 # ------------------------------------------
