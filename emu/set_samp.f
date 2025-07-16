@@ -84,8 +84,8 @@ c Variable name
 
 c --------------
 c Interactive specification of perturbation 
-      write (6,"(/,a,/)") 'Evaluating model time-series ... '
-      write (6,*) 'Define objective function (OBJF) ... '
+      write (6,"(/,a)") 'Evaluating model time-series ... '
+      write (6,"(/,a)") 'Define objective function (OBJF) ... '
 
 c --------------
 c Save OBJF information for reference. 
@@ -98,24 +98,20 @@ c Save OBJF information for reference.
       write(51,"(a,/)") '***********************'
 
 c --------------
-c Define OBJF's VARIABLE 
-      write (6,*) 'Available VARIABLES are ... '
-      do i=1,nvar
-         write (6,"(3x,i2,') ',a,1x,a)")
-     $        i,trim(f_var(i)),trim(f_unit(i))
-      enddo
-      write (6,"(/,3x,a,/)") 'But first, ... '
-
-c --------------
 c Monthly mean or daily mean 
       fmd = 'x'
       do while (fmd.ne.'m' .and. fmd.ne.'M' .and.
      $     fmd.ne.'d' .and. fmd.ne.'D') 
 
-         write (6,"(3x,a)") 'Select Monthly or Daily mean ... (m/d)?'
+         write (6,"(/,3x,a)") 'Select Monthly or Daily mean ... (m/d)?'
          write (6,"(3x,a)")
      $        '(NOTE: daily mean available for SSH and OBP only.)'
          read(5,*) fmd
+
+         if (fmd.ne.'m' .and. fmd.ne.'M' .and.
+     $     fmd.ne.'d' .and. fmd.ne.'D') then
+            write (6,"(3x,a)") 'Invalid choice ... '
+         endif
 
       enddo
 
@@ -149,6 +145,14 @@ c Create dummy temporal mask
       open(60,file=fmask,form='unformatted',access='stream')
       write(60) tmask
       close(60)
+
+c --------------
+c Define OBJF's VARIABLE 
+      write (6,"(/,a)") 'Available VARIABLES are ... '
+      do i=1,mvar
+         write (6,"(3x,i2,') ',a,1x,a)")
+     $        i,trim(f_var(i)),trim(f_unit(i))
+      enddo
 
 c Loop among OBJF variables 
       nobjf = 0 ! number of OBJF variables 
