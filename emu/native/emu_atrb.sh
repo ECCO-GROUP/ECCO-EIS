@@ -160,6 +160,15 @@ echo "from: " ${frun}
 ${emu_dir}/emu/exe/do_samp.x ${frun} > ./atrb.prt_7
 mv ./samp.out_* ./atrb.tmp_7
 
+# run with everything time-mean (ALL)
+echo " "
+echo "Sampling time-mean everything run ... "
+fvar="ALL"
+frun=${emu_input_dir}/emu_msim/mean_${fvar}/diags
+echo "from: " ${frun}
+${emu_dir}/emu/exe/do_samp.x ${frun} > ./atrb.prt_8
+mv ./samp.out_* ./atrb.tmp_8
+
 echo " "
 
 # ------------------------------------------

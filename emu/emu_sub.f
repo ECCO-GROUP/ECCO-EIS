@@ -94,7 +94,7 @@ c Check mask file is native 2d
       if (.not. f_exist) then
          write(6,*) 'File does not exist ... ',fmask_in
          write(6,*) '... aborting'
-         stop
+         stop 1
       endif
       
       f_target = int(nx,kind=8)*int(ny,kind=8)*4
@@ -103,7 +103,7 @@ c Check mask file is native 2d
          write(6,*) 'does not match native grid'
          write(6,*) 'Is input mask on native 2D grid?'
          write(6,*) '... aborting'
-         stop
+         stop 1
       endif
 
       open(60,file=fmask_in,form='unformatted',access='stream')
@@ -154,7 +154,7 @@ c Check mask file is native 3d
       if (.not. f_exist) then
          write(6,*) 'File does not exist ... ',trim(fmask_in)
          write(6,*) '... aborting'
-         stop
+         stop 1
       endif
       
       f_target = int(nx,kind=8)*int(ny,kind=8)*int(nr,kind=8)*4
@@ -163,7 +163,7 @@ c Check mask file is native 3d
          write(6,*) 'does not match native grid'
          write(6,*) 'Is input mask on native 3D grid?'
          write(6,*) '... aborting'
-         stop
+         stop 1
       endif
 
       open(60,file=trim(fmask_in),form='unformatted',access='stream')
@@ -1587,7 +1587,7 @@ c Get the current working directory
       call getcwd(cwd, ierror)
       if (ierror /= 0) then
          print *, 'Error getting current working directory (getcwd)'
-         stop
+         stop 1
       end if
 
 c Combine cwd and relative path to get the absolute path

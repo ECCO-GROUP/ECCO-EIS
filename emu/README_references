@@ -1,12 +1,10 @@
 ECCO Modeling Utilities (EMU) is based on computational tools
-described in
+described by 
 
   Fukumori, I., Wang, O., & Fenty, I. (2021). Causal Mechanisms of
      Sea-level and Freshwater Content Change in the Beaufort
      Sea. Journal of Physical Oceanography, 51(10),
      3217-3234. https://doi.org/10.1175/jpo-d-21-0069.1
-
-except the Tracer Tool, which is based on 
 
   Fukumori, I., Lee, T., Cheng, B., & Menemenlis, D. (2004). The
      origin, pathway, and destination of Nino-3 water estimated by a

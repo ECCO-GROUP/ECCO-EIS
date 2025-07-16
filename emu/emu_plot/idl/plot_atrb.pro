@@ -6,7 +6,8 @@ pro plot_atrb, frun, atrb, atrb_mn, atrb_hr, fctrl
 ff = frun + '/output/'
 
 ; specify controls in file 
-fctrl = ['lhs', 'wind', 'htflx', 'fwflx', 'sflx', 'pload', 'ic']
+;fctrl = ['lhs', 'wind', 'htflx', 'fwflx', 'sflx', 'pload', 'ic']
+fctrl = ['ref', 'wind', 'htflx', 'fwflx', 'sflx', 'pload', 'ic', 'mean']
 nterms=n_elements(fctrl)
 
 ; ---------------

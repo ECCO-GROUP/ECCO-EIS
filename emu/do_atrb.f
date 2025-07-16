@@ -11,7 +11,8 @@ c files
 
 c OBJF 
 c     parameter(ndays=9497, nterms=6)
-      parameter(ndays=9497, nterms=7)
+c      parameter(ndays=9497, nterms=7)
+      parameter(ndays=9497, nterms=8)
       real*4 objf(ndays, nterms)
       real*4 mobjf(nterms)
       integer istep(ndays)
@@ -46,10 +47,13 @@ c Read sampled output of separate runs
 
 c --------------
 c Compute individual contribution
-      do i=2,nterms
+      do i=2,nterms-1
          objf(1:nrec,i) = objf(1:nrec,1) - objf(1:nrec,i)
          mobjf(i) = mobjf(1) - mobjf(i)
       enddo
+c         i=nterms
+c         objf(1:nrec,i) = objf(1:nrec,i)
+c         mobjf(i) = mobjf(i)
 
 c --------------
 c Output
@@ -66,13 +70,13 @@ c Output
 
       file_out = 'atrb.txt'
       open (51, file=file_out, action='write')
-      write(51,1501) 'time(hr)', 'ref', 'tau', 'htflx',
-     $     'fwflx', 'sflx', 'pload', 'ic'
- 1501 format(a10,3x,7a20)
+      write(51,1501) 'time(hr)', 'ref', 'wind', 'htflx',
+     $     'fwflx', 'sflx', 'pload', 'ic', 'mean'
+ 1501 format(a10,3x,8a20)
       do i=1,nrec
          write(51,1502) istep(i), (objf(i,j)+mobjf(j),j=1,nterms)
       enddo
- 1502 format(i10,3x,7(1pe20.12))
+ 1502 format(i10,3x,8(1pe20.12))
       close(51)
 
       stop
