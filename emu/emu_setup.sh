@@ -34,6 +34,9 @@ echo "   6) Budget (budg); Evaluates budget time-series from model output."
 echo "   7) Modified Simulation (msim); Re-runs model with modified input."
 echo "   8) Attribution (atrb); Evaluates state time-series by control type."
 echo "   9) Auxiliary (aux): Generates user input files for other EMU tools."
+echo 
+echo " EMU includes programs (Matlab, Python, IDL) for interactively reading and "
+echo " plotting the Tools' results. " 
 echo
 echo "************************"
 echo " This script will install EMU's Programs (~1GB), its User Interface (~2MB), "
@@ -278,14 +281,19 @@ echo "Option 1) requires a TAF license to derive the MITgcm adjoint used by EMU'
 echo "Adjoint Tool. Option 2) has compiled versions of the code in "
 echo "containerized form that do not require a separate TAF license to use."
 echo
+echo "Either choice also installs programs in Python, Matlab, and IDL for "
+echo "interactively reading and plotting EMU's results (emu_plot). Users "
+echo "interested in installing only these reading and plotting routines "
+echo "without installing EMU's Tools themselves, may choose to enter 0 below. " 
+echo 
 #echo "Enter choice for type of EMU implementation ... (1-3)?"
-echo "Enter choice for type of EMU implementation ... (1 or 2)?"
+echo "Enter choice for type of EMU implementation ... (1, 2, or 0)?"
 read emu_type 
 
 #while [[ ${emu_type} -lt 1 || ${emu_type} -gt 3 ]] ; do 
 #    read -p "Choice must be 1-3. " emu_type
-while [[ ${emu_type} -lt 1 || ${emu_type} -gt 2 ]] ; do 
-    read -p "Choice must be 1 or 2. " emu_type
+while [[ ${emu_type} -lt 0 || ${emu_type} -gt 2 ]] ; do 
+    read -p "Choice must be 1, 2, or 0. " emu_type
 done
 
 # Check availablity of singularity 
@@ -306,6 +314,10 @@ sleep 2
 # ***************************************
 # 7) Set batch command
 
+batch_command=bash
+
+if [[ "$emu_type" -ne 0 ]]; then
+
 echo 
 echo "----------------------"
 echo "EMU uses batch scripts to run some of its tools in PBS (Portable "
@@ -323,7 +335,6 @@ read ftext
 
 echo 
 if [[ -z ${ftext} ]]; then
-    batch_command=bash
     echo "EMU's batch job scripts will be run interactively."
 else
     if ! (command -v ${ftext} &> /dev/null) ; then
@@ -382,6 +393,8 @@ else
 fi
 
 sleep 2
+
+fi  # end of [emu_type -ne 0] condition 
 
 # ***************************************
 # 8b) Download EMU's Input Files
@@ -487,6 +500,96 @@ goto_openmpi_compile() {
 
 # ***************************************
 # 10) Install EMU's Programs 
+
+# ------------------
+goto_plot_only() {
+# .......................................
+# End of user input for native installation 
+    echo
+    echo "**********************"
+    echo " End of user input for EMU setup "
+    echo " Rest of this script is conducted without user input." 
+    #echo 
+    #echo " See "
+    #echo "   ${emu_userinterface_dir}/README_plot" 
+    #echo " for a brief description of tools for interactively "
+    #echo " reading and plotting EMU's results."
+    sleep 2 
+
+# .......................................
+# Download EMU source code from github
+    cd ${emu_dir}
+
+    log_file="${setup_dir}/download_emu_source.log"
+   (
+    git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
+    mv ECCO-EIS/emu .  
+    rm -rf ECCO-EIS  
+#    tar -xvf /net/b230-304-t3/ecco_nfs_1/shared/EMU/singularity8/emu.tar
+    ) > "$log_file" 2>> "$log_file"    
+
+    echo
+    sleep 2
+
+# .......................................
+# Goto setup_dir
+    cd $setup_dir 
+
+# .......................................
+# Install EMU User Interface (equivalent of install_emu_access.sh)
+    if [ ! -d ${emu_userinterface_dir} ]; then
+	mkdir ${emu_userinterface_dir}
+    fi
+
+    # ----------------------------------------
+    # Installing emu_plot & EMU User Guide
+    cp -p -f -r ${emu_dir}/emu/emu_plot/* ${emu_userinterface_dir}
+    cp -p ${emu_dir}/emu/Guide*.pdf ${emu_userinterface_dir}
+
+    # ----------------------------------------
+    # Setup emu_env.native for emu_plot (equivalent of emu_env.sh)
+    sed -i -e "s|PUBLICDIR|${emu_userinterface_dir}|g" ${emu_userinterface_dir}/README*
+    echo 'emudir_'${emu_dir} > ${emu_userinterface_dir}/emu_env.native 
+    echo 'emuinputdir_'${emu_input_dir} >> ${emu_userinterface_dir}/emu_env.native 
+    echo 'batch_bash'  >> ${emu_userinterface_dir}/emu_env.native
+    echo 'emunproc_13'  >> ${emu_userinterface_dir}/emu_env.native
+
+# .......................................
+# Download EMU Input Files needed by emu_plot (equivalente of emu_input_install.sh)
+
+    target_dir="${emu_input_dir}/emu_ref"
+    mkdir -p "$target_dir"
+
+    base_url="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced/emu_input/emu_ref"
+
+    files=(
+	XC.data YC.data RC.data DXC.data DYC.data DRC.data
+	XG.data YG.data DXG.data DYG.data RF.data DRF.data
+	hFacC.data hFacW.data hFacS.data AngleCS.data AngleSN.data
+	RAC.data RAS.data RAW.data RAZ.data
+    )
+
+    log_file="${setup_dir}/emu_input_setup.log"
+    
+    {
+	echo "Starting download EMU Input Files for plotting into $target_dir"
+	date
+
+	for f in "${files[@]}"; do
+	    echo "  Downloading $f ..."
+	    wget -N -c --no-verbose \
+		--user "$Earthdata_username" \
+		--password "$WebDAV_password" \
+		-P "$target_dir" \
+		"$base_url/$f"
+	done
+
+	echo " All downloads completed."
+	date
+    } | tee -a "$log_file"
+
+}
+# ------------------  end goto_plot_only
 
 # ------------------
 goto_native() {
@@ -807,7 +910,9 @@ EOF
 
 # ------------------
 
-if [[ "$emu_type" -eq 1 ]]; then
+if [[ "$emu_type" -eq 0 ]]; then
+    goto_plot_only
+elif [[ "$emu_type" -eq 1 ]]; then
     goto_native
 elif [[ "$emu_type" -eq 2 ]]; then
     goto_singularity
@@ -887,6 +992,8 @@ fi
 # 12) End 
 
 # Print Reminders
+if [[ "$emu_type" -ne 0 ]]; then
+
 echo
 echo "***********************************"
 if [[ "$emu_type" -eq 2 ]] && [[ ! -e "${native_mpiexec}" ]] ; then
@@ -907,6 +1014,19 @@ echo "   ${emu_userinterface_dir}/README"
 echo "for a brief description, including tools for interactively "
 echo "reading and plotting EMU's results."
 echo "***********************************"
+
+else
+
+echo
+echo "***********************************"
+echo "Programs for interactive reading and plotting EMU's results (emu_plot) "
+echo "has been intalled. See "
+echo "   ${emu_userinterface_dir}/README_plot" 
+echo "for a brief description."
+echo "***********************************"
+
+fi  # end of [emu_type -ne 0] condition 
+
 sleep 5
 
 # Record the end time

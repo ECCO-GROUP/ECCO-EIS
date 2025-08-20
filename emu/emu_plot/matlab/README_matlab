@@ -1,0 +1,20 @@
+
+===================================================
+EMU Plotting Tool: Reading and Plotting EMU Results 
+===================================================
+
+Matlab version of EMU Plotting Tool. 
+
+How to run EMU_PLOT in Matlab
+   Add EMU's Matlab directory in path; 
+   >> addpath('PUBLICDIR/matlab/')
+
+   Execute program emu_plot.m and follow its prompts;  
+   >> emu_plot
+   
+For detailed description: 
+   See the EMU User Guide; 
+   PUBLICDIR/Guide_ECCO_Modeling_Utilities.pdf
+
+===================================================
+

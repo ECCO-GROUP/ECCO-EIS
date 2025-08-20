@@ -1,10 +1,14 @@
-Version 1.2a (07/16/2025)
+Version 1.2a (08/19/2025)
    a) For clarity, re-ordered "monthly/daily" prompt in Sampling
      (samp) and Attribution (atrb) Tools. 
 
    b) Added contributions from time-mean forcing and time-mean initial
       condition (run mean_ALL) to Attribution Tool (atrb).
 
+   c) Created MATLAB version of emu_plot.
+
+   d) Added option to emu_setup.sh for setting up emu_plot and its
+      input without installing other elements of EMU.
 
 Version 1.1a (05/08/2025)
    a) Added sampling of control (forcing) to Sampling Tool (samp). 

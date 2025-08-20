@@ -156,7 +156,7 @@ case ftool of
 ; 6) Budget Tool
    'budg': begin
       print,'Reading Budget Tool output .. ' 
-      plot_budg, frun, emu_tend, emu_tend_name, emu_tint, emu_tint_name, budg_msk, budg_mkup, nmkup
+      plot_budg, frun, budg_tend, budg_tend_name, budg_tint, budg_tint_name, budg_msk, budg_mkup, nmkup
    end
 
 ; 7) Modified Simulation Tool

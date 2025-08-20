@@ -25,7 +25,7 @@ if (ndum ne 0) then begin
    print,''
 
 endif else begin
-   print,"No diagnostic state output found in this run's diag subdirectory." 
+   print,"No standard state output found in this run's diag subdirectory." 
    print,frun_output
    print,''
 endelse

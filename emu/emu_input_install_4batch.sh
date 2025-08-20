@@ -236,7 +236,7 @@ URL="https://ecco.jpl.nasa.gov/drive/files/Version4/Release4/other/flux-forced"
 
     fi
 
-    # emu_msim
+    # emu_atrb
     if [[ $emu_input -eq 0 || $emu_input -eq 4 ]]; then
 
 	# Exclude diags directory 

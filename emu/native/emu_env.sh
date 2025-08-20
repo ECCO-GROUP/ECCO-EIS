@@ -75,7 +75,7 @@ if [ ! -f ./emu_env.native ] ; then
 # Make sure path is absolute
     emu_input_dir=$(realpath "${emu_input_dir}")
 
-    echo 'emuinputdir_'${emu_input_dir} >> ./emu_env.native 
+    echo 'input_'${emu_input_dir} >> ./emu_env.native 
 
     echo 
     echo "EMU Input PARENT directory (where directory forcing etc are located):"
@@ -145,7 +145,7 @@ else
     while IFS= read -r line; do
 	case $line in
 	    emudir_*) emu_dir=${line#emudir_} ;;
-	    emuinputdir_*) emu_input_dir=${line#emuinputdir_} ;;
+	    input_*) emu_input_dir=${line#input_} ;;
 	    batch_*) batch_command=${line#batch_} ;;
 	    emunproc_*) emu_nproc=${line#emunproc_} ;;
 	esac

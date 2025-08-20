@@ -14,8 +14,8 @@ else
     # Read the file line by line and assign values to variables
     while IFS= read -r line; do
 	case $line in
-	    emudir_*) emu_dir=${line#image_} ;;
-	    emuinputdir_*) emu_input_dir=${line#input_} ;;
+	    emudir_*) emu_dir=${line#emudir_} ;;
+	    input_*) emu_input_dir=${line#input_} ;;
 	    batch_*) batch_command=${line#batch_} ;;
 	    emunproc_*) emu_nproc=${line#emunproc_} ;;
 	esac

@@ -14,7 +14,6 @@ def plot_atrb(frun):
     ff = os.path.join(frun, 'output')
 
     # specify controls in file 
-#    fctrl = ['lhs', 'wind', 'htflx', 'fwflx', 'sflx', 'pload', 'ic']
     fctrl = ['ref', 'wind', 'htflx', 'fwflx', 'sflx', 'pload', 'ic', 'mean']
     nterms=len(fctrl)
 
@@ -44,13 +43,30 @@ def plot_atrb(frun):
     frec = aa[0][ip:]
     nrec = int(frec)  # Length of time-series
 
-    atrb = np.zeros((nterms, nrec), dtype=np.float32)
-    atrb_mn = np.zeros(nterms, dtype=np.float32)
+    # -------------------------------
+    # Compute mterms from file length
+    # -------------------------------
+    # File contains: float32 atrb of size (nrec, mterms) + float32 atrb_mn of size (mterms)
+    nbytes = os.path.getsize(aa[0])
+    nfloat = nbytes // 4  # number of float32 values
+    mterms = int(np.fix(nfloat / (nrec + 1)))  # number of terms in file
+
+    if mterms == 7:
+        print('')
+        print('*********************************************')
+        print('!!!! BEWARE !!!!')
+        print('Chosen EMU output is that of an older version of Attribution Tool')
+        print('with 7 terms and excludes contributions from the mean.')
+        print('')
+
+#
+    atrb = np.zeros((mterms, nrec), dtype=np.float32)
+    atrb_mn = np.zeros(mterms, dtype=np.float32)
 
 # Fortran/IDL are column-major, Python is row-major
     with open(aa[0], 'rb') as f:
-        atrb = np.fromfile(f, dtype=byte_order+'f4', count=nrec * nterms).reshape((nterms, nrec))
-        atrb_mn = np.fromfile(f, dtype=byte_order+'f4', count=nterms)
+        atrb = np.fromfile(f, dtype=byte_order+'f4', count=nrec * mterms).reshape((mterms, nrec))
+        atrb_mn = np.fromfile(f, dtype=byte_order+'f4', count=mterms)
  
     emu.atrb = atrb
     emu.atrb_mn = atrb_mn
@@ -99,7 +115,7 @@ def plot_atrb(frun):
 
     plt.figure()
     plt.plot(atrb_t, atrb[0, :], label=fctrl[0])
-    for i in range(1, nterms):
+    for i in range(1, mterms):
         plt.plot(atrb_t, atrb[i, :], label=fctrl[i])
 
     plt.title(frun_file)

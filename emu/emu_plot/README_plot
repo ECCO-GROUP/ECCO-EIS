@@ -3,17 +3,40 @@
 EMU Plotting Tool: Reading and Plotting EMU Results 
 ===================================================
 
-EMU provides programs for interactively reading and plotting EMU
-output in select programming environments;
-   IDL (idl) 
-   MATLAB (under development)
-   Python (python) 
+EMU provides programs (emu_plot) for interactively reading and
+plotting EMU output in select programming environments;
+   MATLAB 
+   Python 
+   IDL 
 
-How to run EMU_PLOT 
+How to run emu_plot 
    Execute program emu_plot.??? found in sub-directories of the
    corresponding programming environment above in
    PUBLICDIR 
-   and follow its prompts.
+   and follow its prompts. 
+
+   The program emu_plot reads output from EMU-generated
+   directories. Users must not rename these directories or modify
+   their sub-directory structure.
+
+   - For all tools except the Modified Simulation Tool and Auxiliary
+     Tools, emu_plot accesses files located in the output
+     sub-directory.
+
+   - For the Modified Simulation Tool, emu_plot accesses files located
+     in the diags sub-directory.
+
+   - Output from the Auxiliary Tools is not supported by emu_plot, as
+     it varies by application.
+
+   When analyzing EMU output on a system other than the one where EMU
+   Tools were executed, download the complete EMU output directories,
+   including their sub-directories. For example:
+      emu_samp_blahblahblah/output/* 
+      emu_msim_blahblahblah/diags/* 
+
+   See README_??? files found in the respective sub-directories for
+   additional information. 
 
 For detailed description: 
    See the EMU User Guide; 
