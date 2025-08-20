@@ -1,4 +1,4 @@
-pro plot_budg, frun, emu_tend, emu_tend_name, emu_tint, emu_tint_name, budg_msk, budg_mkup, nmkup
+pro plot_budg, frun, budg_tend, budg_tend_name, budg_tint, budg_tint_name, budg_msk, budg_mkup, nmkup
 ; Read Budget Tool output
 
 ; ---------------
@@ -12,8 +12,8 @@ fbudg = ['volume', 'heat', 'salt', 'salinity', 'momentum']
 ; Read and sort global sum of converging fluxes (tendency) 
 ff = frun_output + 'emu_budg.sum_tend'   ; tendency 
 rd_budg_sum, ff, emubudg, emubudg_name, lhs, rhs, adv, mix, frc, nvar, ibud
-emu_tend = emubudg
-emu_tend_name = emubudg_name 
+budg_tend = emubudg
+budg_tend_name = emubudg_name 
 lhs_tend = lhs
 rhs_tend = rhs 
 adv_tend = adv
@@ -21,8 +21,8 @@ mix_tend = mix
 frc_tend = frc 
 print,'*********************************************'
 print,'Read sum of ', fbudg(ibud), ' budget variables '
-print,'   emu_tend: tendency time-series (per second)'
-print,'   emu_tend_name: name of variables in emu_tend'
+print,'   budg_tend: tendency time-series (per second)'
+print,'   budg_tend_name: name of variables in budg_tend'
 print,'from file ',ff
 print,''
 
@@ -30,8 +30,8 @@ print,''
 ; Read and sort global sum of converging fluxes (time-integral) 
 ff = frun_output + 'emu_budg.sum_tint'   ; time-integral 
 rd_budg_sum, ff, emubudg, emubudg_name, lhs, rhs, adv, mix, frc, nvar, ibud
-emu_tint = emubudg
-emu_tint_name = emubudg_name 
+budg_tint = emubudg
+budg_tint_name = emubudg_name 
 lhs_tint = lhs
 rhs_tint = rhs 
 adv_tint = adv
@@ -39,8 +39,8 @@ mix_tint = mix
 frc_tint = frc 
 print,'*********************************************'
 print,'Read sum of ', fbudg(ibud), ' budget variables '
-print,'   emu_tint: time-intetrated tendency time-series'
-print,'   emu_tint_name: name of variables in emu_tint'
+print,'   budg_tint: time-intetrated tendency time-series'
+print,'   budg_tint_name: name of variables in budg_tint'
 print,'from file ',ff
 print,''
 
@@ -80,6 +80,7 @@ print,'      *budg_mkup(n).mkup: flux time-series '
 print,'   nmkup: number of different fluxes' 
 print,''
 
+
 ; ------------------------------------------
 ; Plot
 
@@ -108,8 +109,8 @@ dum = fltarr(nmonths)
 for isum = 2,nvar-1 do begin  ; Plot each term in emu_budg.sum except dt & lhs 
                               ; Check against sum of makeup.
    
-   dum_ref = emu_tend(*,isum)
-   plot,tt,dum_ref,title=fbudg(ibud)+' '+ emu_tend_name(isum) + ': sum, mkup, sum-mkup (bk,rd,cy)'
+   dum_ref = budg_tend(*,isum)
+   plot,tt,dum_ref,title=fbudg(ibud)+' '+ budg_tend_name(isum) + ': sum, mkup, sum-mkup (bk,rd,cy)'
    lib_label,['sum', 'mkup', 'sum-mkup'],[1, 55, 22]
 
 if (nmkup ne 0) then begin 

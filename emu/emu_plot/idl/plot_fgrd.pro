@@ -29,7 +29,7 @@ f_var=['SSH', 'OBP', 'THETA', 'SALT', 'U', 'V']
 nvar = n_elements(f_var)
 
 print,''
-print,'Choose variable to plot ... '
+print,'Variables to plot ... '
 for i=0,nvar-1 do begin
    pdum=string(i+1,format='(i1)')+') '+f_var(i)
    print,pdum

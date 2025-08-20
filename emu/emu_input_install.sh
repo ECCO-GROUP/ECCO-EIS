@@ -240,7 +240,7 @@ if [[ $emu_input -eq 0 || $emu_input -eq 2 || $emu_input -eq 3 ]]; then
     
 fi
 
-# emu_msim
+# emu_atrb
 if [[ $emu_input -eq 0 || $emu_input -eq 4 ]]; then
 
     # Exclude diags directory 

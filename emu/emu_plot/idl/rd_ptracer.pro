@@ -1,5 +1,6 @@
 pro rd_ptracer, ff, ifile, trc
-; Read and plot a record of a state_2d_set1 file
+; Read a 3d tracer field from a particular file ff(ifile), 
+; plot vertical integral, and return the 3d tracer field. 
 
 common emu_grid, nx, ny, nr, xc, yc, rc, dxc, dyc, drc, $
    xg, yg, dxg, dyg, rf, drf, hfacc, hfacw, hfacs, $
