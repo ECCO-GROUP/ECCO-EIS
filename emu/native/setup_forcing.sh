@@ -3,7 +3,7 @@
 umask 022
 
 #
-# Create link to outside files neede to run flux-forced V4r4
+# Create link to outside files needed to run flux-forced V4r4
 #
 
 # Link outside files 
