@@ -52,14 +52,22 @@ c Integration time
       parameter(max_files=1000)
       integer pkuphrs(max_files), n_pkuphrs
 
-      integer niter0, iend, nsteps
-      parameter(nsteps=227903) ! max steps of V4r4
+      integer niter0, iend, nsteps, nyears, nmonths
+      parameter(nsteps=227904) ! max time-step of V4r4
+      parameter(nyears=26)  ! max number of years of V4r4
+      parameter(nmonths=312) ! max number of months of V4r4
       integer nTimesteps, nHours, hour26yr
       character*24 fstep 
 
       integer nproc, hour26yr_trc, hour26yr_fwd, hour26yr_adj
       namelist /mitgcm_timing/ nproc, hour26yr_trc,
      $     hour26yr_fwd, hour26yr_adj
+
+      integer mdays(12)
+      data mdays/31,28,31,30,31,30,31,31,30,31,30,31/
+      integer adays(nmonths) ! # of days of each of the 312 months 
+      integer adays2(12,nyears)
+      equivalence (adays, adays2)
 
 c directories
       logical f_exist
@@ -77,6 +85,16 @@ c Read MITgcm timing information
       read(50, nml=mitgcm_timing)
       close (50)
       hour26yr = hour26yr_fwd
+
+c ---------
+c Assign number of days in each month
+      do i=1,nyears
+         adays2(:,i) = mdays(:)
+      enddo
+      
+      do i=1,nyears,4   ! leap year starting from first (1992)
+         adays2(2,i) = 29
+      enddo      
 
 c --------------
 c Set directory where tool files exist (setup directory)
@@ -255,6 +273,7 @@ c time (week)
       do while (check_t .eq. 0) 
          write (6,"(a,i4,a)")
      $    'Enter week to perturb (s in Eq 2) ... (1-',nwk,') ?'
+cif         write (6,"(a)") '(Week 1 centered 12Z 1/1/1992.)'
          read (5,*) pert_t
          if (pert_t .ge. 1 .and. pert_t .le. nwk) check_t = 1
       end do
@@ -304,9 +323,10 @@ c Set integration time
      $     ' hours wallclock time.'
 
 c ......................................
-c Allow integration start time other than 1/1/1992 12Z
+c Allow integration start time other than 1/1/1992 13Z
 c First ID year of perturbation
-      pert_h = pert_t*24*7  ! time-step (hour) 
+      pert_h = (pert_t-1)*24*7 - 24*7/2   ! First time-step affected by pert_t 
+      if (pert_h .lt. 1) then pert_h=1
 
 c Read full pathname to emu_ref directory
       call getarg(1,f_input)
@@ -321,9 +341,8 @@ c Get time-stamp for all pickup files
 c Find latest pickup file before perturbation. 
       niter0 = 1
       niter0_yr = 1
-      toff = 7*24  ! assure entire 7-day perturbation is within domain
       do i=1,n_pkuphrs
-         if (pkuphrs(i).gt.pert_h-toff) exit 
+         if (pkuphrs(i).gt.pert_h) exit 
          niter0 = pkuphrs(i)
          niter0_yr = i+1  ! 1 is 1992
       enddo
@@ -331,12 +350,13 @@ c Find latest pickup file before perturbation.
       idum = 1992+(niter0_yr-1)
       idum_day = INT( (pert_h-niter0)/24 ) 
       write(6,'(/,a,i0,a,i0)')
-     $     'Chosen perturbation is week of year day ',
+     $     'Chosen perturbation affects state from year day ',
      $     idum_day,' of year ', idum 
       write(6,'(a,i0,a)')
      $     'Enter year to begin integration ... (1992-',idum,')?'
       read (5,*) idum
       niter0_yr = idum - 1992  + 1
+      niter0_mn = 12*(niter0_yr-1) + 1
       if (niter0_yr.eq.1) then
          niter0 = 1
       else
@@ -353,11 +373,13 @@ c Find latest pickup file before perturbation.
 
 c ......................................
 c Set integration end time
-      write(6,*) 'Enter number of months to integrate (Max t in Eq 2)'
-     $     //'... (1-312)?'
+      nmon_left = 312 - (niter0_yr-1)*12
+      write(6,"(a,i0,a)")
+     $     'Enter number of months to integrate (Max t in Eq 2)'
+     $     //'... (1-', nmon_left, ')?'
       read(5,*) iend
-      if (iend .gt. 312) then 
-         iend = 312
+      if (iend .gt. nmon_left) then 
+         iend = nmon_left
       else if (iend .lt. 1) then 
          iend = 1
       endif
@@ -367,11 +389,10 @@ c Set integration end time
       write(51,'(a,i3,a,/)') 'Will integrate model over ',
      $     iend,' months'
 
-c set nTimesteps in data to 1-month beyond iend
-c     to make sure computation is complete,.
-      nTimesteps = (iend/12)*365*24 +
-     $     mod(iend,12)*30*24 + 30*24*1
-      if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+c set nTimesteps in data 
+      ndays = sum(adays(niter0_mn:niter0_mn+iend-1)) 
+      nTimesteps = ndays*24 
+      if (nTimesteps+niter0 .gt. nsteps) nTimesteps=nsteps-niter0
 
       f_command = 'cp -f data_emu data'
       call execute_command_line(f_command, wait=.true.)
@@ -392,7 +413,7 @@ c set walltime for computation
       f_command = 'cp -f pbs_fgrd.sh_orig pbs_fgrd.sh'
       call execute_command_line(f_command, wait=.true.)
 
-      nHours = ceiling(float(nTimesteps)/float(nsteps)
+      nHours = ceiling(float(nTimesteps)/float(nsteps-1)
      $     *float(hour26yr))
       write(fstep,'(i24)') nHours
       call StripSpaces(fstep)
