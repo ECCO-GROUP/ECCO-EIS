@@ -25,7 +25,7 @@ c emu_input_dir
 
 c V4r4 specific 
       integer nsteps, nyears, nmonths, hour26yr
-      parameter(nsteps=227903) ! max number of steps of V4r4
+      parameter(nsteps=227904) ! max time-step of V4r4
       parameter(nyears=26)  ! max number of years of V4r4
       parameter(nmonths=312) ! max number of months of V4r4
       
@@ -138,11 +138,11 @@ c Select maximum lag from itarget2 to compute gradient
 
 c Identify day to start forward integration 
       if (istart.eq.1) then
-         niter0 = 1
+         niter0 = 1       ! time-step 1 is 13Z 1/1/1992
          niter0_yr = 1
          niter0_mn = 1
       else
-         ndays = sum(adays(1:istart-1))*24
+         ndays = sum(adays(1:istart-1))*24 - 13 ! start 0Z of 1st day of month
 
 c Create full pathname to emu_ref directory 
 c (where pickup files are)
@@ -154,7 +154,7 @@ c Get time-stamp for all pickup files
 c Find latest pickup file before ndays
          niter0 = 1
          niter0_yr = 1
-         toff = 7*24            ! assure entire 7-day perturbation is within domain
+         toff = 7*24    ! assure entire 7-day control could be within domain
          do i=1,n_pkuphrs
             if (pkuphrs(i).gt.ndays-toff) exit 
             niter0 = pkuphrs(i)
@@ -219,7 +219,7 @@ c File data
 c
       ndays = sum(adays(niter0_mn:itarget2)) + 7  ! extend 7-days beyond end 
       nTimesteps = ndays*24
-      if (nTimesteps .gt. nsteps) nTimesteps=nsteps
+      if (nTimesteps+niter0 .gt. nsteps) nTimesteps=nsteps-niter0
 
       write(fstep,'(i24)') nTimesteps
       call StripSpaces(fstep)
@@ -231,7 +231,7 @@ c File pbs_adj.sh
       f_command = 'cp -f pbs_adj.sh_orig pbs_adj.sh'
       call execute_command_line(f_command, wait=.true.)
 
-      nHours = ceiling(float(nTimesteps)/float(nsteps)
+      nHours = ceiling(float(nTimesteps)/float(nsteps-1)
      $     *float(hour26yr))
       write(fstep,'(i24)') nHours
       call StripSpaces(fstep)

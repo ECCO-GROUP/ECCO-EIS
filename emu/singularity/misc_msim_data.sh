@@ -121,7 +121,7 @@ if [[ ndays -lt 1 ]]; then
 fi
 
 # set nTimesteps 
-nsteps=$(( 227903 - niter0 ))
+nsteps=$(( 227903 + 1 - niter0 ))
 nTimesteps=$(( ndays * 24 ))
 if [[ ${nTimesteps} -gt ${nsteps} ]]; then
     nTimesteps=$nsteps
