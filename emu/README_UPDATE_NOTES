@@ -1,4 +1,4 @@
-Version 1.2a (08/19/2025)
+Version 1.2a (11/11/2025)
    a) For clarity, re-ordered "monthly/daily" prompt in Sampling
      (samp) and Attribution (atrb) Tools. 
 
@@ -9,6 +9,21 @@ Version 1.2a (08/19/2025)
 
    d) Added option to emu_setup.sh for setting up emu_plot and its
       input without installing other elements of EMU.
+
+   e) Fixed bug that caused Forward Gradient (fgrd) and Adjoint (adj)
+      Tools to crash when model integration period exceeded period of
+      available forcing.
+
+   f) Revised EMU input download (emu_input_install.sh called by
+      emu_setup.sh); 1) check downloaded content, 2) minimize chance
+      of overloading system by pausing (wait). In 1), content is
+      checked against a master list by shell script
+      misc_check_input.sh, which is invoked by emu_input_install.sh.
+
+   g) Folded initial condition and mixing parameter control
+      adjustments to corresponding pickup and mixing coefficient
+      files (cf setup_forcing.sh) for consistency. 
+
 
 Version 1.1a (05/08/2025)
    a) Added sampling of control (forcing) to Sampling Tool (samp). 

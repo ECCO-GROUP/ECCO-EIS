@@ -87,6 +87,10 @@ cleanup() {
 trap cleanup SIGINT SIGTERM SIGQUIT
 
 
+# ----------------------------------------
+# Check wget availability
+command -v wget >/dev/null || { echo "ERROR: wget not found"; exit 1; }
+
 # ***************************************
 # 1) Enter Earthdata username & WebDAV password (for downloading EMU's Input Files)
 
@@ -100,8 +104,10 @@ while true; do
     read -p "Enter your Earthdata username: " Earthdata_username
 
     # Prompt for password
+    #read -s -p "Enter your WebDAV password (*NOT* Earthdata password): " WebDAV_password
     read -p "Enter your WebDAV password (*NOT* Earthdata password): " WebDAV_password
     echo
+    echo "Checking Earthdata credentials ... "
 
     # Disable exit on error
     set +e
@@ -114,7 +120,7 @@ while true; do
 
     # Check the exit status of wget
     if echo "$OUTPUT" | grep -Ei "Remote file exists and could contain further links" > /dev/null 2>&1; then
-#        echo "Earthdata/WebDAV Credentials confirmed"
+        echo "Earthdata/WebDAV Credentials confirmed"
         break
     else
 	if echo "$OUTPUT" | grep -Ei "Username/Password Authentication Failed|Authorization failed" > /dev/null; then
@@ -122,8 +128,9 @@ while true; do
             echo
 	else
 	    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-            echo "ERROR: wget to $URL. Issue may be with server or client." 
-            echo "       wget returns the following." 
+            echo "ERROR: wget to Earthdata $URL. "
+	    echo "       Issue may be with server or client." 
+            echo "       wget returns the following:" 
 	    echo 
             echo "$OUTPUT"
 	    echo 
@@ -353,16 +360,16 @@ sleep 2
 echo 
 echo "----------------------"
 echo "EMU's Input Files total 1.1 TB, of which (directory)"
-echo "   175 GB (emu_ref) is needed by Sampling, Forward Gradient, Adjoint, Tracer, Budget, and Attribution"
-echo "   195 GB (forcing) is needed by Forward Gradient, Adjoint, Modified Simultion"
-echo "   380 GB (state_weekly) is needed by Tracer"
-echo "   290 GB (emu_msim) is needed by Attribution" 
+echo "   ~175 GB (emu_ref) is needed by Sampling, Forward Gradient, Adjoint, Tracer, Budget, and Attribution"
+echo "   ~195 GB (forcing) is needed by Forward Gradient, Adjoint, Modified Simulation"
+echo "   ~380 GB (state_weekly) is needed by Tracer"
+echo "   ~290 GB (emu_msim) is needed by Attribution" 
 echo "   (Convolution Tool uses results of the Adjoint Tool and files downloaded by default.)"
 echo 
 echo "Choose among the following to download ... "
 echo "   0) All Input Files (1.1 TB) "
 echo "   1) Files (~175 GB) needed for Sampling and Budget Tools"
-echo "   2) Files (~195 GB) needed for Modified Simultion Tools" 
+echo "   2) Files (~195 GB) needed for Modified Simulation Tools" 
 echo "   3) Files (~370 GB) needed for Adjoint and Forward Gradient Tool"
 echo "   4) Files (~465 GB) needed for Attribution Tool" 
 echo "   5) Files (~555 GB) needed for Tracer Tool"
@@ -370,7 +377,7 @@ echo "or press the ENTER key to skip this step, which can take a while"
 echo "(~13 hours if downloading all input files.) "
 echo 
 echo "EMU's Input Files can be downloaded later with shell script"
-echo "   ${emu_userinterface_dir}/emu_input_setup.sh "
+echo "   ${emu_userinterface_dir}/emu_input_install.sh "
 echo "See "
 echo "   ${emu_userinterface_dir}/README_input_setup "
 echo "for additional detail, including options to download the input"
@@ -408,7 +415,7 @@ if [[ "$emu_input" -ge 0 && "$emu_input" -le  5 ]]; then
     echo "Downloading EMU's Input Files in the background in "
     echo ${emu_input_dir}
 
-    log_file="${setup_dir}/emu_input_setup.log"
+    log_file="${setup_dir}/emu_input_install.log"
     echo
     echo "This can take a while (~13 hours if downloading all input files). "
     echo "Progress can be monitored in file " ${log_file}
@@ -418,6 +425,7 @@ if [[ "$emu_input" -ge 0 && "$emu_input" -le  5 ]]; then
 ${Earthdata_username}
 ${WebDAV_password}
 ${emu_input}
+
 EOF
     emu_input_install_pid=$!
     bg_pids+=($emu_input_install_pid)
@@ -426,7 +434,7 @@ EOF
     echo 
     if [ -z "$emu_input_install_pid" ]; then
         echo "Failed to start the background job or assign pid."
-	echo "Run ${emu_userinterface_dir}/emu_input_setup.sh manually." 
+	echo "Run ${emu_userinterface_dir}/emu_input_install.sh manually." 
     else
 	echo "Downloading EMU's Input Files pid is " $emu_input_install_pid
     fi
@@ -460,7 +468,7 @@ goto_openmpi_compile() {
 	    echo "Download and compiling EMU compatible OpenMPI in the background in "
 	    echo ${native_ompi}
 
-	    log_file="${setup_dir}/emu_openmpi_setup.log"
+	    log_file="${setup_dir}/emu_openmpi_install.log"
 	    echo 
 	    echo "This can take a while (~30 minutes). "
 	    echo "Progress can be monitored in file " ${log_file}
@@ -475,7 +483,7 @@ goto_openmpi_compile() {
 	    echo
 	    if [ -z "$emu_openmpi_install_pid" ]; then
 		echo "Failed to start the background job or assign pid."
-		echo "Run ${setup_dir}/emu_openmpi_setup.sh manually." 
+		echo "Run ${setup_dir}/emu_openmpi_install.sh manually." 
 	    else
 		echo "Download and compiling OpenMPI pid is " ${emu_openmpi_install_pid}
 	    fi
@@ -502,6 +510,20 @@ goto_openmpi_compile() {
 # 10) Install EMU's Programs 
 
 # ------------------
+# Get EMU source code 
+goto_get_emu_source() {
+# .......................................
+# Download from Github  
+    git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
+    mv ECCO-EIS/emu .  
+    rm -rf ECCO-EIS  
+# Expand from tar file (for testing)
+#    tar -xvf /net/b230-304-t3/ecco_nfs_1/shared/EMU/singularity8/emu.tar
+}
+# ------------------  end goto_get_emu_source
+
+# ------------------
+# Install EMU's plotting routines and its input only 
 goto_plot_only() {
 # .......................................
 # End of user input for native installation 
@@ -521,11 +543,8 @@ goto_plot_only() {
     cd ${emu_dir}
 
     log_file="${setup_dir}/download_emu_source.log"
-   (
-    git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
-    mv ECCO-EIS/emu .  
-    rm -rf ECCO-EIS  
-#    tar -xvf /net/b230-304-t3/ecco_nfs_1/shared/EMU/singularity8/emu.tar
+    (
+	goto_get_emu_source
     ) > "$log_file" 2>> "$log_file"    
 
     echo
@@ -555,7 +574,7 @@ goto_plot_only() {
     echo 'emunproc_13'  >> ${emu_userinterface_dir}/emu_env.native
 
 # .......................................
-# Download EMU Input Files needed by emu_plot (equivalente of emu_input_install.sh)
+# Download EMU Input Files needed by emu_plot (equivalent of emu_input_install.sh)
 
     target_dir="${emu_input_dir}/emu_ref"
     mkdir -p "$target_dir"
@@ -569,7 +588,7 @@ goto_plot_only() {
 	RAC.data RAS.data RAW.data RAZ.data
     )
 
-    log_file="${setup_dir}/emu_input_setup.log"
+    log_file="${setup_dir}/emu_input_install.log"
     
     {
 	echo "Starting download EMU Input Files for plotting into $target_dir"
@@ -592,6 +611,7 @@ goto_plot_only() {
 # ------------------  end goto_plot_only
 
 # ------------------
+# Install EMU and its input, compiling code natively 
 goto_native() {
 # .......................................
 # Choose number of CPU cores (nproc) for running MITgcm 
@@ -656,11 +676,8 @@ goto_native() {
 # Download EMU source code from github
     cd ${emu_dir}
     log_file="${setup_dir}/download_emu_source.log"
-   (
-    git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
-    mv ECCO-EIS/emu .  
-    rm -rf ECCO-EIS  
-#    tar -xvf /net/b230-304-t3/ecco_nfs_1/shared/EMU/singularity8/emu.tar
+    (
+	goto_get_emu_source
     ) > "$log_file" 2>> "$log_file"    
 
 # Compile EMU
@@ -723,6 +740,7 @@ EOF
 # ------------------  end goto_native
 
 # ------------------
+# Install EMU and its input, using singularity image (sif) 
 goto_singularity() {
 
     # .......................................
@@ -736,10 +754,7 @@ goto_singularity() {
     cd ${emu_dir}
     log_file="${setup_dir}/download_emu_source.log"
     (
-	git clone https://github.com/ECCO-GROUP/ECCO-EIS.git 
-	mv ECCO-EIS/emu .  
-	rm -rf ECCO-EIS  
-	#    tar -xvf /net/b230-304-t3/ecco_nfs_1/shared/EMU/singularity8/emu.tar
+	goto_get_emu_source
     ) > "$log_file" 2>> "$log_file"    
     
     # .......................................
@@ -764,7 +779,7 @@ goto_singularity() {
     echo "job or press the ENTER key to skip this step. "
     echo 
     echo "EMU compatible OpenMPI can be compiled later with shell script "
-    echo " ${emu_userinterface_dir}/emu_openmpi_setup.sh "
+    echo " ${emu_userinterface_dir}/emu_openmpi_install.sh "
     echo "See "
     echo "   ${emu_userinterface_dir}/README_openmpi_setup "
     echo "for additional detail, including options to install OpenMPI"
@@ -973,7 +988,7 @@ if [ ${#bg_pids[@]} -gt 0 ]; then
 
 	# Check OpenMPI setup 
 	if [ "$compile_openmpi" = true ]; then
-	    check_job ${emu_openmpi_install_pid} "EMU compatible OpenMPI setup" "${setup_dir}/emu_openmpi_setup.log"
+	    check_job ${emu_openmpi_install_pid} "EMU compatible OpenMPI setup" "${setup_dir}/emu_openmpi_install.log"
 	fi
 	
     elif [[ "$emu_type" -eq 3 ]]; then    
@@ -983,7 +998,7 @@ if [ ${#bg_pids[@]} -gt 0 ]; then
 
     # Monitor setup of EMU's Input Files 
     if [[ ! "$emu_input" -eq -1 ]]; then 
-	check_job ${emu_input_install_pid} "EMU Input File setup" "${setup_dir}/emu_input_setup.log"
+	check_job ${emu_input_install_pid} "EMU Input File setup" "${setup_dir}/emu_input_install.log"
     fi
 
 fi
@@ -998,12 +1013,12 @@ echo
 echo "***********************************"
 if [[ "$emu_type" -eq 2 ]] && [[ ! -e "${native_mpiexec}" ]] ; then
     echo "Compile EMU compatible OpenMPI skipped during present setup with shell script "
-    echo " ${emu_userinterface_dir}/emu_openmpi_setup.sh "
+    echo " ${emu_userinterface_dir}/emu_openmpi_install.sh "
     echo
 fi
 if [[ "$emu_input" -eq -1 ]]; then 
     echo "Download EMU Input Files skipped during present setup with shell script "
-    echo " ${emu_userinterface_dir}/emu_input_setup.sh "
+    echo " ${emu_userinterface_dir}/emu_input_install.sh "
     echo
 fi
 echo "Upon completion, EMU can be run by entering command " 

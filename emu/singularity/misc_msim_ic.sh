@@ -60,20 +60,6 @@ echo "***********************" >> ${rundir}/misc_msim_ic.info
 ls -al ${rundir} > before.txt
 
 #--------------------------
-# Copy and rename data.ctrl.noinitctrl
-echo " "
-echo "Setting data.ctrl replacement ... "
-echo " "
-
-/bin/rm -f my_commands.sh
-echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
-echo 'cd /inside_out'   >> my_commands.sh
-echo 'cp -pf ${emu_dir}/emu/data.ctrl.noinitctrl ./data.ctrl'  >> my_commands.sh
-
-singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
-     ${singularity_image} /inside_out/my_commands.sh
-
-#--------------------------
 # Create copy of V4r4's pickup files which are to be modified 
 echo " "
 echo "Copying V4r4's pickup files ... "

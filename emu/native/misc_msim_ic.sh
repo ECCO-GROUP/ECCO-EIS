@@ -55,13 +55,6 @@ echo "***********************" >> ${rundir}/misc_msim_ic.info
 ls -al ${rundir} > before.txt
 
 #--------------------------
-# Copy and rename data.ctrl.noinitctrl
-echo " "
-echo "Setting data.ctrl replacement ... "
-echo " "
-cp -pf ${emu_dir}/emu/data.ctrl.noinitctrl ./data.ctrl
-
-#--------------------------
 # Create copy of V4r4's pickup files which are to be modified 
 echo " "
 echo "Copying V4r4's pickup files ... "

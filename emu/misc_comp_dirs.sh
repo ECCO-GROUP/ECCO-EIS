@@ -80,7 +80,8 @@ build_or_copy_inventory() {
       if [[ "$with_md5" -eq 0 && "$field_count" -eq 4 ]]; then
         echo "Stripping MD5 checksums from inventory: $source"
         misc_strip_md5.sh "$source" > "$target"
-      elif [[ "$with_md5" -eq 0 && ("$field_count" -eq 3 || "$field_count" -eq 4) ]]; then
+      elif [[ ( "$with_md5" -eq 0 && "$field_count" -eq 3 ) || \
+              ( "$with_md5" -eq 1 && "$field_count" -eq 4 ) ]]; then
         cp "$source" "$target"
       else
         echo "Error: Inventory $source has an unexpected format."

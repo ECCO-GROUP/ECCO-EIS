@@ -24,22 +24,6 @@ ln -sf ${emu_dir}/emu/data.pkg_notapes data.pkg
 ln -sf ${emu_dir}/emu/data.ecco_fgrd data.ecco
 
 #=================================
-# if nIter0 is not 1, use data.ctrl.noinitctrl in place of data.ctrl 
-# so that xx_IC (where IC is etan, salt, theta, uvel, vvel) is not 
-# added to initial condition (pickup file).
-
-set +e
-# Search for 'nIter0' assignment in the file data 
-grep -E '^[[:space:]]*nIter0[[:space:]]*=[[:space:]]*1[[:space:],]*$' data > /dev/null
-
-# Check the exit status of grep and substitute file if nIter0 ne 1
-if [[ $? -ne 0 ]]; then
-    rm data.ctrl
-    cp data.ctrl.noinitctrl data.ctrl
-fi
-set -e
-
-#=================================
 # Perturb (change) control file by fgrd_pert.f
 # Perturbation specified in fgrd_pert.nml, created by 
 # fgrd_spec.f or equivalent.

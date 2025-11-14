@@ -48,8 +48,6 @@ ls -al ${rundir} > before.txt
 #--------------------------
 # Get data file template 
 cp -pf ${emu_dir}/emu/data_emu_niter0  ./data
-# Get data.ctrl replacement in case changing nIter0 in file data 
-cp -pf ${emu_dir}/emu/data.ctrl.noinitctrl ./data.ctrl
 
 #--------------------------
 # Set integration time
@@ -86,7 +84,6 @@ done
 # Output extracted numbers
 if [[ "${iyear}" == "1992" ]]; then
     niter0=1
-    rm -f ./data.ctrl
 else
     niter0=$(( 10#${numbers[$((iyear-1992-1))]} ))
 fi 
