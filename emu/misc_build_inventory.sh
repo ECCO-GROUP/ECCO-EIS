@@ -2,8 +2,9 @@
 
 # Usage:
 #   ./misc_build_inventory.sh [--with-md5] [--nproc N] sourcedir outfile
-# - --with-md5 : include MD5 checksums
-# - --nproc N  : manually set number of parallel processes (optional)
+# - --with-md5 : Include MD5 checksums
+# - --nproc N  : Manually set number of parallel processes (used_nproc)
+#                Otherwise defaults to 1/4 of available processors. 
 #
 # Recursively builds an inventory of files and directories under
 # 'sourcedir' into 'outfile' Optionally includes MD5 checksum for
@@ -61,17 +62,17 @@ fi
 
 # Determine number of parallel processes
 if [[ "$manual_nproc" -gt 0 ]]; then
-  nproc="$manual_nproc"
+  used_nproc="$manual_nproc"
 else
   cores=$(nproc)
-  nproc=$(( (cores + 3) / 4 ))
-  nproc=$(( nproc > 0 ? nproc : 1 ))
+  used_nproc=$(( (cores + 3) / 4 ))
+  used_nproc=$(( used_nproc > 0 ? used_nproc : 1 ))
 fi
 
 # Temporary output file
 tmp_output="$(mktemp /tmp/build_inventory_tmp.XXXXXX)"
 
-echo "Building inventory for $sourcedir into $outfile using $nproc parallel processes ..."
+echo "Building inventory for $sourcedir into $outfile using $used_nproc parallel processes ..."
 
 (
   cd "$sourcedir"
@@ -80,13 +81,13 @@ echo "Building inventory for $sourcedir into $outfile using $nproc parallel proc
 
   if [[ "$with_md5" -eq 0 ]]; then
     # Size only (parallelized)
-    cat /tmp/files.list | xargs -n 1 -P "$nproc" bash -c '
+    cat /tmp/files.list | xargs -n 1 -P "$used_nproc" bash -c '
       file="$1"
       printf "F|%s|%s\n" "$(stat -c %s "$file")" "$file"
     ' _ 
   else
     # Size + MD5 (parallelized)
-    cat /tmp/files.list | xargs -n 1 -P "$nproc" bash -c '
+    cat /tmp/files.list | xargs -n 1 -P "$used_nproc" bash -c '
       file="$1"
       printf "F|%s|%s|%s\n" "$(stat -c %s "$file")" "$(md5sum "$file" | cut -d" " -f1)" "$file"
     ' _

@@ -56,7 +56,6 @@ ls -al ${rundir} > before.txt
 echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
 echo 'cd /inside_out'   >> my_commands.sh
 echo 'cp -pf ${emu_dir}/emu/data_emu_niter0  ./data'    >> my_commands.sh
-echo 'cp -pf ${emu_dir}/emu/data.ctrl.noinitctrl ./data.ctrl'    >> my_commands.sh
 
 singularity exec --bind ${emu_input_dir}:/emu_input_dir:ro --bind ${PWD}:/inside_out \
      ${singularity_image} /inside_out/my_commands.sh
@@ -96,7 +95,6 @@ done
 # Output extracted numbers
 if [[ "${iyear}" == "1992" ]]; then
     niter0=1
-    rm -f ./data.ctrl
 else
     niter0=$(( 10#${numbers[$((iyear-1992-1))]} ))
 fi 

@@ -48,8 +48,6 @@ ls -al ${rundir} > ${rundir}/before.txt
 #--------------------------
 # Get data file template 
 cp -pf ${emu_dir}/emu/data_emu_niter0  ${rundir}/data
-# Get data.ctrl replacement in case changing nIter0 in file data 
-cp -pf ${emu_dir}/emu/data.ctrl.noinitctrl ${rundir}/data.ctrl
 
 #--------------------------
 # Get pickup file
