@@ -102,3 +102,6 @@ mv fgrd_result ../output
 mv pbs_fgrd.sh ../output
 mv fgrd_spec.info ../output
 
+# master STDOUT & STDERR 
+mv ./STDOUT.0000  ../output
+mv ./STDERR.0000  ../output

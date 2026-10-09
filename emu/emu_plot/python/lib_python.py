@@ -356,7 +356,7 @@ def plt_state2d(v2d, pinfo):
 
     # Plot 
     plt.figure(figsize=(10,10))
-    ftitle = f"{pinfo} scaled by x{dscale:.9e}"
+    ftitle = f"{pinfo} scaled by x{dscale:.1e}"
     plt.title(ftitle)        
     plt.imshow(masked_dumg, origin='lower',cmap=cmap, aspect='auto')
     plt.colorbar()
@@ -409,7 +409,7 @@ def plt_state3d(v3d, pinfo, ivar):
 
         # Plot 
         plt.figure(figsize=(10,10))
-        ftitle = f"{pinfo} scaled by x{dscale:.9e}"
+        ftitle = f"{pinfo} depth {kk+1:d} scaled by x{dscale:.1e}"
         plt.title(ftitle)        
         plt.imshow(masked_dumg, origin='lower',cmap=cmap, aspect='auto')
         plt.colorbar()

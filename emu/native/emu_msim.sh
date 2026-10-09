@@ -299,29 +299,49 @@ hour_estimate=$(echo "$hour26yr / 227903 * ${nTimeSteps} + 1" | bc -l | awk '{pr
 sed -i -e "s|WHOURS_EMU|${hour_estimate}|g" ./pbs_msim.sh
 
 echo "  3) Run MITgcm "
-BATCH_COMMAND ./pbs_msim.sh
-
-echo "... Batch job pbs_msim.sh has been submitted "
-echo "    to compute the model's response to modified input." 
+echo " "
+echo "... Batch script "
+echo "$PWD/pbs_msim.sh"
+echo "    to compute the model's response to modified input is ready." 
 
 echo " "
 echo "    Estimated wallclock time:"
 sed -n '3p' ./pbs_msim.sh
 
 echo " " 
-dum=`sed -n '3p' ./msim.dir_out`
 echo '********************************************'
-echo "    Results will be in " ${dum}
+echo "When the batch script is run ... "
+
+echo " "
+dum=`sed -n '3p' ./msim.dir_out`
+echo "   Results will be in " ${dum}
+
+echo " "
+echo "   Progress of the computation can be monitored by"
+echo "      ls -l ${dum}/diags/*2d*day*data | wc -l " 
+echo "   which counts the number of days the model has integrated." 
+echo "   (As standard output, the model saves daily mean files of"
+echo "   sea level and ocean bottom pressure, unless changed in "  
+echo "   file data.diagnostics.)"
 echo '********************************************'
 echo " "
 
-echo "Progress of the computation can be monitored by"
-echo "  ls -l ${dum}/diags/*2d*day*data | wc -l " 
-echo "which counts the number of days the model has integrated." 
-echo "(As standard output, the model saves daily mean files of"
-echo "sea level and ocean bottom pressure, unless changed in "  
-echo "file data.diagnostics.)"
-echo " "
+echo "Proceed to submit the batch job ... (Y/N)?"
+read proceed_batch
+
+if [[ ${proceed_batch} == "N" || ${proceed_batch} == "n" ]] ; then
+    echo " "
+    echo "... Batch job pbs_msim.sh will not be submitted at this time." 
+    echo "    Enter following command to submit the batch job later. "
+    echo " "
+    echo "BATCH_COMMAND $PWD/pbs_msim.sh"
+    echo " "
+else
+    BATCH_COMMAND $PWD/pbs_msim.sh
+    echo " "
+    echo "... Batch job pbs_msim.sh has been submitted. "
+    echo " "
+fi
 
 cd ${start_dir}
 

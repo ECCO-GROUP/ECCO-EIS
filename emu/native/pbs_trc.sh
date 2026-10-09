@@ -48,6 +48,10 @@ mv diags ../output
 mv pbs_trc.sh ../output
 mv trc.info ../output
 
+# master STDOUT & STDERR 
+mv ./STDOUT.0000  ../output
+mv ./STDERR.0000  ../output
+
 # Save initial TRC 
 PUBLICDIR/misc_move_files.sh ./ ../output 'pickup_ptracers.0*.data'
 

@@ -77,6 +77,7 @@ printf "Time taken (hh:mm:ss): %d:%02d:%02d\n" $hours $minutes $seconds
 adoutdir=../output
 mkdir ${adoutdir}
 
+# adjoint gradient with respect to atmospheric controls 
 mv adxx_empmr.0*.* ${adoutdir}
 mv adxx_pload.0*.* ${adoutdir}
 mv adxx_qnet.0*.* ${adoutdir}
@@ -86,9 +87,25 @@ mv adxx_spflx.0*.* ${adoutdir}
 mv adxx_tauu.0*.* ${adoutdir}
 mv adxx_tauv.0*.* ${adoutdir}
 
+# adjoint gradient with respect to initial condition 
+mv adxx_etan.0*.* ${adoutdir}
+mv adxx_theta.0*.* ${adoutdir}
+mv adxx_salt.0*.* ${adoutdir}
+mv adxx_uvel.0*.* ${adoutdir}
+mv adxx_vvel.0*.* ${adoutdir}
+
+# adjoint gradient with respect to mixing parameters 
+mv adxx_diffkr.0*.* ${adoutdir}
+mv adxx_kapgm.0*.* ${adoutdir}
+mv adxx_kapredi.0*.* ${adoutdir}
+
 mv data.ecco ${adoutdir}
 mv data ${adoutdir}
 mv adj.info ${adoutdir}
+
+# master STDOUT & STDERR 
+mv STDOUT.0000 ${adoutdir}
+mv STDERR.0000 ${adoutdir}
 
 # Save mask
 PUBLICDIR/misc_move_files.sh ./ ${adoutdir} '*mask_C'

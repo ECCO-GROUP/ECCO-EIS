@@ -12,9 +12,10 @@ c                 corresponding reference output.
 c     -----------------------------------------------------
 
 c Perturbation (perturbation variable, location, time, amplitude)
-      integer pert_v, pert_i, pert_j, pert_t
+      integer pert_v, pert_i, pert_j, pert_k, pert_t
       real*4 pert_a
-      namelist /PERT_SPEC/ pert_v, pert_i, pert_j, pert_t, pert_a
+      namelist /PERT_SPEC/ pert_v, pert_i, pert_j, pert_k,
+     $     pert_t, pert_a
 
 c 
       character*130 f_in, f_out  ! file names 
@@ -57,6 +58,7 @@ c Read in Perturbation specification from namelist file
       write(6,*) 'pert_v ',pert_v
       write(6,*) 'pert_i ',pert_i
       write(6,*) 'pert_j ',pert_j
+      write(6,*) 'pert_k ',pert_k
       write(6,*) 'pert_t ',pert_t
       write(6,*) 'pert_a ',pert_a
 

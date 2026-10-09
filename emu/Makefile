@@ -85,8 +85,8 @@ fgrd: ${SRCDIR}/fgrd.f ${OBJDIR}/emu_sub.o ${OBJDIR}/llc_sub.o
 fgrd_pert: ${SRCDIR}/fgrd_pert.f
 	$(FC) $(FFLAGS) -o ${OBJDIR}/fgrd_pert.x ${SRCDIR}/fgrd_pert.f
 
-fgrd_spec: ${SRCDIR}/fgrd_spec.f ${OBJDIR}/emu_sub.o ${OBJDIR}/llc_sub.o 
-	$(FC) $(FFLAGS) -o ${OBJDIR}/fgrd_spec.x ${SRCDIR}/fgrd_spec.f ${OBJDIR}/emu_sub.o ${OBJDIR}/llc_sub.o 
+fgrd_spec: ${SRCDIR}/fgrd_spec.f ${OBJDIR}/emu_sub.o ${OBJDIR}/llc_sub.o ${OBJDIR}/adj_sub.o 
+	$(FC) $(FFLAGS) -o ${OBJDIR}/fgrd_spec.x ${SRCDIR}/fgrd_spec.f ${OBJDIR}/emu_sub.o ${OBJDIR}/llc_sub.o  ${OBJDIR}/adj_sub.o 
 
 # Sampling Tool (samp)
 samp_all: samp do_samp 

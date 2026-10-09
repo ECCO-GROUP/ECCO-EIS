@@ -11,7 +11,7 @@ frun_output = frun + '/output/'
 
 ; ---------------
 ; Choose control
-fctrl = ['empmr', 'pload', 'qnet', 'qsw', 'saltflux', 'spflx', 'tauu', 'tauv']
+fctrl = ['empmr', 'pload', 'qnet', 'qsw', 'saltflux', 'spflx', 'tauu', 'tauv', 'other']
 nctrl = n_elements(fctrl)
 
 print,''
@@ -25,6 +25,11 @@ print,''
 print,'Enter control # to plot ... (1-' + string(nctrl,format='(i0)')+')?'
 read, ictrl
 ictrl = ictrl-1 
+
+if (ictrl lt nctrl-1) then begin 
+; -------------------------------------------------------------------
+; Begin reading & plotting atmospheric controls
+
 print,'Plotting control ... ',fctrl(ictrl)
 
 fdum = 'adxx_' + fctrl(ictrl) + '.*.data'
@@ -169,5 +174,106 @@ while (valid_pt eq 1) do begin
    plot,ww,adxx(ix-1,jy-1,iww),title=ftitle,xtitle='lag (weeks)', ytitle='adxx'
 
 endwhile
+
+; End reading & plotting atmospheric controls
+; -------------------------------------------------------------------
+
+endif else begin 
+; -------------------------------------------------------------------
+; Read and plot adxx of IC and mixing parameters
+
+
+; -----------
+; Choose control 
+print,''
+print,'Reading and Plotting adxx of initial condition and mixing parameters ... '
+print,"(Unlike gradient for atmospheric controls, these gradients are "
+print," dependent on the instance of EMU computation's initial condition.)"
+
+fctrl = ['etan', 'theta', 'salt', 'uvel', 'vvel', 'diffkr', 'kapgm', 'kapredi']
+nctrl = n_elements(fctrl)
+
+print,''
+print,'Choose control to plot ... '
+for i=0,nctrl-1 do begin
+   pdum=string(i+1,format='(i1)')+') '+fctrl(i)
+   print,pdum
+endfor
+
+print,''
+print,'Enter control # to plot ... (1-' + string(nctrl,format='(i0)')+')?'
+read, ictrl
+ictrl = ictrl-1 
+print,'Plotting control ... ',fctrl(ictrl)
+
+fdum = 'adxx_' + fctrl(ictrl) + '.*.data'
+aa = file_search(frun_output + fdum, COUNT=naa)
+if (naa ne 1) then begin 
+   if (naa eq 0) then begin
+      print,'*********************************************'
+      print,'File '+fdum+' not found ... '
+      print,''
+      return
+   endif else begin 
+      print,'*********************************************'
+      print,'More than one '+fdum+' found ... '
+      print,''
+      return
+   endelse
+endif
+
+fname = file_basename(aa(0))
+print,'Found file: ',fname 
+
+; ---------------
+; Read adxx 
+
+; etan 
+if (ictrl eq 0) then begin 
+   adxx = fltarr(nx,ny)
+
+   close,1 & openr,1,aa(0),/swap_if_little_endian
+   readu,1,adxx
+
+   print,''
+   print,'*********************************************'
+   print,'Read adjoint gradient for '+fctrl(ictrl)
+   print,'   adxx: adjoint gradient as a function of space (2d)'
+   print,'from file ',aa(0)
+
+   print,''
+   print,'*********************************************'
+   print,'Plotting maps of adxx '
+
+   plt_state2d,adxx,fname
+
+endif else begin
+; Other IC and parameter controls (3d)
+   adxx = fltarr(nx,ny,nr)
+
+   close,1 & openr,1,aa(0),/swap_if_little_endian
+   readu,1,adxx
+
+   print,''
+   print,'*********************************************'
+   print,'Read adjoint gradient for '+fctrl(ictrl)
+   print,'   adxx: adjoint gradient as a function of space (3d)'
+   print,'from file ',aa(0)
+
+   print,''
+   print,'*********************************************'
+   print,'Plotting maps of adxx '
+
+   ivar = 0
+   if (ictrl eq 3) then ivar=2
+   if (ictrl eq 4) then ivar=3   
+
+   plt_state3d,adxx,fname,ivar
+
+endelse   
+
+; End read and plot adxx of IC and mixing parameters
+; -------------------------------------------------------------------
+endelse
 
 end
