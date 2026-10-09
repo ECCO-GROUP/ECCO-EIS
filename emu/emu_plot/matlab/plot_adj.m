@@ -9,7 +9,7 @@ global emu
 frun_output = fullfile(frun, 'output');
 
 % --- Define list of controls ---
-fctrl = {'empmr', 'pload', 'qnet', 'qsw', 'saltflux', 'spflx', 'tauu', 'tauv'};
+fctrl = {'empmr', 'pload', 'qnet', 'qsw', 'saltflux', 'spflx', 'tauu', 'tauv', 'other'};
 nctrl = numel(fctrl);
 
 fprintf('\nChoose control to plot:\n');
@@ -17,6 +17,13 @@ for i = 1:nctrl
     fprintf('%d) %s\n', i, fctrl{i});
 end
 ictrl = input(sprintf('\nEnter control # to plot (1-%d): ', nctrl));
+
+if ictrl < nctrl 
+% -------------------------------------------------------------------
+% Begin reading & plotting atmospheric controls
+
+fprintf('Plotting control ... \n\n', fctrl{ictrl});
+
 ctrlname = fctrl{ictrl};
 fname_pattern = fullfile(frun_output, sprintf('adxx_%s.*.data', ctrlname));
 
@@ -150,5 +157,114 @@ while true
     xlabel('lag (weeks)'); ylabel('adxx');
     title(ftitle, 'Interpreter', 'none');
 end
+
+% End reading & plotting atmospheric controls
+% -------------------------------------------------------------------
+
+else
+% -------------------------------------------------------------------
+% Read and plot adxx of IC and mixing parameters
+
+% -----------
+%; Choose control 
+fprintf('\nReading and Plotting adxx of initial condition and mixing parameters ... \n');
+fprintf('(Unlike gradient for atmospheric controls, these gradients are \n');
+fprintf(" dependent on the instance of EMU computation's initial condition.)\n"); 
+
+fctrl = {'etan', 'theta', 'salt', 'uvel', 'vvel', 'diffkr', 'kapgm', 'kapredi'};
+nctrl = numel(fctrl);
+
+fprintf('\nChoose control to plot:\n');
+for i = 1:nctrl
+    fprintf('%d) %s\n', i, fctrl{i});
+end
+ictrl = input(sprintf('\nEnter control # to plot (1-%d): ', nctrl));
+
+if ictrl < nctrl 
+% -------------------------------------------------------------------
+% Start Valid IC or parameter control
+
+fprintf('Plotting control ... \n\n', fctrl{ictrl});
+
+ctrlname = fctrl{ictrl};
+fname_pattern = fullfile(frun_output, sprintf('adxx_%s.*.data', ctrlname));
+
+files = dir(fname_pattern);
+if isempty(files)
+    fprintf('*********************************************\n');
+    fprintf('File %s not found\n\n', fname_pattern);
+    adxx = [];
+    return;
+elseif numel(files) > 1
+    fprintf('*********************************************\n');
+    fprintf('More than one file matching %s found\n\n', fname_pattern);
+    adxx = [];
+    return;
+end
+
+full_fname = fullfile(files(1).folder, files(1).name);
+fprintf('Found file: %s\n', full_fname);
+
+% get file name
+[~, fname, ext] = fileparts(full_fname);
+fname = [fname ext];
+
+% --- Read adxx data ---
+nx = emu.nx;
+ny = emu.ny;
+nr = emu.nr; 
+
+fid = fopen(full_fname, 'r', 'ieee-be');
+
+% etan (2d)
+if ictrl == 1 
+  adxx = fread(fid, [nx, ny], 'float32');
+  fclose(fid);
+
+  fprintf('\n*********************************************\n');
+  fprintf('Read adjoint gradient for %s\n', ctrlname);
+  fprintf('   adxx: adjoint gradient as a function of space (2d)\n');
+  fprintf('from file %s\n',full_fname)
+  emu.adxx = adxx;
+
+  % --- Plot adxx map at user-specified lag ---
+  fprintf('\n*********************************************\n');
+  fprintf('Plotting maps of adxx \n');
+
+  plt_state2d(adxx,fname)
+else
+% Other IC and parameter controls (3d)
+  adxx = fread(fid, [nx * ny, nr], 'float32');
+  fclose(fid);
+  adxx = reshape(adxx, nx, ny, nr);
+
+  fprintf('\n*********************************************\n');
+  fprintf('Read adjoint gradient for %s\n', ctrlname);
+  fprintf('   adxx: adjoint gradient as a function of space (3d)\n');
+  fprintf('from file %s\n',full_fname)
+  emu.adxx = adxx;
+
+  % --- Plot adxx map at user-specified lag ---
+  fprintf('\n*********************************************\n');
+  fprintf('Plotting maps of adxx \n');
+
+  ivar = 1;
+  if     ictrl == 4
+    ivar = 3;
+  elseif ictrl == 5
+    ivar = 4;
+  end
+  plt_state3d(adxx,fname,ivar)
+
+end
+
+% -------------------------------------------------------------------
+% End Valid IC or parameter control 
+end
+
+
+% End read and plot adxx of IC and mixing parameters
+% -------------------------------------------------------------------
+end 
 
 end

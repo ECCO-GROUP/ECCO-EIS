@@ -651,6 +651,18 @@ goto_native() {
     sleep 2 
 
 # .......................................
+# Option to skip compiling MITgcm and its adjoint
+# (Useful when updating EMU w/o re-compiling MITgcm & its adjoint.)
+
+    echo "Skip compiling MITgcm and its adjoint (useful when updating EMU alone) ... (Y/N)?"
+    read skip_compiling_MITgcm
+    
+    if [[ ${skip_compiling_MITgcm} == "Y" || ${skip_compiling_MITgcm} == "y" ]] ; then
+	echo 
+	echo " ... Will skip compiling MITgcm ..."
+    fi
+
+# .......................................
 # End of user input for native installation 
     echo
     echo "**********************"
@@ -696,20 +708,26 @@ goto_native() {
 # Compile MITgcm 
 # (This cannot be placed in background because install_emu_access.sh checks
 # what MITgcm executable is available.) 
-    echo 
-    echo "----------------------"
-    echo "Download and compiling MITgcm and its adjoint in "
-    echo ${emu_dir}/emu/exe/nproc
 
-    log_file="${setup_dir}/emu_compile_mdl.log"
-    echo "This can take a while (~30 minutes). "
-    echo "Progress can be monitored in file " ${log_file}
-    echo "  tail ${log_file} "
+    if [[ ${skip_compiling_MITgcm} != [Yy] ]] ; then
 
-    ${emu_dir}/emu/native/emu_compile_mdl.sh <<EOF > "$log_file" 2>> "$log_file" 
+	echo 
+	echo "----------------------"
+	echo "Download and compiling MITgcm and its adjoint in "
+	echo ${emu_dir}/emu/exe/nproc
+
+	log_file="${setup_dir}/emu_compile_mdl.log"
+	echo "This can take a while (~30 minutes). "
+	echo "Progress can be monitored in file " ${log_file}
+	echo "  tail ${log_file} "
+
+	${emu_dir}/emu/native/emu_compile_mdl.sh <<EOF > "$log_file" 2>> "$log_file" 
 ${emu_nproc}
 EOF
 
+    else
+	mkdir -p ${emu_dir}/emu/exe/nproc/${emu_nproc}
+    fi
 
 # .......................................
 # Install EMU User Interface 

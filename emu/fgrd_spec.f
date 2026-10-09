@@ -20,28 +20,45 @@ c -----------------------------------------------------
       external StripSpaces
 
 c Perturbation (perturbation variable, location, time, amplitude)
-      integer pert_v, pert_i, pert_j, pert_t
+      integer pert_v, pert_i, pert_j, pert_k, pert_t
       real*4 pert_a, pert_x, pert_y
-      namelist /PERT_SPEC/ pert_v, pert_i, pert_j, pert_t, pert_a
+      namelist /PERT_SPEC/ pert_v, pert_i, pert_j, pert_k,
+     $     pert_t, pert_a
+      integer pert_v2, ipert
 
       integer pert_h
 
       integer check_v, check_i, check_j, check_t, check_a, check_d
 
 c 
-      integer nctrl                    ! number of controls 
-      parameter (nctrl=8) 
+      integer nctrl, nctrl2                ! number of controls 
+      parameter (nctrl=16, nctrl2=8) 
       character*130 file_in, file_out  ! file names 
       logical file_exists
       character*72 f_xx(nctrl), f_xx_unit(nctrl)
+      real*4 scale(nctrl)              ! default perturbation
       character*256 f_command
-      
-      integer nx, ny, nwk 
-      parameter (nx=90, ny=1170, nr=50, nwk=1358)
-      real*4 scale(nx,ny)              ! default perturbation
 
-      real*4 xc(nx,ny), yc(nx,ny), bathy(nx,ny)
-      integer iloc
+c       
+      character*256 f_inputdir  ! directory where tool input files are 
+      common /tool/f_inputdir
+
+c model arrays
+      integer nx, ny, nr
+      parameter (nx=90, ny=1170, nr=50)
+      real*4 xc(nx,ny), yc(nx,ny), rc(nr), bathy(nx,ny), ibathy(nx,ny)
+      common /grid/xc, yc, rc, bathy, ibathy
+
+      real*4 rf(nr), drf(nr)
+      real*4 hfacc(nx,ny,nr), hfacw(nx,ny,nr), hfacs(nx,ny,nr)
+      real*4 dxg(nx,ny), dyg(nx,ny), dvol3d(nx,ny,nr), rac(nx,ny)
+      integer kmt(nx,ny)
+      common /grid2/rf, drf, hfacc, hfacw, hfacs,
+     $     kmt, dxg, dyg, dvol3d, rac
+      
+c
+      integer nwk 
+      parameter (nwk=1358)
 
       integer i
       character*256 setup
@@ -103,28 +120,14 @@ c Set directory where tool files exist (setup directory)
       close (50)
       
 c --------------
-c Read model grid
-      file_in = trim(setup) // '/emu/emu_input/XC.data'
-      inquire (file=trim(file_in), EXIST=file_exists)
-      if (.not. file_exists) then
-         write (6,*) ' **** Error: model grid file = ',
-     $        trim(file_in) 
-         write (6,*) '**** does not exist'
-         stop
-      endif
-      open (50, file=file_in, action='read', access='stream')
-      read (50) xc
+c Set directory where tool files exist
+      open (50, file='input_setup_dir')
+      read (50,'(a)') f_inputdir
       close (50)
 
-      file_in = trim(setup) // '/emu/emu_input/YC.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) yc
-      close (50)
-
-      file_in = trim(setup) // '/emu/emu_input/Depth.data'
-      open (50, file=file_in, action='read', access='stream')
-      read (50) bathy
-      close (50)
+c --------------
+c Get model grid info
+      call grid_info
       
 c --------------
 c Interactive specification of Gradient Denominator (Perturbation) 
@@ -133,17 +136,9 @@ c Interactive specification of Gradient Denominator (Perturbation)
      $     '(denominator in Eq 2 of Guide) ... '
 
 c --------------
-c Save OBJF information for reference. 
-      file_out = 'fgrd_spec.info'
-      open (51, file=file_out, action='write')
-      write(51,"(a)") '***********************'
-      write(51,"(a)") 'Output of fgrd_spec.f'
-      write(51,"(a)")
-     $     'Perturbation specification'
-      write(51,"(a,/)") '***********************'
-
-c --------------
 c xx variable name, unit and description
+
+c Atmospheric forcing controls 
       f_xx(1) = 'empmr'
       f_xx(2) = 'pload'   
       f_xx(3) = 'qnet'    
@@ -162,6 +157,63 @@ c xx variable name, unit and description
       f_xx_unit(7) = 'N/m2 (westward wind stress)'     
       f_xx_unit(8) = 'N/m2 (southward wind stress)'     
 
+      scale(1) = -0.001
+      scale(2) =  100.
+      scale(3) = -10.
+      scale(4) = -10. 
+      scale(5) = -0.0001
+      scale(6) =  0.0001
+      scale(7) = -0.1
+      scale(8) = -0.1
+
+c Initial Condition (IC) and Mixing Parameters
+      f_xx(9)  = 'etan'
+      f_xx(10) = 'theta'
+      f_xx(11) = 'salt'
+      f_xx(12) = 'uvel'
+      f_xx(13) = 'vvel'
+      f_xx(14) = 'diffkr'
+      f_xx(15) = 'kapgm'  
+      f_xx(16) = 'kapredi'   
+
+      f_xx_unit(9)  = 'm (initial sea level)'
+      f_xx_unit(10) = 'degC (initial temperature)'
+      f_xx_unit(11) = 'PSU (initial salinity)'
+      f_xx_unit(12) = 'm/s (initial uvel)'
+      f_xx_unit(13) = 'm/s (initial vvel)'
+      f_xx_unit(14) = 'm2/s (vertical diffusivity)'
+      f_xx_unit(15) = 'm2/s (GM diffusivity)'
+      f_xx_unit(16) = 'm2/s (Redi along isopycnal diffusivity)'
+
+      scale(9)  =  0.1
+      scale(10) =  1.
+      scale(11) = -1.
+      scale(12) =  0.05
+      scale(13) =  0.05
+      scale(14) =  1.e-6
+      scale(15) =  100.
+      scale(16) =  100.
+
+c --------------
+c Save OBJF information for reference. 
+      file_out = 'fgrd_spec.info'
+      open (51, file=file_out, action='write')
+      write(51,"(a)") '***********************'
+      write(51,"(a)") 'Output of fgrd_spec.f'
+      write(51,"(a)")
+     $     'Perturbation specification'
+      write(51,"(a,/)") '***********************'
+
+c --------------
+c Select to perturb forcing or IC/parameters
+      write(6,'(a)') 'Enter 1 to perturb atmospheric forcing, '
+      write(6,'(a)')
+     $     '      2 to perturb IC or mixing parameters ... (1/2)?'
+      read(5,*) ipert
+      if (ipert .eq. 2) goto 2000
+      
+      write(6,'(/,a,/)') 'Perturbing atmospheric forcing ... '
+
 c --------------
 c Interactive specification of perturbation 
 
@@ -169,14 +221,14 @@ c control variable
       check_v = 0
 
       write (6,*) 'Available control variables to perturb ... '
-      do i=1,nctrl
+      do i=1,nctrl2
          write (6,"('   ',i2,') ',a)") i,trim(f_xx(i))
       enddo
       do while (check_v .eq. 0) 
          write (6,"(3x,a,i2,a)")
-     $     'Enter control (phi in Eq 2 of Guide) ... (1-',nctrl,') ?'
+     $     'Enter control (phi in Eq 2 of Guide) ... (1-',nctrl2,') ?'
          read (5,*) pert_v
-         if (pert_v .ge. 1 .and. pert_v .le. nctrl) check_v = 1
+         if (pert_v .ge. 1 .and. pert_v .le. nctrl2) check_v = 1
       end do
       write (6,*) ' ..... perturbing ',trim(f_xx(pert_v))
       write (6,*) 
@@ -184,71 +236,10 @@ c control variable
       write (51,*) ' ..... perturbing ',trim(f_xx(pert_v))
 
 c Select spatial location (native or lat/lon)
-      write (6,*) 'Choose location for perturbation ' //
-     $     '(r in Eq 2 of Guide) ... '
-      write (6,*) '   Enter 1 to choose native grid location (i,j),  '
-      write (6,*)
-     $     '         9 to select by longitude/latitude ... (1 or 9)? '
-      read (5,*) iloc
+      call slct_2d_pt(pert_i, pert_j)
+      pert_k = 1 
 
-      write(51,"(3x,'iloc = ',i2)") iloc 
-
-      if (iloc .ne. 9) then 
-
-c spatial location (native grid point)
-         check_i = 0
-         check_j = 0
-         check_d = 0
-
-c         do while (check_d .eq. 0) 
-            write (6,*) '   Enter native (i,j) grid to perturb ... '
-            do while (check_i .eq. 0) 
-               write (6,"('   i ... (1-',i2,') ?')") nx
-               read (5,*) pert_i
-               if (pert_i .ge. 1 .and. pert_i .le. nx) check_i = 1
-            end do
-            do while (check_j .eq. 0) 
-               write (6,"('   j ... (1-',i4,') ?')") ny
-               read (5,*) pert_j
-               if (pert_j .ge. 1 .and. pert_j .le. ny) check_j = 1
-            end do
-cc make sure point is wet      
-c            if (bathy(pert_i,pert_j) .le. 0.) then
-c               write (6,1016) '   C-grid point is dry. Depth (m)= ',
-c     $              bathy(pert_i,pert_j)
-c 1016          format(a,f7.1,' Try again.')
-c               check_i = 0
-c               check_j = 0
-c            else
-c               check_d = 1
-c            endif
-c         enddo
-
-      else 
-c choosing by long/lat 
-         check_d = 0
-         write (6,*) '   Enter lon/lat (x,y) grid to perturb ... '
-         do while (check_d .eq. 0) 
-            write (6,*) '   longitude ... (E)?'
-            read (5,*) pert_x
-
-            write (6,*) '   latitude ... (N)?'
-            read (5,*) pert_y
-
-            call ijloc(pert_x,pert_y,pert_i,pert_j,xc,yc,nx,ny)
-c make sure point is wet      
-            if (bathy(pert_i,pert_j) .le. 0.) then
-               write (6,1007) pert_i,pert_j
- 1007          format('   Closest (i,j) is (',i2,1x,i4,')')
-               write (6,1006) '   C-grid point is dry. Depth (m)= ',
-     $              bathy(pert_i,pert_j)
- 1006          format(a,f7.1,' Try again.')
-            else
-               check_d = 1
-            endif
-         end do
-      endif
-
+c
       write(6,*) ' ...... perturbation at (i,j) = ',pert_i,pert_j
       write(6,1004) 
      $           '        C-grid is (long E, lat N) = ',
@@ -283,21 +274,8 @@ cif         write (6,"(a)") '(Week 1 centered 12Z 1/1/1992.)'
       write(51,*) ' ...... perturbing week = ',pert_t
 
 c amplitude
-      file_in = trim(setup) // '/emu/emu_input/fgrd_pert.scale'
-      inquire (file=trim(file_in), EXIST=file_exists)
-      if (.not. file_exists) then
-         write (6,*) ' **** Error: default perturbation scale file = ',
-     $        trim(file_in) 
-         write (6,*) '**** does not exist'
-         stop
-      endif
-      
-      open (50, file=file_in, action='read', access='direct',
-     $     recl=nx*ny*4, form='unformatted')
-      read (50,rec=pert_v) scale
-      close (50)
+      pert_a = scale(pert_v)
 
-      pert_a = scale(pert_i,pert_j)
       write(6,"(a,1x,e12.4)")
      $     'Default perturbation (delta_phi in Eq 4 of Guide) : '
       write(6,"(8x,e12.4,1x,'in unit ',a)") pert_a, f_xx_unit(pert_v)
@@ -370,6 +348,115 @@ c Find latest pickup file before perturbation.
       write(51,'(a,i10,a)') 'Model will be integrated from ',
      $     niter0,' (1992 hours)'
       write(51,'(a,i4,/)') 'i.e., 01 January ',1992+(niter0_yr-1)
+
+      goto 3000
+c ......................................
+ 2000 continue
+      write(6,'(/,a,/)') 'Perturbing IC or mixing parameters ... '
+
+c --------------
+c Interactive specification of perturbation 
+
+c control variable 
+      check_v = 0
+
+      write (6,*) 'Available control variables to perturb ... '
+      do i=nctrl2+1,nctrl
+         write (6,"('   ',i2,') ',a)") i,trim(f_xx(i))
+      enddo
+      do while (check_v .eq. 0) 
+         write (6,"(3x,a,i2,a,i2,a)")
+     $     'Enter control (phi in Eq 2 of Guide) ... (',
+     $        nctrl2+1,'-',nctrl,') ?'
+         read (5,*) pert_v
+         if (pert_v .ge. nctrl2+1 .and. pert_v .le. nctrl) check_v = 1
+      end do
+
+      write (6,*) ' ..... perturbing ',trim(f_xx(pert_v))
+      write (6,*) 
+
+      write (51,*) ' ..... perturbing ',trim(f_xx(pert_v))
+
+c Select spatial location 
+      if (pert_v .eq. nctrl2+1) then 
+         call slct_2d_pt(pert_i, pert_j)
+         pert_k = 1
+      else
+         call slct_3d_pt(pert_i, pert_j, pert_k)
+      endif
+
+c Select week to perturb 
+      pert_t = 1
+
+c amplitude
+      pert_a = scale(pert_v)
+
+      write(6,"(a,1x,e12.4)")
+     $     'Default perturbation (delta_phi in Eq 4 of Guide) : '
+      write(6,"(8x,e12.4,1x,'in unit ',a)")
+     $     pert_a, f_xx_unit(pert_v)
+
+      write (6,*) 'Enter 1 to keep, 9 to change ... ?'
+      read (5,*) check_a
+      if (check_a .eq. 9) then 
+         write (6,*) '   Enter perturbation magnitude ... ?'
+         read (5,*) pert_a
+      endif
+
+      write(6,"(a,1x,e12.4)") 'Perturbation amplitude = ',pert_a
+      write(6,"(8x,'in unit ',a,/)") f_xx_unit(pert_v)
+
+      write(51,"(a,1x,e12.4)") 'Perturbation amplitude = ',pert_a
+      write(51,"(8x,'in unit ',a,/)") f_xx_unit(pert_v)
+
+c --------------
+c Set integration time 
+      write(6,*) 'V4r4 can integrate 312-months from ' //
+     $     '1/1/1992 12Z to 12/31/2017 12Z'
+      write(6,"(a,i0,a,/)") 'which requires ', hour26yr,
+     $     ' hours wallclock time.'
+
+c ......................................
+c Allow integration start time other than 1/1/1992 13Z
+
+c Read full pathname to emu_ref directory
+      call getarg(1,f_input)
+
+c Create full pathname to emu_ref directory 
+c (where pickup files are)
+      f_emuref = trim(f_input) // '/emu_ref'
+
+c Get time-stamp for all pickup files
+      call get_pkup_hours(f_emuref, pkuphrs, n_pkuphrs) 
+
+c Find last pickup file
+      niter0 = pkuphrs(n_pkuphrs)
+      niter0_yr = n_pkuphrs+1       ! 1 is 1992
+
+c Choose year to begin integration 
+      idum = 1992+(niter0_yr-1)
+      idum_day = INT( (pert_h-niter0)/24 ) 
+      write(6,'(a,i0,a)')
+     $     'Enter year to begin integration ... (1992-',idum,')?'
+      read (5,*) idum
+      niter0_yr = idum - 1992  + 1
+      niter0_mn = 12*(niter0_yr-1) + 1
+      if (niter0_yr.eq.1) then
+         niter0 = 1
+      else
+         niter0 = pkuphrs(niter0_yr-1)
+      endif      
+
+      write(6,'(a,i10,a)') 'Model will be integrated from ',
+     $     niter0,' (1992 hours)'
+      write(6,'(a,i4,/)') 'i.e., 01 January ',1992+(niter0_yr-1)
+
+      write(51,'(a,i10,a)') 'Model will be integrated from ',
+     $     niter0,' (1992 hours)'
+      write(51,'(a,i4,/)') 'i.e., 01 January ',1992+(niter0_yr-1)
+
+c ......................................
+ 3000 continue
 
 c ......................................
 c Set integration end time
@@ -454,8 +541,9 @@ c      endif
 
 c Also create concatenated string for creating run director
       if (pert_a .ne. 0.) then 
-         write(f_command,1001) pert_v, pert_i, pert_j, pert_t, pert_a
- 1001    format(i9,"_",i9,"_",i9,"_",i9,"_",1p e12.2)
+         write(f_command,1001) pert_v, pert_i, pert_j, pert_k,
+     $        pert_t, pert_a
+ 1001    format(i9,"_",i9,"_",i9,"_",i9,"_",i9,"_",1p e12.2)
       else 
          write(f_command,'(a)') 'ref'
       endif

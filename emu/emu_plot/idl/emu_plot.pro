@@ -95,7 +95,16 @@ rd_grid, emu_ref
 frun_temp = ' '
 print,' '
 print,'Enter directory of EMU run to examine; e.g., emu_samp_m_2_45_585_1 ... ?'
+print,"(or press ENTER key for tutorial on the model's LLC grid)"
 read, frun_temp
+if frun_temp eq '' then begin
+; 0) Tutorial on LLC grid
+   print,' '
+   print,'Running tutorial on LLC grid .. '
+   plot_grid
+   return
+endif
+
 if file_test(frun_temp, /directory) eq 0 then begin
    print, 'Error: Directory does not exist.'
    stop
