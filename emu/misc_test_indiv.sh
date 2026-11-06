@@ -65,6 +65,7 @@ if [[ "$emu_choice" -eq 1 ]]; then
     time PUBLICDIR/emu.sh <<EOF
 
 1
+1
 
 m
 2
