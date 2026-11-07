@@ -42,6 +42,7 @@ echo "**** Step 2: Specification"
 echo "     Running fgrd_spec.x"
 
 cp -f PUBLICDIR/mitgcm_timing.nml .
+echo /emu_input_dir > ./input_setup_dir
 
 /bin/rm -f my_commands.sh 
 echo '#!/bin/bash -e' > my_commands.sh && chmod +x my_commands.sh
