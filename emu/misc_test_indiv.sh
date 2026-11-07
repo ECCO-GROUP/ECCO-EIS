@@ -92,12 +92,14 @@ elif [[ "$emu_choice" -eq 2 ]]; then
     time PUBLICDIR/emu.sh <<EOF
 
 2
+1
 7
 9
 180
 0
 5
 1
+1992
 12
 EOF
     } 2>> misc_test_suite.log
