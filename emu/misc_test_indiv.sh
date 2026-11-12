@@ -119,6 +119,7 @@ elif [[ "$emu_choice" -eq 3 ]]; then
 3
 6
 6
+5
 2
 1
 9
@@ -225,7 +226,8 @@ elif [[ "$emu_choice" -eq 7 ]]; then
     {
     PUBLICDIR/misc_msim_data.sh <<EOF
 for_msim
-12
+1992
+366
 EOF
     } 2>> misc_test_suite.log
     echo "" >> misc_test_suite.log
@@ -235,7 +237,7 @@ EOF
     echo "Computing time-mean oceTAUX with misc_msim_forcing.sh" >> misc_test_suite.log 
     {
     PUBLICDIR/misc_msim_forcing.sh <<EOF
-oceTAUX
+5
 for_msim
 EOF
     } 2>> misc_test_suite.log
@@ -246,7 +248,7 @@ EOF
     echo "Computing time-mean oceTAUY with misc_msim_forcing.sh" >> misc_test_suite.log 
     {
     PUBLICDIR/misc_msim_forcing.sh <<EOF
-oceTAUY
+6
 for_msim
 EOF
     } 2>> misc_test_suite.log
@@ -264,6 +266,7 @@ for_msim
 N
 Y
 Testing with misc_test_suite.sh
+Y
 EOF
     } 2>> misc_test_suite.log
     echo "Done 7) Modified Simulation"
