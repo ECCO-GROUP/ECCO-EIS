@@ -1,0 +1,53 @@
+{
+  "name": "v4r4-llc90-flux",
+  "description": "ECCO V4r4, flux-forced, LLC90 grid",
+  "base_url": "https://ecco.jpl.nasa.gov/drive/files/Version4/Release4",
+  "inventory_path": "emu/misc_build_inventory.emu_input_dir.txt",
+
+  "path_map": {
+    "forcing/input_init": "input_init",
+    "forcing/other/flux-forced/forcing_weekly": "other/flux-forced/forcing_weekly",
+    "forcing/other/flux-forced/mask": "other/flux-forced/mask",
+    "forcing/other/flux-forced/xx": "other/flux-forced/xx",
+    "forcing/other/flux-forced/input_init": "other/flux-forced/input_init",
+    "emu_ref": "other/flux-forced/emu_input/emu_ref",
+    "forcing/other/flux-forced/forcing": "other/flux-forced/forcing",
+    "emu_msim/mean_ALL": "other/flux-forced/emu_input/emu_msim/mean_ALL",
+    "emu_msim/mean_IC": "other/flux-forced/emu_input/emu_msim/mean_IC",
+    "emu_msim/mean_oceFWflx": "other/flux-forced/emu_input/emu_msim/mean_oceFWflx",
+    "emu_msim/mean_oceSflux_oceSPflx": "other/flux-forced/emu_input/emu_msim/mean_oceSflux_oceSPflx",
+    "emu_msim/mean_oceTAUX_oceTAUY": "other/flux-forced/emu_input/emu_msim/mean_oceTAUX_oceTAUY",
+    "emu_msim/mean_sIceLoadPatmPload_nopabar": "other/flux-forced/emu_input/emu_msim/mean_sIceLoadPatmPload_nopabar",
+    "emu_msim/mean_TFLUX_oceQsw": "other/flux-forced/emu_input/emu_msim/mean_TFLUX_oceQsw",
+    "forcing/other/flux-forced/state_weekly": "other/flux-forced/state_weekly",
+    "scripts": "other/flux-forced/emu_input/emu_misc/scripts"
+  },
+
+  "always_group": [
+    "forcing/input_init",
+    "forcing/other/flux-forced/forcing_weekly",
+    "forcing/other/flux-forced/mask",
+    "forcing/other/flux-forced/xx",
+    "forcing/other/flux-forced/input_init"
+  ],
+
+  "tool_groups": {
+    "samp": ["emu_ref"],
+    "fgrd": ["emu_ref", "forcing/other/flux-forced/forcing"],
+    "adj": ["emu_ref", "forcing/other/flux-forced/forcing"],
+    "conv": ["emu_ref"],
+    "trc": ["emu_ref", "forcing/other/flux-forced/state_weekly", "scripts"],
+    "budg": ["emu_ref"],
+    "msim": ["forcing/other/flux-forced/forcing"],
+    "atrb": [
+      "emu_ref",
+      "emu_msim/mean_ALL",
+      "emu_msim/mean_IC",
+      "emu_msim/mean_oceFWflx",
+      "emu_msim/mean_oceSflux_oceSPflx",
+      "emu_msim/mean_oceTAUX_oceTAUY",
+      "emu_msim/mean_sIceLoadPatmPload_nopabar",
+      "emu_msim/mean_TFLUX_oceQsw"
+    ]
+  }
+}

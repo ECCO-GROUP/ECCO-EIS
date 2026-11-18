@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# emu download engine: in-progress downloads, never committed
+*.part
+
+# TAF-generated output: license forbids sharing it (see CLAUDE.md)
+ad_taf_output.f
+nproc.tar

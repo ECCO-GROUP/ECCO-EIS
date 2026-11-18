@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emu"
+version = "0.1.0"
+description = "EMU (ECCO Modeling Utilities) orchestration and download tooling"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+emu = "emu.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["emu*"]
+
+[tool.setuptools.package-data]
+# release.json files are data, not Python source, so they must be listed
+# explicitly to be included in the installed package.
+emu = ["releases/*/release.json"]
