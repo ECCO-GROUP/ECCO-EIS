@@ -1,3 +1,10 @@
+Version 2.0 (11/18/2026)
+   a) Fixed bug that caused Forward Gradient (fgrd) Tool, in its
+      Singularity implementation, to crash with error "model grid
+      file ... does not exist." The tool's specification step
+      (fgrd_spec.x) now correctly reads the model grid from inside
+      the container (/emu_input_dir) rather than from the host path,
+
 Version 1.2a (12/16/2025)
    a) For clarity, re-ordered "monthly/daily" prompt in Sampling
      (samp) and Attribution (atrb) Tools, 
