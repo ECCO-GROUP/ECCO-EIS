@@ -11,6 +11,7 @@ import base64
 import http.server
 import socketserver
 import threading
+import time
 from urllib.parse import quote, unquote, urlsplit
 
 import pytest
@@ -58,6 +59,23 @@ class FakeDriveServer:
         self.requests = []
         self._httpd = None
         self._thread = None
+        # Seconds each request takes before replying, so concurrency tests
+        # can see overlapping requests; and counters of how many overlap
+        self.delay = 0.0
+        self.active = 0
+        self.max_active = 0
+        # Called (with the request's path) as each request starts; tests
+        # use it to trigger events at a precise point in a fetch
+        self.on_request = None
+
+    def _enter(self):
+        with self._lock:
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+
+    def _leave(self):
+        with self._lock:
+            self.active -= 1
 
     def add_file(self, rel_path, content):
         """Create a file to serve at rel_path (relative to the base URL)."""
@@ -133,6 +151,18 @@ def _make_handler(server):
             pass  # keep test output quiet
 
         def do_GET(self):
+            # Count this request as in progress while it is handled
+            server._enter()
+            try:
+                if server.on_request is not None:
+                    server.on_request(unquote(urlsplit(self.path).path).lstrip("/"))
+                if server.delay:
+                    time.sleep(server.delay)
+                self._handle_get()
+            finally:
+                server._leave()
+
+        def _handle_get(self):
             rel_path = unquote(urlsplit(self.path).path).lstrip("/")
             range_header = self.headers.get("Range")
 

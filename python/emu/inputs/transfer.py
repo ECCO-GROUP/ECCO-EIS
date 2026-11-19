@@ -20,6 +20,9 @@ transfer_file() handles a single inventory entry:
 Existing files may be symlinks (as in a linked input tree). They are
 only read, never written: moving one aside moves the link, and the new
 download replaces the link with a regular file, never its target.
+
+A `stop` event (set on Ctrl-C) ends the transfer between chunks or
+retries; the .part is kept so the next run resumes it.
 """
 
 import base64
@@ -36,6 +39,7 @@ DOWNLOADED = "downloaded"
 SKIPPED = "skipped"
 VERIFIED_EXISTING = "verified_existing"
 FAILED = "failed"
+INTERRUPTED = "interrupted"
 
 CHUNK = 1024 * 1024
 PERMANENT_HTTP_ERRORS = {401, 403, 404}
@@ -59,6 +63,10 @@ class _PermanentError(Exception):
     """An attempt failed in a way a retry can't fix."""
 
 
+class _Stopped(Exception):
+    """The stop event was set during an attempt."""
+
+
 def backoff_seconds(failed_attempts):
     """Seconds to wait after the given number of failed attempts."""
     return min(5 * 2 ** (failed_attempts - 1), 60)
@@ -74,7 +82,7 @@ def md5_file(path, chunk=CHUNK):
 
 
 def transfer_file(entry, url, root, state, verified, auth, tries=5,
-                  timeout=60, sleep=time.sleep, opener=None):
+                  timeout=60, sleep=None, opener=None, stop=None):
     """Make <root>/<entry.path> a verified copy of the remote file.
 
     entry:    InventoryEntry (path, size, md5)
@@ -83,9 +91,16 @@ def transfer_file(entry, url, root, state, verified, auth, tries=5,
     state:    FetchState to record verified files in
     verified: dict from state.load_verified(), read once by the caller
     auth:     (username, password) for HTTP Basic auth
-    sleep:    called with the backoff seconds between attempts
+    sleep:    called with the backoff seconds between attempts (default:
+              wait on `stop`, so Ctrl-C cuts a backoff short)
     opener:   urllib opener (default: urllib's normal one)
+    stop:     threading.Event; once set, the transfer ends as INTERRUPTED
     """
+    if stop is not None and stop.is_set():
+        return TransferResult(entry.path, INTERRUPTED)
+    if sleep is None:
+        sleep = stop.wait if stop is not None else time.sleep
+
     dest = os.path.join(root, entry.path)
     part = dest + ".part"
 
@@ -111,13 +126,17 @@ def transfer_file(entry, url, root, state, verified, auth, tries=5,
     last_error = None
     for attempt in range(1, tries + 1):
         try:
-            _download_attempt(url, part, entry, token, timeout, opener)
+            _download_attempt(url, part, entry, token, timeout, opener, stop)
+        except _Stopped:
+            return TransferResult(entry.path, INTERRUPTED, attempt)
         except _PermanentError as error:
             return TransferResult(entry.path, FAILED, attempt, str(error))
         except _RetryableError as error:
             last_error = str(error)
             if attempt < tries:
                 sleep(backoff_seconds(attempt))
+                if stop is not None and stop.is_set():
+                    return TransferResult(entry.path, INTERRUPTED, attempt, last_error)
             continue
         os.replace(part, dest)
         state.record_verified(entry.path, entry.size, entry.md5)
@@ -126,7 +145,7 @@ def transfer_file(entry, url, root, state, verified, auth, tries=5,
     return TransferResult(entry.path, FAILED, tries, last_error)
 
 
-def _download_attempt(url, part, entry, token, timeout, opener):
+def _download_attempt(url, part, entry, token, timeout, opener, stop=None):
     """One attempt to complete <part>; raises _RetryableError or
     _PermanentError on failure, returns normally once the .part is
     complete and its md5 matches.
@@ -162,6 +181,9 @@ def _download_attempt(url, part, entry, token, timeout, opener):
                 with open(part, mode) as out:
                     for block in iter(lambda: response.read(CHUNK), b""):
                         out.write(block)
+                        # Ctrl-C: stop here, keeping what's written so far
+                        if stop is not None and stop.is_set():
+                            raise _Stopped()
             except (http.client.IncompleteRead, socket.timeout, OSError) as error:
                 raise _RetryableError(f"connection lost downloading {url}: {error}")
 
