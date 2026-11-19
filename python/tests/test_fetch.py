@@ -222,6 +222,50 @@ def _once(func):
     return wrapper
 
 
+def test_fetch_writes_progress_log_and_final_summary(setup):
+    import io
+
+    # Hold each request a moment so the run lasts several reporter ticks
+    setup.server.delay = 0.05
+    setup.server.set_fault(setup.entries[2].path, status=404)
+    out = io.StringIO()
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    summary = fetch(
+        setup.entries, setup.server.url, setup.root,
+        (setup.server.username, setup.server.password),
+        jobs=2, tries=1, sleep=lambda s: None, opener=opener,
+        progress_stream=out, live=True, tick_seconds=0.05, log_interval=0,
+    )
+    assert summary.exit_code == EXIT_FAILURES
+
+    log = (setup.root / "fetch_progress.log").read_text().splitlines()
+    progress_lines = [l for l in log if " files (" in l]
+    assert len(progress_lines) >= 3  # several ticks during the run, plus the final one
+    assert progress_lines[-1].split(" ", 2)[2].startswith(f"{N_FILES - 1:,}/{N_FILES:,} files")
+    assert log[-1].endswith(f"finished: {N_FILES - 1} downloaded, 0 skipped, 1 failed")
+
+    snap = json.loads((setup.root / ".emu_fetch_progress.json").read_text())
+    assert snap["state"] == "finished"
+    assert snap["files_done"] == N_FILES - 1 and snap["failed"] == 1
+    assert snap["bytes_done"] == sum(e.size for e in setup.entries) - setup.entries[2].size
+
+    # Live output redraws one line with \r and ends with a newline
+    text = out.getvalue()
+    assert text.count("\r") >= 3 and text.endswith("\n")
+
+
+def test_interrupted_fetch_records_interrupted_state(setup):
+    stop = threading.Event()
+    stop.set()
+    summary = setup.run(stop=stop)
+    assert summary.interrupted
+    snap = json.loads((setup.root / ".emu_fetch_progress.json").read_text())
+    assert snap["state"] == "interrupted"
+    assert (setup.root / "fetch_progress.log").read_text().splitlines()[-1].split(" ", 2)[2].startswith(
+        "interrupted:"
+    )
+
+
 def test_lock_prevents_a_second_concurrent_fetch(setup):
     (setup.root / ".emu_fetch.lock").write_text(
         json.dumps({"pid": os.getpid(), "host": __import__("socket").gethostname()})

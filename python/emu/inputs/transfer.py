@@ -82,7 +82,7 @@ def md5_file(path, chunk=CHUNK):
 
 
 def transfer_file(entry, url, root, state, verified, auth, tries=5,
-                  timeout=60, sleep=None, opener=None, stop=None):
+                  timeout=60, sleep=None, opener=None, stop=None, progress=None):
     """Make <root>/<entry.path> a verified copy of the remote file.
 
     entry:    InventoryEntry (path, size, md5)
@@ -95,6 +95,8 @@ def transfer_file(entry, url, root, state, verified, auth, tries=5,
               wait on `stop`, so Ctrl-C cuts a backoff short)
     opener:   urllib opener (default: urllib's normal one)
     stop:     threading.Event; once set, the transfer ends as INTERRUPTED
+    progress: optional progress.Progress, told about bytes received,
+              the .part's size and retry waits (see that module)
     """
     if stop is not None and stop.is_set():
         return TransferResult(entry.path, INTERRUPTED)
@@ -126,7 +128,7 @@ def transfer_file(entry, url, root, state, verified, auth, tries=5,
     last_error = None
     for attempt in range(1, tries + 1):
         try:
-            _download_attempt(url, part, entry, token, timeout, opener, stop)
+            _download_attempt(url, part, entry, token, timeout, opener, stop, progress)
         except _Stopped:
             return TransferResult(entry.path, INTERRUPTED, attempt)
         except _PermanentError as error:
@@ -134,7 +136,11 @@ def transfer_file(entry, url, root, state, verified, auth, tries=5,
         except _RetryableError as error:
             last_error = str(error)
             if attempt < tries:
+                if progress is not None:
+                    progress.retry_wait(entry.path, True)
                 sleep(backoff_seconds(attempt))
+                if progress is not None:
+                    progress.retry_wait(entry.path, False)
                 if stop is not None and stop.is_set():
                     return TransferResult(entry.path, INTERRUPTED, attempt, last_error)
             continue
@@ -145,7 +151,8 @@ def transfer_file(entry, url, root, state, verified, auth, tries=5,
     return TransferResult(entry.path, FAILED, tries, last_error)
 
 
-def _download_attempt(url, part, entry, token, timeout, opener, stop=None):
+def _download_attempt(url, part, entry, token, timeout, opener, stop=None,
+                      progress=None):
     """One attempt to complete <part>; raises _RetryableError or
     _PermanentError on failure, returns normally once the .part is
     complete and its md5 matches.
@@ -154,6 +161,8 @@ def _download_attempt(url, part, entry, token, timeout, opener, stop=None):
     if offset > entry.size:
         os.remove(part)  # longer than the file can be: start over
         offset = 0
+    if progress is not None:
+        progress.part_size(entry.path, offset)
 
     if offset < entry.size:
         request = urllib.request.Request(url)
@@ -168,7 +177,7 @@ def _download_attempt(url, part, entry, token, timeout, opener, stop=None):
                 raise _PermanentError(f"HTTP {error.code} {error.reason} for {url}")
             if error.code == 416:
                 # Range past the end: our .part must be wrong; restart
-                os.remove(part)
+                _discard_part(part, entry, progress)
                 raise _RetryableError(f"HTTP 416 for {url}; restarting from zero")
             raise _RetryableError(f"HTTP {error.code} {error.reason} for {url}")
         except (urllib.error.URLError, OSError) as error:
@@ -177,10 +186,15 @@ def _download_attempt(url, part, entry, token, timeout, opener, stop=None):
         with response:
             # 206 continues the .part; 200 is the whole file from byte 0
             mode = "ab" if response.status == 206 and offset else "wb"
+            written = offset if mode == "ab" else 0
             try:
                 with open(part, mode) as out:
                     for block in iter(lambda: response.read(CHUNK), b""):
                         out.write(block)
+                        written += len(block)
+                        if progress is not None:
+                            progress.transferred(len(block))
+                            progress.part_size(entry.path, written)
                         # Ctrl-C: stop here, keeping what's written so far
                         if stop is not None and stop.is_set():
                             raise _Stopped()
@@ -192,12 +206,19 @@ def _download_attempt(url, part, entry, token, timeout, opener, stop=None):
     size = os.path.getsize(part)
     if size != entry.size:
         if size > entry.size:
-            os.remove(part)
+            _discard_part(part, entry, progress)
         raise _RetryableError(f"size {size} != expected {entry.size} for {url}")
     actual = md5_file(part)
     if actual != entry.md5:
-        os.remove(part)
+        _discard_part(part, entry, progress)
         raise _RetryableError(f"md5 {actual} != expected {entry.md5} for {url}")
+
+
+def _discard_part(part, entry, progress):
+    """Delete a bad .part and stop counting its bytes as done."""
+    os.remove(part)
+    if progress is not None:
+        progress.part_size(entry.path, 0)
 
 
 def _size_or_none(path):
