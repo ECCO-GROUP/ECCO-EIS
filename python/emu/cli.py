@@ -1,7 +1,7 @@
 """Command-line entry point for the emu package (`emu` console script).
 
     emu inputs fetch --dir DIR (--tools samp,trc | --all) [options]
-    emu inputs status --dir DIR        (not implemented yet)
+    emu inputs status --dir DIR [--tools ...]   (reports progress; changes nothing)
 
 Exit codes: 0 everything in place; 1 some files failed or weren't
 attempted (listed, and written to DIR/fetch_failures.txt); 2 usage,
@@ -20,6 +20,7 @@ from emu import __version__
 from emu.inputs.fetch import EXIT_FAILURES, EXIT_OK, FAILURES_FILE, fetch
 from emu.inputs.manifest import UnknownToolError, parse_inventory, select_entries, to_url
 from emu.inputs.state import LockHeldError
+from emu.inputs.status import collect_status, format_status
 from emu.releases import ReleaseNotFoundError, load_release
 
 EXIT_USAGE = 2
@@ -92,10 +93,14 @@ def build_parser(guided=False):
     fetch_p.add_argument("--password",
                          help=f"ECCO Drive WebDAV password (else ${ENV_PASSWORD}, else prompt)")
 
-    # `emu inputs status` (Task 10)
-    status_p = inputs_sub.add_parser("status", help="show download progress for a directory")
+    # `emu inputs status`
+    status_p = inputs_sub.add_parser(
+        "status", help="show download progress for a directory (changes nothing)")
     status_p.add_argument("--dir", required=True, help="EMU input directory")
-    status_p.add_argument("--release", default="v4r4-llc90-flux")
+    status_p.add_argument("--tools", type=_tool_list, metavar="TOOL[,TOOL...]",
+                          help="count only these tools' files (default: all files)")
+    status_p.add_argument("--release", default="v4r4-llc90-flux",
+                          help="ECCO release (default: %(default)s)")
 
     parser._inputs_parser = inputs
     return parser
@@ -210,6 +215,33 @@ def check_credentials(release, auth, opener):
         return f"Cannot reach {release.base_url}: {error}"
 
 
+def run_status(args):
+    """`emu inputs status`: print progress for --dir; returns the exit code."""
+    root = os.path.abspath(args.dir)
+    if not os.path.isdir(root):
+        print(f"emu: {root} does not exist or is not a directory", file=sys.stderr)
+        return EXIT_USAGE
+    try:
+        release = load_release(args.release)
+    except ReleaseNotFoundError as error:
+        print(f"emu: {error}", file=sys.stderr)
+        return EXIT_USAGE
+    inventory = Path(release.inventory_path)
+    if not inventory.is_absolute():
+        inventory = REPO_ROOT / inventory
+    entries = parse_inventory(inventory)
+    try:
+        selected = select_entries(entries, release, tools=args.tools, select_all=not args.tools)
+    except UnknownToolError as error:
+        print(f"emu: {error}", file=sys.stderr)
+        return EXIT_USAGE
+    description = (f"tools {', '.join(args.tools)} of release {release.name}" if args.tools
+                   else f"all files of release {release.name}")
+    print(f"{root}")
+    print(format_status(collect_status(selected, root), description))
+    return EXIT_OK
+
+
 def run_fetch(args):
     """`emu inputs fetch`: returns the exit code."""
     # Release and file selection come first, so usage errors cost nothing
@@ -301,8 +333,7 @@ def main(argv=None):
             print("\nemu: interrupted", file=sys.stderr)
             return EXIT_FAILURES
     if args.inputs_command == "status":
-        print("emu: `emu inputs status` is not implemented yet", file=sys.stderr)
-        return EXIT_USAGE
+        return run_status(args)
     parser._inputs_parser.print_help()
     return EXIT_OK
 

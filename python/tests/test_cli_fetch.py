@@ -235,7 +235,12 @@ def test_second_fetch_in_same_dir_exits_2(remote, tmp_path, capsys):
     assert [r.path for r in remote.requests] == [""]
 
 
-def test_status_is_a_stub_for_now(tmp_path, capsys):
-    code = cli.main(["inputs", "status", "--dir", str(tmp_path)])
-    assert code == 2
-    assert "not implemented" in capsys.readouterr().err.lower()
+def test_status_after_a_fetch(remote, tmp_path, capsys):
+    root = tmp_path / "inputs"
+    assert cli.main(["inputs", "fetch", "--dir", str(root), "--all"] + _creds(remote)) == 0
+    capsys.readouterr()
+    remote.requests.clear()
+    assert cli.main(["inputs", "status", "--dir", str(root)]) == 0
+    out = capsys.readouterr().out
+    assert "3/3 files (100%) in place" in out and "Last fetch finished" in out
+    assert remote.requests == []  # status never contacts the server
