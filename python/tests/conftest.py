@@ -169,6 +169,9 @@ def _make_handler(server):
 
             body = content[start:]
             status = 206 if honor_range else 200
+            # Log before replying, so a client that reads the reply and
+            # returns at once never sees a log missing this request
+            server._record(rel_path, range_header, status)
             self.send_response(status)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Accept-Ranges", "bytes")
@@ -177,7 +180,6 @@ def _make_handler(server):
                                  f"bytes {start}-{len(content) - 1}/{len(content)}")
             self.send_header("Connection", "close")
             self.end_headers()
-            server._record(rel_path, range_header, status)
 
             # Drop the connection partway through if asked to
             if fault is not None and fault.drop_after is not None:
@@ -196,6 +198,7 @@ def _make_handler(server):
 
         def _send_error(self, rel_path, range_header, code, extra_headers=None):
             body = f"{code}\n".encode()
+            server._record(rel_path, range_header, code)  # before replying
             self.send_response(code)
             for name, value in (extra_headers or {}).items():
                 self.send_header(name, value)
@@ -203,7 +206,6 @@ def _make_handler(server):
             self.send_header("Connection", "close")
             self.end_headers()
             self.wfile.write(body)
-            server._record(rel_path, range_header, code)
 
     return Handler
 
