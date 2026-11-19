@@ -52,8 +52,14 @@ def _tool_list(text):
     return [t.strip() for t in text.split(",") if t.strip()]
 
 
-def build_parser():
-    # Top level: `emu inputs fetch|status`
+def _interactive():
+    """Whether someone is at a terminal to answer questions."""
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def build_parser(guided=False):
+    # Top level: `emu inputs fetch|status`. With guided=True (a terminal),
+    # --dir and --tools/--all may be left out and are asked for instead.
     parser = argparse.ArgumentParser(prog="emu", description="EMU orchestration tool")
     parser.add_argument("--version", action="version", version=f"emu {__version__}")
     subparsers = parser.add_subparsers(dest="command")
@@ -63,10 +69,12 @@ def build_parser():
 
     # `emu inputs fetch`
     fetch_p = inputs_sub.add_parser(
-        "fetch", help="download EMU input files, resuming and verifying md5s")
-    fetch_p.add_argument("--dir", required=True,
+        "fetch", help="download EMU input files, resuming and verifying md5s",
+        description="Download EMU input files. Run in a terminal without --dir or "
+                    "--tools/--all to be asked for them.")
+    fetch_p.add_argument("--dir", required=not guided,
                          help="EMU input directory (emu_input_dir); created if missing")
-    which = fetch_p.add_mutually_exclusive_group(required=True)
+    which = fetch_p.add_mutually_exclusive_group(required=not guided)
     which.add_argument("--tools", type=_tool_list, metavar="TOOL[,TOOL...]",
                        help="fetch only the files these EMU tools need, e.g. samp,trc")
     which.add_argument("--all", action="store_true", help="fetch every input file")
@@ -108,6 +116,79 @@ def get_credentials(args):
     return user, password
 
 
+TOOL_MENU = [
+    ("samp", "Sampling"),
+    ("fgrd", "Forward Gradient"),
+    ("adj", "Adjoint"),
+    ("conv", "Convolution"),
+    ("trc", "Tracer"),
+    ("budg", "Budget"),
+    ("msim", "Modified Simulation"),
+    ("atrb", "Attribution"),
+]
+
+
+def ask_directory(default):
+    """Ask for the input directory until the answer is usable."""
+    while True:
+        answer = input(f"Directory for EMU input files (emu_input_dir)?\n"
+                       f"  [default: {default}] > ").strip()
+        path = os.path.abspath(os.path.expanduser(answer or default))
+        if os.path.exists(path) and not os.path.isdir(path):
+            print(f"  {path} exists and is not a directory.")
+            continue
+        return path
+
+
+def ask_tools(entries, release):
+    """Show each tool's extra download size and ask which to fetch.
+
+    Returns (tools, select_all): a list of tool names in menu order, or
+    (None, True) for all tools.
+    """
+    menu = [(name, label) for name, label in TOOL_MENU if name in release.tool_groups]
+    always = select_entries(entries, release, tools=[])
+    always_paths = {e.path for e in always}
+
+    # Each tool's size beyond the always-downloaded files
+    extra = {}
+    for name, _ in menu:
+        files = select_entries(entries, release, tools=[name])
+        extra[name] = sum(e.size for e in files if e.path not in always_paths)
+    total = sum(e.size for e in entries)
+
+    print(f"Which EMU tools will you use? Files each needs "
+          f"(always included: {sum(e.size for e in always) / 1e9:.1f} GB):")
+    for number, (name, label) in enumerate(menu, start=1):
+        print(f"  {number}) {name:<5} {label:<20} +{extra[name] / 1e9:,.1f} GB")
+    print(f"  0) all tools{'':<16} {total / 1e9:,.1f} GB")
+
+    while True:
+        answer = input("Enter numbers separated by commas (e.g. 1,6) > ").strip()
+        try:
+            numbers = {int(part) for part in answer.split(",") if part.strip()}
+        except ValueError:
+            numbers = set()
+        if numbers == {0}:
+            return None, True
+        if numbers and all(1 <= n <= len(menu) for n in numbers):
+            return [menu[n - 1][0] for n in sorted(numbers)], False
+        print(f"  Please enter one or more of 1-{len(menu)}, or 0 for all tools.")
+
+
+def built_command(args):
+    """The non-interactive command equivalent to the answers given."""
+    parts = ["emu", "inputs", "fetch", "--dir", args.dir]
+    parts += ["--all"] if args.all else ["--tools", ",".join(args.tools)]
+    defaults = build_parser(guided=True).parse_args(["inputs", "fetch"])
+    for option in ["release", "jobs", "tries", "log_interval"]:
+        if getattr(args, option) != getattr(defaults, option):
+            parts += [f"--{option.replace('_', '-')}", str(getattr(args, option))]
+    if args.no_postprocess:
+        parts.append("--no-postprocess")
+    return " ".join(parts)
+
+
 def check_credentials(release, auth, opener):
     """Request the release's base URL once, as `wget --spider` does in
     1.2a. Return None if the credentials work, else an error message.
@@ -141,13 +222,37 @@ def run_fetch(args):
     if not inventory.is_absolute():
         inventory = REPO_ROOT / inventory
     entries = parse_inventory(inventory)
+
+    # Guided mode: ask for whatever wasn't given on the command line
+    guided = args.dir is None or not (args.tools or args.all)
+    if guided:
+        print(f"\nEMU input download (release {release.name})\n")
+        if args.dir is None:
+            args.dir = ask_directory(os.path.join(os.getcwd(), "emu_input_dir"))
+            print()
+        if not (args.tools or args.all):
+            args.tools, args.all = ask_tools(entries, release)
+            print()
+
     try:
         selected = select_entries(entries, release, tools=args.tools, select_all=args.all)
     except UnknownToolError as error:
         print(f"emu: {error}", file=sys.stderr)
         return EXIT_USAGE
 
+    if guided:
+        names = "all tools" if args.all else ", ".join(args.tools)
+        print(f"Selected: {names} — {len(selected):,} files, "
+              f"{sum(e.size for e in selected) / 1e9:,.1f} GB")
+
     auth = get_credentials(args)
+
+    if guided:
+        print(f"\nThis is the same as running:\n  {built_command(args)}\n"
+              "(Use that command to rerun, or under nohup/screen.)\n")
+        if input("Start downloading now? [Y/n] > ").strip().lower() not in ("", "y", "yes"):
+            print("Not started.")
+            return EXIT_OK
     opener = urllib.request.build_opener()
     problem = check_credentials(release, auth, opener)
     if problem:
@@ -184,7 +289,7 @@ def run_fetch(args):
 
 def main(argv=None):
     # Parse args and dispatch to the subcommand
-    parser = build_parser()
+    parser = build_parser(guided=_interactive())
     args = parser.parse_args(argv)
     if args.command is None:
         parser.print_help()
