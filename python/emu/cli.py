@@ -10,7 +10,6 @@ credential, connection or lock errors.
 
 import argparse
 import base64
-import getpass
 import os
 import sys
 import urllib.error
@@ -97,14 +96,15 @@ def build_parser():
 def get_credentials(args):
     """Return (username, password): from --user/--password, else the
     EMU_EARTHDATA_USER/EMU_WEBDAV_PASSWORD environment variables, else
-    an interactive prompt (the password isn't echoed).
+    an interactive prompt. The WebDAV password is shown as it is typed
+    so the user can check it; it is a download-only password.
     """
     user = args.user or os.environ.get(ENV_USER)
     password = args.password or os.environ.get(ENV_PASSWORD)
     if not user:
-        user = input("Earthdata username: ")
+        user = input("Earthdata username: ").strip()
     if not password:
-        password = getpass.getpass("ECCO Drive WebDAV password (not your Earthdata password): ")
+        password = input("ECCO Drive WebDAV password (not your Earthdata password): ").strip()
     return user, password
 
 

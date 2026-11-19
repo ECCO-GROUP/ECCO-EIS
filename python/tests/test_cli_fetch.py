@@ -131,11 +131,13 @@ def test_credentials_from_env_when_no_options(monkeypatch):
 
 
 def test_credentials_prompted_when_missing(monkeypatch):
+    # Both are read with input(), so the WebDAV password is shown as it
+    # is typed and the user can check it (user decision, 2026-11-18)
     monkeypatch.delenv("EMU_EARTHDATA_USER", raising=False)
     monkeypatch.delenv("EMU_WEBDAV_PASSWORD", raising=False)
     prompts = []
-    monkeypatch.setattr("builtins.input", lambda prompt: prompts.append(prompt) or "promptuser")
-    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: prompts.append(prompt) or "promptpass")
+    answers = iter(["promptuser", "promptpass"])
+    monkeypatch.setattr("builtins.input", lambda prompt: prompts.append(prompt) or next(answers))
     args = cli.build_parser().parse_args(["inputs", "fetch", "--dir", "d", "--all"])
     assert cli.get_credentials(args) == ("promptuser", "promptpass")
     assert "Earthdata" in prompts[0] and "WebDAV" in prompts[1]
@@ -144,10 +146,22 @@ def test_credentials_prompted_when_missing(monkeypatch):
 def test_only_missing_parts_are_prompted(monkeypatch):
     monkeypatch.setenv("EMU_EARTHDATA_USER", "envuser")
     monkeypatch.delenv("EMU_WEBDAV_PASSWORD", raising=False)
-    monkeypatch.setattr("builtins.input", lambda prompt: pytest.fail("username was already set"))
-    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: "promptpass")
+    prompts = []
+    monkeypatch.setattr("builtins.input", lambda prompt: prompts.append(prompt) or "promptpass")
     args = cli.build_parser().parse_args(["inputs", "fetch", "--dir", "d", "--all"])
     assert cli.get_credentials(args) == ("envuser", "promptpass")
+    assert len(prompts) == 1 and "WebDAV" in prompts[0]
+
+
+def test_prompted_answers_are_stripped(monkeypatch):
+    # A stray space from copy-pasting would otherwise be sent as part of
+    # the password and make ECCO Drive reject it
+    monkeypatch.delenv("EMU_EARTHDATA_USER", raising=False)
+    monkeypatch.delenv("EMU_WEBDAV_PASSWORD", raising=False)
+    answers = iter(["  promptuser ", " promptpass\t"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+    args = cli.build_parser().parse_args(["inputs", "fetch", "--dir", "d", "--all"])
+    assert cli.get_credentials(args) == ("promptuser", "promptpass")
 
 
 def test_bad_credentials_exit_2_naming_earthdata_and_webdav(remote, tmp_path, capsys):
