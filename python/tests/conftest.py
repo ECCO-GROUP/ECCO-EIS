@@ -180,6 +180,18 @@ def _make_handler(server):
                 return
 
             target = server.root / rel_path
+            if target.is_dir():
+                # A directory answers 200 with a small listing page, as
+                # ECCO Drive does; the credential check requests one
+                body = b"<html>directory listing</html>\n"
+                server._record(rel_path, range_header, 200)
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(body)
+                return
             if not target.is_file():
                 self._send_error(rel_path, range_header, 404)
                 return
