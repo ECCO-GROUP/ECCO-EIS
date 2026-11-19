@@ -134,17 +134,28 @@ def test_status_while_a_fetch_runs(drive_server, tmp_path):
     drive_server.delay = 0.2
     root = tmp_path / "in"
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    thread = threading.Thread(target=fetch, args=(entries, drive_server.url, root,
-                                                  (drive_server.username, drive_server.password)),
-                              kwargs={"jobs": 1, "opener": opener, "tick_seconds": 0.05, "live": False})
+    errors = []
+
+    def run():
+        # Keep any exception from the fetch thread so the test can report it
+        try:
+            fetch(entries, drive_server.url, root, (drive_server.username, drive_server.password),
+                  jobs=1, opener=opener, tick_seconds=0.05, live=False)
+        except Exception as e:  # pragma: no cover - only on failure
+            errors.append(e)
+
+    thread = threading.Thread(target=run)
     thread.start()
     seen_running = []
-    while thread.is_alive():
+    deadline = time.monotonic() + 30
+    while thread.is_alive() and time.monotonic() < deadline:
         if (root / ".emu_fetch_progress.json").exists():
             s = collect_status(entries, root)
             seen_running.append(s.running)
         time.sleep(0.05)
-    thread.join()
+    thread.join(timeout=10)
+    assert not thread.is_alive(), "fetch thread did not finish"
+    assert errors == []
     assert "running" in seen_running
     final = collect_status(entries, root)
     assert final.running is None and final.files_done == 8
