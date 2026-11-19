@@ -105,10 +105,12 @@ def select_entries(entries, release, tools=None, select_all=False):
 def to_url(path, release):
     """Map a selected file's local path to its full download URL.
 
-    The local path is matched against release.path_map by longest
-    matching prefix (so e.g. "forcing/other/flux-forced/input_init" is
-    preferred over "forcing/input_init" when both are prefixes of the
-    same path but only one actually is one). The part of the path after
+    The local path is matched against release.path_map by whole path
+    components (so "forcing/input_init" doesn't match a path under
+    "forcing/other/flux-forced/input_init"), and if two keys match
+    because one is nested inside the other, the longer key wins. (No
+    keys are nested in v4r4-llc90-flux, but a later release may have
+    them.) The part of the path after
     the matched prefix is appended to that prefix's remote directory and
     the whole thing is appended to base_url, with every path segment
     percent-encoded for use in a URL.

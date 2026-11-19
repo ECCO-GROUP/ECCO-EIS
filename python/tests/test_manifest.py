@@ -68,7 +68,15 @@ def test_parse_malformed_line_raises_with_line_number(tmp_path):
     bad.write_text("D|||.\nF|100|aaaa|./ok.data\nthis line has no pipes\n")
     with pytest.raises(InventoryError) as exc_info:
         parse_inventory(bad)
-    assert "3" in str(exc_info.value)
+    assert f"{bad}:3:" in str(exc_info.value)
+
+
+def test_parse_non_integer_size_raises_with_line_number(tmp_path):
+    bad = tmp_path / "bad.txt"
+    bad.write_text("F|100|aaaa|./ok.data\nF|big|bbbb|./bad.data\n")
+    with pytest.raises(InventoryError) as exc_info:
+        parse_inventory(bad)
+    assert f"{bad}:2:" in str(exc_info.value)
 
 
 def test_parse_real_inventory_file_count():
@@ -110,6 +118,54 @@ def test_select_tool_trc_adds_state_weekly_and_scripts(release):
     assert "emu_ref/XC.data" in selected  # trc also needs emu_ref
 
 
+ALWAYS = {
+    "forcing/input_init/tile003.mitgrid",
+    "forcing/other/flux-forced/input_init/weights_ones.data",
+    "forcing/other/flux-forced/forcing_weekly/tauu_weekly_v1.0000000168.data",
+    "forcing/other/flux-forced/mask/arctic.msk",
+    "forcing/other/flux-forced/xx/xx_tauu.0000000129.data",
+}
+EMU_REF = {"emu_ref/XC.data", "emu_ref/YC.data"}
+STATE_WEEKLY = {"forcing/other/flux-forced/state_weekly/Convtave.0000000168.data"}
+SCRIPTS = {"scripts/reverseintime_all.sh"}
+MSIM = {"emu_msim/mean_ALL/diags/weird file & name#1.data"}
+
+
+@pytest.mark.parametrize(
+    "tool,expected",
+    [
+        ("samp", ALWAYS | EMU_REF),
+        ("budg", ALWAYS | EMU_REF),
+        ("conv", ALWAYS | EMU_REF),
+        # The fixture has no forcing/ files, so fgrd/adj/msim select only
+        # what they share with the groups the fixture does contain.
+        ("fgrd", ALWAYS | EMU_REF),
+        ("adj", ALWAYS | EMU_REF),
+        ("msim", ALWAYS),
+        ("trc", ALWAYS | EMU_REF | STATE_WEEKLY | SCRIPTS),
+        ("atrb", ALWAYS | EMU_REF | MSIM),
+    ],
+)
+def test_select_each_tool_gets_exactly_its_files(release, tool, expected):
+    entries = parse_inventory(SMALL_INVENTORY)
+    selected = {e.path for e in select_entries(entries, release, tools=[tool])}
+    assert selected == expected
+
+
+def test_select_forcing_tools_get_6hourly_forcing_on_real_inventory(release):
+    # The fixture has no forcing/other/flux-forced/forcing/ files; check
+    # on the real inventory that fgrd, adj and msim pick them up and the
+    # other tools don't.
+    entries = parse_inventory(REAL_INVENTORY)
+    prefix = "forcing/other/flux-forced/forcing/"
+    for tool in ["fgrd", "adj", "msim"]:
+        selected = select_entries(entries, release, tools=[tool])
+        assert any(e.path.startswith(prefix) for e in selected), tool
+    for tool in ["samp", "budg", "conv", "trc", "atrb"]:
+        selected = select_entries(entries, release, tools=[tool])
+        assert not any(e.path.startswith(prefix) for e in selected), tool
+
+
 def test_select_all_returns_every_entry(release):
     entries = parse_inventory(SMALL_INVENTORY)
     selected = select_entries(entries, release, select_all=True)
@@ -135,10 +191,11 @@ def test_to_url_short_input_init_prefix(release):
     )
 
 
-def test_to_url_long_input_init_prefix_not_confused_with_short_one(release):
-    # forcing/other/flux-forced/input_init and forcing/input_init share a
-    # suffix but are different path_map rows; each must resolve to its
-    # own remote directory, not the other's.
+def test_to_url_similar_input_init_keys_map_to_their_own_remotes(release):
+    # forcing/other/flux-forced/input_init and forcing/input_init end in
+    # the same directory name but are separate path_map rows (neither is
+    # a prefix of the other); each must resolve to its own remote
+    # directory, not the other's.
     url = to_url(
         "forcing/other/flux-forced/input_init/weights_ones.data", release
     )

@@ -116,6 +116,82 @@ def test_lock_as_context_manager_releases_on_exit(tmp_path):
     assert not lock_path.exists()
 
 
+def test_lock_held_by_another_host_is_refused_not_taken_over(tmp_path):
+    # The input directory is on shared NFS; a PID from another host can't
+    # be checked from here, so the lock must be refused (that fetch may
+    # still be running), and left untouched.
+    lock_path = tmp_path / ".emu_fetch.lock"
+    other = {"pid": 12345, "host": "some-other-host.example"}
+    lock_path.write_text(json.dumps(other))
+
+    with pytest.raises(LockHeldError) as exc_info:
+        FetchLock(lock_path).acquire()
+    message = str(exc_info.value)
+    assert "some-other-host.example" in message
+    assert str(lock_path) in message  # tells the user which file to remove
+    assert json.loads(lock_path.read_text()) == other
+
+
+def test_empty_or_corrupt_lock_file_is_reported_not_crashed_on(tmp_path):
+    # A crash between creating and writing the lock leaves an empty file.
+    # It can't be told apart from a lock being written right now, so it is
+    # refused with a clear message, not a raw JSONDecodeError.
+    lock_path = tmp_path / ".emu_fetch.lock"
+    for content in ["", "not json", "[1, 2]"]:
+        lock_path.write_text(content)
+        with pytest.raises(LockHeldError) as exc_info:
+            FetchLock(lock_path).acquire()
+        assert str(lock_path) in str(exc_info.value)
+
+
+def test_simultaneous_acquires_let_exactly_one_win(tmp_path):
+    # Many threads racing to acquire the same lock: creation must be a
+    # single atomic step, so exactly one succeeds and the rest are refused.
+    lock_path = tmp_path / ".emu_fetch.lock"
+    results = []
+    barrier = threading.Barrier(20)
+
+    def try_acquire():
+        lock = FetchLock(lock_path)
+        barrier.wait()
+        try:
+            lock.acquire()
+            results.append("won")
+        except LockHeldError:
+            results.append("refused")
+
+    threads = [threading.Thread(target=try_acquire) for _ in range(20)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert results.count("won") == 1
+    assert results.count("refused") == 19
+
+
+def test_release_does_not_remove_a_lock_now_owned_by_someone_else(tmp_path):
+    # If another process took the lock over after we acquired it, our
+    # release must leave their lock file alone.
+    lock_path = tmp_path / ".emu_fetch.lock"
+    lock = FetchLock(lock_path)
+    lock.acquire()
+    takeover = {"pid": 12345, "host": "some-other-host.example"}
+    lock_path.write_text(json.dumps(takeover))
+
+    lock.release()
+    assert json.loads(lock_path.read_text()) == takeover
+
+
+def test_valid_json_record_missing_a_field_is_skipped(tmp_path):
+    state_path = tmp_path / ".emu_fetch_state"
+    state_path.write_text(
+        '{"path": "a.data", "size": 1, "md5": "x", "verified": "t"}\n'
+        '{"path": "b.data"}\n'
+        '["not", "a", "record"]\n'
+    )
+    assert FetchState(state_path).load_verified().keys() == {"a.data"}
+
+
 def _hostname():
     import socket
 
