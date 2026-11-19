@@ -1,0 +1,235 @@
+"""Shared pytest fixtures for the emu package tests.
+
+`drive_server` is a fake ECCO Drive: a local HTTP server, run in a
+background thread, that serves files from a temporary directory with
+HTTP Basic auth and byte-range (resume) support, plus per-file fault
+switches that reproduce network and server failures on demand. Download
+tests use it so they never touch the real ecco.jpl.nasa.gov server.
+"""
+
+import base64
+import http.server
+import socketserver
+import threading
+from urllib.parse import quote, unquote, urlsplit
+
+import pytest
+
+
+class RequestRecord:
+    """One request the fake server received, for tests to inspect."""
+
+    def __init__(self, path, range_header, status):
+        self.path = path
+        self.range_header = range_header
+        self.status = status
+
+
+class Fault:
+    """Fault settings for one served file.
+
+    drop_after:   close the connection after sending this many body bytes
+    wrong_bytes:  send corrupted bytes of the correct length
+    status:       reply with this HTTP error code instead of the file
+    ignore_range: ignore Range headers and always send the whole file (200)
+    times:        apply the fault to this many requests, then serve
+                  normally (None = every request)
+    """
+
+    def __init__(self, drop_after=None, wrong_bytes=False, status=None,
+                 ignore_range=False, times=None):
+        self.drop_after = drop_after
+        self.wrong_bytes = wrong_bytes
+        self.status = status
+        self.ignore_range = ignore_range
+        self.remaining = times
+
+
+class FakeDriveServer:
+    """Handle returned by the drive_server fixture."""
+
+    def __init__(self, root, username="testuser", password="testpass"):
+        self.root = root
+        self.username = username
+        self.password = password
+        self._expected_password = password
+        self._faults = {}
+        self._lock = threading.Lock()
+        self.requests = []
+        self._httpd = None
+        self._thread = None
+
+    def add_file(self, rel_path, content):
+        """Create a file to serve at rel_path (relative to the base URL)."""
+        target = self.root / rel_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        return target
+
+    def set_fault(self, rel_path, **settings):
+        """Apply a Fault (see its fields) to one served file."""
+        with self._lock:
+            self._faults[rel_path] = Fault(**settings)
+
+    def clear_faults(self):
+        with self._lock:
+            self._faults.clear()
+
+    @property
+    def base_url(self):
+        host, port = self._httpd.server_address[:2]
+        return f"http://{host}:{port}"
+
+    def url(self, rel_path):
+        """Full URL for a served file, with path segments percent-encoded."""
+        return self.base_url + "/" + "/".join(quote(s) for s in rel_path.split("/"))
+
+    def start(self):
+        # Bind to an OS-chosen free port on loopback, serve in a daemon thread
+        handler = _make_handler(self)
+        self._httpd = _ThreadingServer(("127.0.0.1", 0), handler)
+        # A short poll interval makes shutdown() return quickly (default 0.5 s)
+        self._thread = threading.Thread(
+            target=self._httpd.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True
+        )
+        self._thread.start()
+
+    def stop(self):
+        self._httpd.shutdown()
+        self._httpd.server_close()
+        self._thread.join(timeout=5)
+
+    def _take_fault(self, rel_path):
+        """Return the active Fault for rel_path, using up one of its
+        `times`; None once it has run out or if there is none.
+        """
+        with self._lock:
+            fault = self._faults.get(rel_path)
+            if fault is None:
+                return None
+            if fault.remaining is not None:
+                if fault.remaining <= 0:
+                    return None
+                fault.remaining -= 1
+            return fault
+
+    def _record(self, rel_path, range_header, status):
+        with self._lock:
+            self.requests.append(RequestRecord(rel_path, range_header, status))
+
+
+class _ThreadingServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
+def _make_handler(server):
+    """Build a request handler class bound to one FakeDriveServer."""
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, format, *args):
+            pass  # keep test output quiet
+
+        def do_GET(self):
+            rel_path = unquote(urlsplit(self.path).path).lstrip("/")
+            range_header = self.headers.get("Range")
+
+            # Credentials are checked against the password the server
+            # was created with; tests change `server.password` to make
+            # the client send a wrong one.
+            if not self._authorized():
+                self._send_error(rel_path, range_header, 401,
+                                 {"WWW-Authenticate": 'Basic realm="ECCO Drive"'})
+                return
+
+            fault = server._take_fault(rel_path)
+            if fault is not None and fault.status is not None:
+                self._send_error(rel_path, range_header, fault.status)
+                return
+
+            target = server.root / rel_path
+            if not target.is_file():
+                self._send_error(rel_path, range_header, 404)
+                return
+            content = target.read_bytes()
+            if fault is not None and fault.wrong_bytes:
+                content = _corrupt(content)
+
+            # Byte-range resume: honor "bytes=N-" unless told to ignore it
+            start = 0
+            honor_range = range_header is not None and not (fault and fault.ignore_range)
+            if honor_range:
+                start = _parse_range_start(range_header)
+                if start is None or start >= len(content):
+                    self._send_error(rel_path, range_header, 416,
+                                     {"Content-Range": f"bytes */{len(content)}"})
+                    return
+
+            body = content[start:]
+            status = 206 if honor_range else 200
+            self.send_response(status)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Accept-Ranges", "bytes")
+            if honor_range:
+                self.send_header("Content-Range",
+                                 f"bytes {start}-{len(content) - 1}/{len(content)}")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            server._record(rel_path, range_header, status)
+
+            # Drop the connection partway through if asked to
+            if fault is not None and fault.drop_after is not None:
+                self.wfile.write(body[:fault.drop_after])
+                self.wfile.flush()
+                self.close_connection = True
+                self.connection.shutdown(2)
+                return
+            self.wfile.write(body)
+
+        def _authorized(self):
+            expected = base64.b64encode(
+                f"{server.username}:{server._expected_password}".encode()
+            ).decode()
+            return self.headers.get("Authorization") == f"Basic {expected}"
+
+        def _send_error(self, rel_path, range_header, code, extra_headers=None):
+            body = f"{code}\n".encode()
+            self.send_response(code)
+            for name, value in (extra_headers or {}).items():
+                self.send_header(name, value)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(body)
+            server._record(rel_path, range_header, code)
+
+    return Handler
+
+
+def _parse_range_start(header):
+    """Return N from a "bytes=N-" Range header, or None if unsupported."""
+    if not header.startswith("bytes=") or not header.endswith("-"):
+        return None
+    try:
+        return int(header[len("bytes="):-1])
+    except ValueError:
+        return None
+
+
+def _corrupt(content):
+    """Return bytes of the same length as `content`, every byte changed."""
+    # Flipping all bits of each byte guarantees every byte differs
+    return bytes(b ^ 0xFF for b in content)
+
+
+@pytest.fixture
+def drive_server(tmp_path):
+    """A running fake ECCO Drive serving files from a temporary directory."""
+    root = tmp_path / "drive"
+    root.mkdir()
+    server = FakeDriveServer(root)
+    server.start()
+    yield server
+    server.stop()
