@@ -181,32 +181,50 @@ def format_hm(seconds, round_up=False):
     return f"{minutes // 60}:{minutes % 60:02d}"
 
 
+def is_foreground(stream):
+    """Whether `stream` is a terminal and this process is in its
+    foreground job (False after Ctrl-Z and `bg`, or with no terminal).
+    """
+    try:
+        fd = stream.fileno()
+        return os.isatty(fd) and os.tcgetpgrp(fd) == os.getpgrp()
+    except (AttributeError, OSError, ValueError):
+        return False
+
+
 class Reporter:
     """Writes the live line, the progress log and the snapshot.
 
     Call tick() about once a second; it redraws the live line (only if
-    `live`), appends to the log every `log_interval` seconds, and
-    rewrites the snapshot every `snapshot_interval` seconds. Call
-    close() once at the end for the final summary.
+    `live` and the job is in the terminal's foreground, so a job put in
+    the background with Ctrl-Z and `bg` doesn't write over the shell),
+    appends to the log every `log_interval` seconds, and rewrites the
+    snapshot every `snapshot_interval` seconds. Call close() once at the
+    end for the final summary.
     """
 
     def __init__(self, progress, root, stream, live, log_interval=60,
-                 snapshot_interval=5):
+                 snapshot_interval=5, foreground=None):
         self.progress = progress
         self.root = root
         self.stream = stream
         self.live = live
         self.log_interval = log_interval
         self.snapshot_interval = snapshot_interval
+        self._foreground = foreground or (lambda: is_foreground(stream))
         self._clock = progress._clock
         self._last_log = None
         self._last_snapshot = None
+
+    def _draw(self):
+        # Draw the live line only when it won't write over a shell prompt
+        return self.live and self._foreground()
 
     def tick(self):
         """Sample the rate and update whichever outputs are due."""
         now = self._clock()
         self.progress.sample()
-        if self.live:
+        if self._draw():
             # \r returns to the start of the line; trailing spaces cover
             # any leftover characters from a longer previous line
             self.stream.write("\r" + self.progress.line() + "   ")
@@ -222,7 +240,7 @@ class Reporter:
         """Write the final line, log entry and snapshot."""
         self.progress.sample()
         line = self.progress.line()
-        if self.live:
+        if self._draw():
             self.stream.write("\r" + line + "   \n")
             self.stream.flush()
         self._log(line)

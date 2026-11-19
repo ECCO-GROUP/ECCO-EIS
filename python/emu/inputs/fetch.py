@@ -62,7 +62,8 @@ class FetchSummary:
 
 def fetch(entries, url_for, root, auth, jobs=8, tries=5, timeout=60,
           sleep=None, opener=None, stop=None, on_result=None,
-          progress_stream=None, live=None, tick_seconds=1.0, log_interval=60):
+          progress_stream=None, live=None, tick_seconds=1.0, log_interval=60,
+          foreground=None):
     """Bring every entry under `root` up to date; return a FetchSummary.
 
     entries:         InventoryEntry list (from manifest.select_entries)
@@ -76,6 +77,8 @@ def fetch(entries, url_for, root, auth, jobs=8, tries=5, timeout=60,
     live:            draw the live line (default: if the stream is a tty)
     tick_seconds:    how often progress is updated
     log_interval:    seconds between fetch_progress.log lines
+    foreground:      function telling whether to draw the live line now
+                     (default: whether the job is in the terminal foreground)
 
     Raises state.LockHeldError if another fetch holds the directory.
     """
@@ -91,7 +94,8 @@ def fetch(entries, url_for, root, auth, jobs=8, tries=5, timeout=60,
         state = FetchState(os.path.join(root, STATE_FILE))
         verified = state.load_verified()
         progress = Progress(entries)
-        reporter = Reporter(progress, root, stream, live, log_interval=log_interval)
+        reporter = Reporter(progress, root, stream, live, log_interval=log_interval,
+                            foreground=foreground)
 
         # Work queue of entries; each worker takes the next until empty
         work = queue.Queue()

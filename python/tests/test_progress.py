@@ -203,8 +203,50 @@ def test_live_line_only_on_a_tty(tmp_path):
     assert out.getvalue() == ""
 
     out = io.StringIO()
-    Reporter(p, tmp_path, stream=out, live=True).tick()
+    Reporter(p, tmp_path, stream=out, live=True, foreground=lambda: True).tick()
     assert out.getvalue().startswith("\r0/1 files (0%)")
+
+
+def test_live_line_pauses_while_in_the_background(tmp_path):
+    # After Ctrl-Z and `bg`, the live line must not keep writing over the
+    # user's shell; the log and snapshot carry on regardless.
+    clock = Clock()
+    p = Progress(_entries(1, 100), clock=clock)
+    out = io.StringIO()
+    in_foreground = [True]
+    r = Reporter(p, tmp_path, stream=out, live=True, log_interval=0,
+                 foreground=lambda: in_foreground[0])
+
+    r.tick()
+    assert out.getvalue().count("\r") == 1
+
+    in_foreground[0] = False  # backgrounded
+    for _ in range(3):
+        clock.t += 1
+        r.tick()
+    assert out.getvalue().count("\r") == 1  # nothing more drawn
+    log_lines = (tmp_path / "fetch_progress.log").read_text().splitlines()
+    assert len(log_lines) == 4  # but the log kept going
+
+    in_foreground[0] = True  # `fg` again: the line comes back
+    clock.t += 1
+    r.tick()
+    assert out.getvalue().count("\r") == 2
+
+
+def test_final_line_is_not_drawn_in_the_background(tmp_path):
+    p = Progress(_entries(1, 100), clock=Clock())
+    out = io.StringIO()
+    r = Reporter(p, tmp_path, stream=out, live=True, foreground=lambda: False)
+    r.close("finished", "ok")
+    assert out.getvalue() == ""
+    assert (tmp_path / "fetch_progress.log").read_text().splitlines()[-1].endswith("finished: ok")
+
+
+def test_is_foreground_without_a_terminal_is_false():
+    from emu.inputs.progress import is_foreground
+
+    assert is_foreground(io.StringIO()) is False
 
 
 def test_log_lines_every_log_interval_and_a_final_summary(tmp_path):

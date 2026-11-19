@@ -234,7 +234,7 @@ def test_fetch_writes_progress_log_and_final_summary(setup):
         setup.entries, setup.server.url, setup.root,
         (setup.server.username, setup.server.password),
         jobs=2, tries=1, sleep=lambda s: None, opener=opener,
-        progress_stream=out, live=True, tick_seconds=0.05, log_interval=0,
+        progress_stream=out, live=True, foreground=lambda: True, tick_seconds=0.05, log_interval=0,
     )
     assert summary.exit_code == EXIT_FAILURES
 
