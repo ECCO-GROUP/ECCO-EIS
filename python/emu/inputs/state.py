@@ -38,14 +38,21 @@ class FetchState:
         """Append one verified-file record. Safe to call concurrently
         from multiple threads: each call is a single atomic append.
         """
-        record = {
+        self._append({
             "path": rel_path,
             "size": size,
             "md5": md5,
             "verified": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        }
-        line = (json.dumps(record) + "\n").encode("utf-8")
+        })
 
+    def forget(self, rel_path):
+        """Append a record cancelling any earlier verified record for
+        rel_path (e.g. when a re-check finds the file missing or wrong).
+        """
+        self._append({"path": rel_path, "forget": True})
+
+    def _append(self, record):
+        line = (json.dumps(record) + "\n").encode("utf-8")
         # O_APPEND keeps each short line intact between threads of this
         # process; cross-host safety on NFS comes from FetchLock instead.
         fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
@@ -71,6 +78,9 @@ class FetchState:
                 continue
             try:
                 record = json.loads(line)
+                if isinstance(record, dict) and record.get("forget"):
+                    verified.pop(record["path"], None)  # cancels earlier records
+                    continue
                 entry = {
                     "size": record["size"],
                     "md5": record["md5"],

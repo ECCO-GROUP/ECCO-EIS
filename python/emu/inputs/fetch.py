@@ -31,6 +31,7 @@ from emu.inputs.transfer import (
     INTERRUPTED,
     SKIPPED,
     VERIFIED_EXISTING,
+    md5_file,
     transfer_file,
 )
 
@@ -154,6 +155,113 @@ def fetch(entries, url_for, root, auth, jobs=8, tries=5, timeout=60,
                        _summary_text(summary))
 
     _write_failures(root, summary)
+    return summary
+
+
+VERIFY_FAILURES_FILE = "verify_failures.txt"
+
+# verify() outcomes per file
+OK, MISSING, WRONG_SIZE, WRONG_MD5 = "ok", "missing", "wrong size", "wrong md5"
+
+
+class VerifySummary:
+    """Totals for one verify run."""
+
+    def __init__(self):
+        self.ok = 0
+        self.missing = []
+        self.wrong_size = []
+        self.wrong_md5 = []
+        self.interrupted = False
+
+    @property
+    def problems(self):
+        return len(self.missing) + len(self.wrong_size) + len(self.wrong_md5)
+
+    @property
+    def exit_code(self):
+        return EXIT_FAILURES if self.problems or self.interrupted else EXIT_OK
+
+
+def check_file(entry, root):
+    """Check one file on disk against the inventory, following symlinks
+    without changing anything: return OK, MISSING, WRONG_SIZE or WRONG_MD5.
+    """
+    path = os.path.join(root, entry.path)
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return MISSING
+    if size != entry.size:
+        return WRONG_SIZE
+    return OK if md5_file(path) == entry.md5 else WRONG_MD5
+
+
+def verify(entries, root, jobs=4, stop=None, on_result=None):
+    """Re-check every entry's file in `root` against the inventory,
+    without network access and ignoring the state file; record good
+    files as verified and forget bad ones. Returns a VerifySummary and
+    writes problems to <root>/verify_failures.txt (removed if none).
+
+    on_result: called with (path, outcome) for each file checked.
+    Raises state.LockHeldError if a fetch holds the directory.
+    """
+    stop = stop or threading.Event()
+    summary = VerifySummary()
+    summary_lock = threading.Lock()
+
+    with FetchLock(os.path.join(root, LOCK_FILE)):
+        state = FetchState(os.path.join(root, STATE_FILE))
+        work = queue.Queue()
+        for entry in entries:
+            work.put(entry)
+
+        def worker():
+            # Check files until the queue is empty or Ctrl-C
+            while not stop.is_set():
+                try:
+                    entry = work.get_nowait()
+                except queue.Empty:
+                    return
+                outcome = check_file(entry, root)
+                if outcome == OK:
+                    state.record_verified(entry.path, entry.size, entry.md5)
+                else:
+                    state.forget(entry.path)
+                with summary_lock:
+                    if outcome == OK:
+                        summary.ok += 1
+                    else:
+                        {MISSING: summary.missing, WRONG_SIZE: summary.wrong_size,
+                         WRONG_MD5: summary.wrong_md5}[outcome].append(entry)
+                if on_result is not None:
+                    on_result(entry.path, outcome)
+
+        threads = [threading.Thread(target=worker, daemon=True)
+                   for _ in range(max(1, min(jobs, len(entries))))]
+        for t in threads:
+            t.start()
+        try:
+            for t in threads:
+                while t.is_alive():
+                    t.join(timeout=0.2)
+        except KeyboardInterrupt:
+            stop.set()
+            for t in threads:
+                t.join()
+        summary.interrupted = stop.is_set()
+
+    # Report problems by category, or remove an old report after a clean run
+    report = os.path.join(root, VERIFY_FAILURES_FILE)
+    rows = [(MISSING, e) for e in summary.missing] + \
+           [(WRONG_SIZE, e) for e in summary.wrong_size] + \
+           [(WRONG_MD5, e) for e in summary.wrong_md5]
+    if rows:
+        with open(report, "w") as f:
+            for category, e in sorted(rows, key=lambda r: (r[0], r[1].path)):
+                f.write(f"{category}\t{e.path}\n")
+    elif not summary.interrupted and os.path.exists(report):
+        os.remove(report)
     return summary
 
 

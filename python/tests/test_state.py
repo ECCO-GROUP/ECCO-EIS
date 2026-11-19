@@ -55,6 +55,19 @@ def test_later_entry_for_same_path_overrides_earlier_one(tmp_path):
     assert verified["x.data"]["md5"] == "new"
 
 
+def test_forget_removes_a_verified_record(tmp_path):
+    # The file stays append-only: forgetting appends a record that cancels
+    # earlier ones, and a later record_verified() restores the entry.
+    state_path = tmp_path / ".emu_fetch_state"
+    state = FetchState(state_path)
+    state.record_verified("x.data", size=1, md5="a")
+    state.record_verified("y.data", size=2, md5="b")
+    state.forget("x.data")
+    assert FetchState(state_path).load_verified().keys() == {"y.data"}
+    state.record_verified("x.data", size=1, md5="a")
+    assert FetchState(state_path).load_verified().keys() == {"x.data", "y.data"}
+
+
 def test_concurrent_appends_from_threads_do_not_interleave(tmp_path):
     # Many threads recording different files at once must each produce
     # one intact JSON line; no line may be a mangled mix of two entries.

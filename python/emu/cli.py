@@ -17,7 +17,8 @@ import urllib.request
 from pathlib import Path
 
 from emu import __version__
-from emu.inputs.fetch import EXIT_FAILURES, EXIT_OK, FAILURES_FILE, fetch
+from emu.inputs.fetch import (EXIT_FAILURES, EXIT_OK, FAILURES_FILE, VERIFY_FAILURES_FILE,
+                              fetch, verify)
 from emu.inputs.manifest import UnknownToolError, parse_inventory, select_entries, to_url
 from emu.inputs.state import LockHeldError
 from emu.inputs.status import collect_status, format_status
@@ -87,6 +88,9 @@ def build_parser(guided=False):
                          help="attempts per file (default: %(default)s)")
     fetch_p.add_argument("--log-interval", type=_non_negative_number, default=60,
                          help="seconds between fetch_progress.log lines (default: %(default)s)")
+    fetch_p.add_argument("--verify-only", action="store_true",
+                         help="only re-check md5s of files already on disk; no download, "
+                              "no network access, no credentials")
     fetch_p.add_argument("--no-postprocess", action="store_true",
                          help="skip building state_weekly_rev_time_227808 after a trc fetch")
     fetch_p.add_argument("--user", help=f"Earthdata username (else ${ENV_USER}, else prompt)")
@@ -189,6 +193,8 @@ def built_command(args):
     for option in ["release", "jobs", "tries", "log_interval"]:
         if getattr(args, option) != getattr(defaults, option):
             parts += [f"--{option.replace('_', '-')}", str(getattr(args, option))]
+    if args.verify_only:
+        parts.append("--verify-only")
     if args.no_postprocess:
         parts.append("--no-postprocess")
     return " ".join(parts)
@@ -242,6 +248,47 @@ def run_status(args):
     return EXIT_OK
 
 
+def run_verify(args, selected, guided):
+    """`emu inputs fetch --verify-only`: re-check md5s of the selected
+    files on disk, with no network access and no credentials.
+    """
+    root = os.path.abspath(args.dir)
+    if not os.path.isdir(root):
+        print(f"emu: {root} does not exist or is not a directory", file=sys.stderr)
+        return EXIT_USAGE
+    if guided:
+        print(f"\nThis is the same as running:\n  {built_command(args)}\n")
+        if input("Start checking now? [Y/n] > ").strip().lower() not in ("", "y", "yes"):
+            print("Not started.")
+            return EXIT_OK
+
+    total = sum(e.size for e in selected)
+    print(f"Checking {len(selected):,} files ({total / 1e9:,.1f} GB) in {root} "
+          "against the inventory md5s (no network access)")
+    try:
+        summary = verify(selected, root, jobs=args.jobs)
+    except LockHeldError as error:
+        print(f"emu: {error}", file=sys.stderr)
+        return EXIT_USAGE
+
+    print(f"{summary.ok:,} correct, {len(summary.missing):,} missing, "
+          f"{len(summary.wrong_size):,} wrong size, {len(summary.wrong_md5):,} wrong md5")
+    if summary.problems:
+        print(f"Problems (also in {os.path.join(root, VERIFY_FAILURES_FILE)}):")
+        for label, items in [("missing", summary.missing), ("wrong size", summary.wrong_size),
+                             ("wrong md5", summary.wrong_md5)]:
+            for e in sorted(items, key=lambda e: e.path)[:20]:
+                print(f"  {label}: {e.path}")
+            if len(items) > 20:
+                print(f"  ... and {len(items) - 20} more {label}")
+        print("Run `emu inputs fetch` without --verify-only to download or repair them.")
+    if summary.interrupted:
+        print("Interrupted; run the same command again to finish checking.")
+    if summary.exit_code == EXIT_OK:
+        print("All files correct.")
+    return summary.exit_code
+
+
 def run_fetch(args):
     """`emu inputs fetch`: returns the exit code."""
     # Release and file selection come first, so usage errors cost nothing
@@ -276,6 +323,9 @@ def run_fetch(args):
         names = "all tools" if args.all else ", ".join(args.tools)
         print(f"Selected: {names} — {len(selected):,} files, "
               f"{sum(e.size for e in selected) / 1e9:,.1f} GB")
+
+    if args.verify_only:
+        return run_verify(args, selected, guided)
 
     auth = get_credentials(args)
 
