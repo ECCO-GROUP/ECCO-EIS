@@ -1,0 +1,14 @@
+D|||.
+D|||./emu_ref
+F|100|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|./emu_ref/XC.data
+F|200|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb|./emu_ref/YC.data
+F|300|cccccccccccccccccccccccccccccccc|./forcing/input_init/tile003.mitgrid
+F|400|dddddddddddddddddddddddddddddddd|./forcing/other/flux-forced/input_init/weights_ones.data
+F|500|eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee|./forcing/other/flux-forced/forcing_weekly/tauu_weekly_v1.0000000168.data
+F|600|ffffffffffffffffffffffffffffffff|./forcing/other/flux-forced/mask/arctic.msk
+F|700|00000000000000000000000000000000|./forcing/other/flux-forced/xx/xx_tauu.0000000129.data
+F|800|11111111111111111111111111111111|./forcing/other/flux-forced/state_weekly/Convtave.0000000168.data
+F|24|b6216d61c03e6ce0c9aea6ca7808f7ca|./robots.txt
+F|24|b6216d61c03e6ce0c9aea6ca7808f7ca|./forcing/robots.txt
+F|900|22222222222222222222222222222222|./scripts/reverseintime_all.sh
+F|1000|33333333333333333333333333333333|./emu_msim/mean_ALL/diags/weird file & name#1.data
