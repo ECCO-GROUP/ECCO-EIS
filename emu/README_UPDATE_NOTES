@@ -5,6 +5,14 @@ Version 2.0 (11/18/2026)
       (fgrd_spec.x) now correctly reads the model grid from inside
       the container (/emu_input_dir) rather than from the host path,
 
+   b) Added an optional Python downloader for EMU input files,
+      "emu inputs fetch" (python/README.md; Python 3.9 or later, no
+      other packages). It can download only the files needed by
+      selected tools, checks every file against the md5 in the input
+      inventory, resumes interrupted downloads when rerun, retries
+      failed transfers, and reports progress ("emu inputs status").
+      The existing download in emu_setup.sh is unchanged,
+
 Version 1.2a (12/16/2025)
    a) For clarity, re-ordered "monthly/daily" prompt in Sampling
      (samp) and Attribution (atrb) Tools, 
