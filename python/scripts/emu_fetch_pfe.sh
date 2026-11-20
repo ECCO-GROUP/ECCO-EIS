@@ -6,8 +6,9 @@
 # with "ssh pfe wget".
 #
 # Usage: emu_fetch_pfe.sh LIMIT FETCH_ARGS...
-#   LIMIT       how long to fetch before stopping cleanly, e.g. 23h30m
-#               (keep it below the PBS walltime)
+#   LIMIT       how long to fetch before stopping cleanly: one number
+#               and an optional unit s, m, h or d, e.g. 1410m (23.5 h).
+#               Keep it below the PBS walltime.
 #   FETCH_ARGS  options for `emu inputs fetch`, e.g. --dir DIR --all
 #
 # Credentials come from ~/.emu_cred (readable only by you), which holds
@@ -18,6 +19,15 @@
 set -u
 limit=$1
 shift
+
+#=================================
+# Check LIMIT is a duration `timeout` accepts (it takes one number and
+# one unit; a combination like 23h30m is an error)
+if [[ ! $limit =~ ^[0-9]+(\.[0-9]+)?[smhd]?$ ]]; then
+    echo "emu_fetch_pfe.sh: invalid time limit '$limit'; give one number and" \
+         "unit, e.g. 1410m for 23.5 hours" 1>&2
+    exit 2
+fi
 
 #=================================
 # Put the user's own commands (pip install --user) on PATH; ssh with a

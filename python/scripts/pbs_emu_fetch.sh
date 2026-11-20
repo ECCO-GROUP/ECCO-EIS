@@ -23,7 +23,8 @@ umask 022
 emu_repo=/nobackup/$USER/ECCO-EIS                # ECCO-EIS checkout
 emu_input_dir=/nobackup/$USER/emu_input_dir      # where the inputs go
 fetch_args="--all"                               # or e.g. "--tools samp,budg"
-limit=23h30m                                     # below the walltime above
+limit=1410m                                      # below the walltime above (one number
+                                                 # and unit s/m/h/d: 1410m = 23.5 h)
 
 #=================================
 # Run the fetch on pfe and report how it ended
