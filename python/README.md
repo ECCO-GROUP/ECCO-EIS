@@ -197,6 +197,36 @@ progress with `emu inputs status --dir ...` or
 `tail -f /nobackup/$USER/emu_input_dir/fetch_progress.log`. If the front
 end reboots or the run is killed, start the same command again.
 
+### As a PBS job
+
+`python/scripts/pbs_emu_fetch.sh` runs the download as a batch job. As
+with 1.2a's `pbs_input_setup.sh`, the job itself does no downloading: it
+runs `python/scripts/emu_fetch_pfe.sh` on `pfe` over `ssh`, which
+fetches until done or until a time limit just below the walltime, then
+stops cleanly (as Ctrl-C does). If the download isn't finished, submit
+the job again; it carries on where it stopped.
+
+1. Install `emu` on pfe with `pip install --user -e ./python`
+   (`emu_fetch_pfe.sh` looks for it in `~/.local/bin`).
+2. Put the credentials in `~/.emu_cred`, readable only by you
+   (`emu_fetch_pfe.sh` refuses the file otherwise):
+
+       setenv EMU_EARTHDATA_USER <Earthdata username>
+       setenv EMU_WEBDAV_PASSWORD <ECCO Drive WebDAV password>
+
+   then `chmod 600 ~/.emu_cred`.
+3. Copy `pbs_emu_fetch.sh`, edit its settings (`emu_repo`,
+   `emu_input_dir`, `fetch_args`, `limit`) and the `#PBS` lines for your
+   group and queue, and submit it with `qsub pbs_emu_fetch.sh`.
+
+The job's output file shows how it ended (exit status 0: all files in
+place; 1: not finished, submit again; 2: setup problem). `pfe` stands for
+several front ends, so consecutive jobs may run on different ones. If a
+job is killed before it stops itself (e.g. by `qdel`), it can leave
+`.emu_fetch.lock` behind, and a fetch on a different front end then
+refuses to start. Once you are sure no fetch is running, delete
+`.emu_fetch.lock` in the input directory.
+
 ## Exit codes
 
 | Code | Meaning |
