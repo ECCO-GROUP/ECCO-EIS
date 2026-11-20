@@ -197,21 +197,31 @@ def check_file(entry, root):
     return OK if md5_file(path) == entry.md5 else WRONG_MD5
 
 
-def verify(entries, root, jobs=4, stop=None, on_result=None):
+def verify(entries, root, jobs=4, stop=None, on_result=None, progress_stream=None,
+           live=None, tick_seconds=1.0, log_interval=60, foreground=None):
     """Re-check every entry's file in `root` against the inventory,
     without network access and ignoring the state file; record good
     files as verified and forget bad ones. Returns a VerifySummary and
     writes problems to <root>/verify_failures.txt (removed if none).
 
     on_result: called with (path, outcome) for each file checked.
+    The progress options are as for fetch(); the live line, the log
+    and the snapshot (mode "verify") let `emu inputs status` show the
+    check's rate and ETA.
     Raises state.LockHeldError if a fetch holds the directory.
     """
     stop = stop or threading.Event()
     summary = VerifySummary()
     summary_lock = threading.Lock()
+    stream = progress_stream if progress_stream is not None else sys.stderr
+    if live is None:
+        live = hasattr(stream, "isatty") and stream.isatty()
 
     with FetchLock(os.path.join(root, LOCK_FILE)):
         state = FetchState(os.path.join(root, STATE_FILE))
+        progress = Progress(entries, mode="verify")
+        reporter = Reporter(progress, root, stream, live, log_interval=log_interval,
+                            foreground=foreground)
         work = queue.Queue()
         for entry in entries:
             work.put(entry)
@@ -224,6 +234,9 @@ def verify(entries, root, jobs=4, stop=None, on_result=None):
                 except queue.Empty:
                     return
                 outcome = check_file(entry, root)
+                # A file checked for md5 was read in full; others weren't
+                read = entry.size if outcome in (OK, WRONG_MD5) else 0
+                progress.checked(entry, outcome == OK, read)
                 if outcome == OK:
                     state.record_verified(entry.path, entry.size, entry.md5)
                 else:
@@ -237,8 +250,19 @@ def verify(entries, root, jobs=4, stop=None, on_result=None):
                 if on_result is not None:
                     on_result(entry.path, outcome)
 
+        # Reporter thread: updates the progress outputs every tick
+        workers_done = threading.Event()
+
+        def report():
+            while not workers_done.wait(tick_seconds):
+                reporter.tick()
+
         threads = [threading.Thread(target=worker, daemon=True)
                    for _ in range(max(1, min(jobs, len(entries))))]
+        reporter.start()
+        reporter.tick()
+        reporter_thread = threading.Thread(target=report, daemon=True)
+        reporter_thread.start()
         for t in threads:
             t.start()
         try:
@@ -249,7 +273,13 @@ def verify(entries, root, jobs=4, stop=None, on_result=None):
             stop.set()
             for t in threads:
                 t.join()
+        finally:
+            workers_done.set()
+            reporter_thread.join()
         summary.interrupted = stop.is_set()
+        reporter.close("interrupted" if summary.interrupted else "finished",
+                       f"{summary.ok} correct, {len(summary.missing)} missing, "
+                       f"{len(summary.wrong_size)} wrong size, {len(summary.wrong_md5)} wrong md5")
 
     # Report problems by category, or remove an old report after a clean run
     report = os.path.join(root, VERIFY_FAILURES_FILE)

@@ -179,3 +179,42 @@ def test_guided_verify_shows_command_with_verify_only(cli_release, capsys, monke
     out = capsys.readouterr().out
     assert f"emu inputs fetch --dir {root} --tools samp --verify-only" in out
     assert server.requests == []
+
+
+# ---- progress reporting during verify (rate/ETA, log, snapshot) ----
+
+def test_verify_writes_snapshot_and_progress_log(good):
+    import json
+
+    root, entries = good
+    verify(entries, root, tick_seconds=0.01, log_interval=0)
+    snap = json.loads((root / ".emu_fetch_progress.json").read_text())
+    assert snap["mode"] == "verify"
+    assert snap["state"] == "finished"
+    assert snap["files_done"] == 5 and snap["files_total"] == 5
+    assert snap["bytes_done"] == sum(e.size for e in entries)
+    log = (root / "fetch_progress.log").read_text().splitlines()
+    assert any("verify started" in l for l in log)
+    assert log[-1].split(" ", 2)[2] == "verify finished: 5 correct, 0 missing, 0 wrong size, 0 wrong md5"
+
+
+def test_verify_counts_checked_bytes_for_the_rate(good, monkeypatch):
+    # The rate during a verify is bytes read for md5s, so each checked
+    # file adds its size to bytes_transferred, problems included
+    import emu.inputs.fetch as fetchmod
+
+    root, entries = good
+    os.remove(root / entries[0].path)
+    seen = {}
+    real = fetchmod.Progress
+
+    class Spy(real):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            seen["p"] = self
+
+    monkeypatch.setattr(fetchmod, "Progress", Spy)
+    verify(entries, root, tick_seconds=0.01)
+    p = seen["p"]
+    assert p.bytes_transferred == sum(e.size for e in entries[1:])
+    assert p.files_done == 4 and p.failed == 1

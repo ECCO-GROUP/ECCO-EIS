@@ -370,6 +370,12 @@ def run_fetch(args):
 
 
 def main(argv=None):
+    # Write each printed line out at once, so a run under nohup shows its
+    # opening lines in the output file straight away, not only at the end
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except (AttributeError, ValueError):
+        pass  # replaced stream (e.g. in tests) that can't be reconfigured
     # Parse args and dispatch to the subcommand
     parser = build_parser(guided=_interactive())
     args = parser.parse_args(argv)

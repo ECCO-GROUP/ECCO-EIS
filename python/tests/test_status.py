@@ -199,3 +199,69 @@ def _dead_pid():
         except PermissionError:
             continue
     pytest.fail("no unused PID")
+
+
+# ---- wording by mode (fetch vs verify) ----
+
+def test_running_verify_is_named_and_shows_still_to_check(entries, tmp_path):
+    (tmp_path / ".emu_fetch.lock").write_text(json.dumps({"pid": os.getpid(), "host": socket.gethostname()}))
+    _write_snapshot(tmp_path, mode="verify", retrying=0)
+    text = format_status(collect_status(entries, tmp_path))
+    assert "Verify running (pid" in text
+    assert "2 MB/s" in text and "ETA 0:03" in text
+    assert "still to check" in text and "still to fetch" not in text
+
+
+def test_finished_verify_is_reported_as_a_verify(entries, tmp_path):
+    _write_snapshot(tmp_path, mode="verify", state="finished", updated="2026-11-19T22:18:52Z")
+    text = format_status(collect_status(entries, tmp_path))
+    assert "Last verify finished at 2026-11-19T22:18:52Z" in text
+    assert "No fetch has run" not in text
+
+
+def test_verify_only_history_without_snapshot_is_not_called_no_fetch(entries, tmp_path):
+    # A directory verified by an older emu (state file, no snapshot) has
+    # still been worked on; status mustn't claim nothing has run
+    FetchState(tmp_path / ".emu_fetch_state").record_verified(entries[0].path, entries[0].size, entries[0].md5)
+    text = format_status(collect_status(entries, tmp_path))
+    assert "No fetch has run" not in text
+    assert "No fetch or verify run recorded" not in text
+
+
+def test_snapshot_without_mode_is_treated_as_fetch(entries, tmp_path):
+    _write_snapshot(tmp_path, state="finished", updated="2026-11-18T03:04:05Z")
+    assert "Last fetch finished" in format_status(collect_status(entries, tmp_path))
+
+
+def test_status_while_a_verify_runs(tmp_path):
+    from emu.inputs.fetch import verify
+
+    root = tmp_path / "in"
+    ents = []
+    for i in range(30):
+        data = os.urandom(200_000)
+        (root / "d").mkdir(parents=True, exist_ok=True)
+        (root / "d" / f"f{i}").write_bytes(data)
+        ents.append(InventoryEntry(f"d/f{i}", len(data), hashlib.md5(data).hexdigest()))
+
+    import emu.inputs.fetch as fetchmod
+    real_check = fetchmod.check_file
+
+    def slow_check(entry, r):
+        time.sleep(0.03)  # slow enough for status to see the run
+        return real_check(entry, r)
+
+    fetchmod.check_file = slow_check
+    try:
+        t = threading.Thread(target=verify, args=(ents, root), kwargs={"jobs": 1, "tick_seconds": 0.02})
+        t.start()
+        seen = []
+        while t.is_alive():
+            if (root / ".emu_fetch_progress.json").exists():
+                seen.append(format_status(collect_status(ents, root)))
+            time.sleep(0.02)
+        t.join()
+    finally:
+        fetchmod.check_file = real_check
+    assert any("Verify running" in s and "MB/s" in s for s in seen)
+    assert "Last verify finished" in format_status(collect_status(ents, root))

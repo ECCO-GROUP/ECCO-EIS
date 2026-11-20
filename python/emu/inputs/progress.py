@@ -38,7 +38,9 @@ class Progress:
     actually received from the network, which is what the rate uses.
     """
 
-    def __init__(self, entries, clock=time.monotonic):
+    def __init__(self, entries, clock=time.monotonic, mode="fetch"):
+        # mode is "fetch" (downloading) or "verify" (re-checking md5s)
+        self.mode = mode
         self._lock = threading.Lock()
         self._clock = clock
         self.started = clock()
@@ -83,6 +85,18 @@ class Progress:
                 self.files_done += 1
                 self._finished_bytes += entry.size
             elif result.status == FAILED:
+                self.failed += 1
+
+    def checked(self, entry, ok, bytes_read):
+        """Record one file checked by a verify: bytes_read were read
+        (counted for the rate) and it was correct or not.
+        """
+        with self._lock:
+            self.bytes_transferred += bytes_read
+            if ok:
+                self.files_done += 1
+                self._finished_bytes += entry.size
+            else:
                 self.failed += 1
 
     # ---- derived values ----
@@ -158,6 +172,7 @@ class Progress:
         """The counters as a dict, for the JSON snapshot file."""
         return {
             "state": state,
+            "mode": self.mode,
             "pid": os.getpid(),
             "host": socket.gethostname(),
             "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -216,6 +231,14 @@ class Reporter:
         self._last_log = None
         self._last_snapshot = None
 
+    def _prefix(self):
+        # Log lines say "verify" for a verify run; fetch lines stay as before
+        return "verify " if self.progress.mode == "verify" else ""
+
+    def start(self):
+        """Log that the run has started."""
+        self._log(f"{self._prefix() or 'fetch '}started: {self.progress.files_total:,} files")
+
     def _draw(self):
         # Draw the live line only when it won't write over a shell prompt
         return self.live and self._foreground()
@@ -244,7 +267,7 @@ class Reporter:
             self.stream.write("\r" + line + "   \n")
             self.stream.flush()
         self._log(line)
-        self._log(f"{state}: {summary}")
+        self._log(f"{self._prefix()}{state}: {summary}")
         self._write_snapshot(state)
 
     def _log(self, text):

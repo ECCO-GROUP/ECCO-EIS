@@ -81,17 +81,21 @@ def format_status(s, description="the selected files"):
         pct = 99
     remaining_files = s.files_total - s.files_done
     remaining_bytes = max(s.bytes_total - s.bytes_done, 0)
+    # The snapshot's mode says whether the run is a download or a verify;
+    # snapshots from before modes existed were always downloads
+    snap = s.snapshot
+    mode = (snap or {}).get("mode", "fetch")
+    still = "still to check" if s.running and mode == "verify" else "still to fetch"
     lines = [
         f"Status of {description}:",
         f"  {s.files_done:,}/{s.files_total:,} files ({pct}%) in place, "
         f"{s.bytes_done / GB:,.1f}/{s.bytes_total / GB:,.1f} GB",
-        f"  {remaining_files:,} files ({remaining_bytes / GB:,.1f} GB) still to fetch",
+        f"  {remaining_files:,} files ({remaining_bytes / GB:,.1f} GB) {still}",
     ]
 
     # Current or last run
-    snap = s.snapshot
     if s.running:
-        parts = [f"Fetch running (pid {s.lock.get('pid')} on {s.lock.get('host')})"]
+        parts = [f"{mode.capitalize()} running (pid {s.lock.get('pid')} on {s.lock.get('host')})"]
         if snap:
             parts.append(f"{snap.get('rate_bytes_per_s', 0) / MB:.0f} MB/s")
             eta = snap.get("eta_seconds")
@@ -103,7 +107,10 @@ def format_status(s, description="the selected files"):
     elif s.lock_note:
         lines.append("  " + s.lock_note)
     elif snap:
-        lines.append(f"  Last fetch {snap.get('state', 'ended')} at {snap.get('updated')}.")
+        lines.append(f"  Last {mode} {snap.get('state', 'ended')} at {snap.get('updated')}.")
+    elif s.files_done:
+        # Verified files but no snapshot: worked on by an earlier version
+        lines.append("  No progress record from the last run (it predates them).")
     else:
         lines.append("  No fetch has run in this directory yet.")
     if not s.running and s.files_done < s.files_total:
