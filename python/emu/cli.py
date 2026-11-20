@@ -60,6 +60,15 @@ def _interactive():
     return sys.stdin.isatty() and sys.stdout.isatty()
 
 
+def _can_prompt():
+    """Whether a credential prompt can be answered (stdin is a terminal)."""
+    return sys.stdin.isatty()
+
+
+class CredentialsError(Exception):
+    """Credentials are missing and can't be asked for."""
+
+
 def build_parser(guided=False):
     # Top level: `emu inputs fetch|status`. With guided=True (a terminal),
     # --dir and --tools/--all may be left out and are asked for instead.
@@ -119,10 +128,23 @@ def get_credentials(args):
     """
     user = args.user or os.environ.get(ENV_USER)
     password = args.password or os.environ.get(ENV_PASSWORD)
-    if not user:
-        user = input("Earthdata username: ").strip()
-    if not password:
-        password = input("ECCO Drive WebDAV password (not your Earthdata password): ").strip()
+    # With no terminal (nohup, batch job, stdin from a file) nobody can
+    # answer a prompt, so say what to set instead of waiting or crashing
+    if (not user or not password) and not _can_prompt():
+        needed = []
+        if not user:
+            needed.append(f"the Earthdata username (--user or ${ENV_USER})")
+        if not password:
+            needed.append(f"the ECCO Drive WebDAV password (--password or ${ENV_PASSWORD})")
+        raise CredentialsError(
+            "No terminal to prompt for credentials; please give " + " and ".join(needed) + ".")
+    try:
+        if not user:
+            user = input("Earthdata username: ").strip()
+        if not password:
+            password = input("ECCO Drive WebDAV password (not your Earthdata password): ").strip()
+    except EOFError:
+        raise CredentialsError("No credentials entered (end of input).")
     return user, password
 
 
@@ -273,7 +295,8 @@ def run_verify(args, selected, guided):
         return EXIT_USAGE
 
     print(f"{summary.ok:,} correct, {len(summary.missing):,} missing, "
-          f"{len(summary.wrong_size):,} wrong size, {len(summary.wrong_md5):,} wrong md5")
+          f"{len(summary.wrong_size):,} wrong size, {len(summary.wrong_md5):,} wrong md5"
+          + (f", {len(summary.errors):,} could not be checked" if summary.errors else ""))
     if summary.problems:
         print(f"Problems (also in {os.path.join(root, VERIFY_FAILURES_FILE)}):")
         for label, items in [("missing", summary.missing), ("wrong size", summary.wrong_size),
@@ -282,6 +305,8 @@ def run_verify(args, selected, guided):
                 print(f"  {label}: {e.path}")
             if len(items) > 20:
                 print(f"  ... and {len(items) - 20} more {label}")
+        for e, message in sorted(summary.errors, key=lambda r: r[0].path):
+            print(f"  could not check: {e.path}: {message}")
         print("Run `emu inputs fetch` without --verify-only to download or repair them.")
     if summary.interrupted:
         print("Interrupted; run the same command again to finish checking.")
@@ -328,7 +353,11 @@ def run_fetch(args):
     if args.verify_only:
         return run_verify(args, selected, guided)
 
-    auth = get_credentials(args)
+    try:
+        auth = get_credentials(args)
+    except CredentialsError as error:
+        print(f"\nemu: {error}", file=sys.stderr)
+        return EXIT_USAGE
 
     if guided:
         print(f"\nThis is the same as running:\n  {built_command(args)}\n"

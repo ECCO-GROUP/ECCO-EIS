@@ -131,6 +131,7 @@ def test_credentials_from_env_when_no_options(monkeypatch):
 
 
 def test_credentials_prompted_when_missing(monkeypatch):
+    monkeypatch.setattr(cli, "_can_prompt", lambda: True)  # as at a terminal
     # Both are read with input(), so the WebDAV password is shown as it
     # is typed and the user can check it (user decision, 2026-11-18)
     monkeypatch.delenv("EMU_EARTHDATA_USER", raising=False)
@@ -144,6 +145,7 @@ def test_credentials_prompted_when_missing(monkeypatch):
 
 
 def test_only_missing_parts_are_prompted(monkeypatch):
+    monkeypatch.setattr(cli, "_can_prompt", lambda: True)  # as at a terminal
     monkeypatch.setenv("EMU_EARTHDATA_USER", "envuser")
     monkeypatch.delenv("EMU_WEBDAV_PASSWORD", raising=False)
     prompts = []
@@ -154,6 +156,7 @@ def test_only_missing_parts_are_prompted(monkeypatch):
 
 
 def test_prompted_answers_are_stripped(monkeypatch):
+    monkeypatch.setattr(cli, "_can_prompt", lambda: True)  # as at a terminal
     # A stray space from copy-pasting would otherwise be sent as part of
     # the password and make ECCO Drive reject it
     monkeypatch.delenv("EMU_EARTHDATA_USER", raising=False)
@@ -244,3 +247,60 @@ def test_status_after_a_fetch(remote, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "3/3 files (100%) in place" in out and "Last fetch finished" in out
     assert remote.requests == []  # status never contacts the server
+
+
+# ---- no terminal to prompt on (review gap 2) ----
+
+def test_missing_credentials_without_a_terminal_exit_2(remote, tmp_path, monkeypatch, capsys):
+    # Under nohup or a batch job there is nobody to answer a prompt; the
+    # run must stop with a clear message, not a traceback from input()
+    monkeypatch.setattr(cli, "_can_prompt", lambda: False)
+    monkeypatch.setattr("builtins.input", lambda p="": pytest.fail("must not prompt"))
+    code = cli.main(["inputs", "fetch", "--dir", str(tmp_path / "in"), "--all"])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "--user" in err and "EMU_EARTHDATA_USER" in err and "EMU_WEBDAV_PASSWORD" in err
+    assert remote.requests == []
+
+
+def test_only_the_missing_part_is_named_without_a_terminal(remote, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(cli, "_can_prompt", lambda: False)
+    monkeypatch.setenv("EMU_EARTHDATA_USER", remote.username)
+    code = cli.main(["inputs", "fetch", "--dir", str(tmp_path / "in"), "--all"])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "EMU_WEBDAV_PASSWORD" in err and "EMU_EARTHDATA_USER" not in err
+
+
+def test_end_of_input_at_a_prompt_exits_2(remote, tmp_path, monkeypatch, capsys):
+    # Even when a prompt is attempted, end of input (Ctrl-D) is a clean exit 2
+    monkeypatch.setattr(cli, "_can_prompt", lambda: True)
+
+    def eof(prompt=""):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", eof)
+    code = cli.main(["inputs", "fetch", "--dir", str(tmp_path / "in"), "--all"])
+    assert code == 2
+    assert "credentials" in capsys.readouterr().err.lower()
+
+
+def test_credentials_given_need_no_terminal(remote, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "_can_prompt", lambda: False)
+    assert cli.main(["inputs", "fetch", "--dir", str(tmp_path / "in"), "--all"] + _creds(remote)) == 0
+
+
+def test_real_run_with_stdin_from_dev_null_exits_2(tmp_path):
+    # End to end in a subprocess, as under nohup: no terminal, no credentials
+    import subprocess
+    import sys
+
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("EMU_EARTHDATA_USER", "EMU_WEBDAV_PASSWORD")}
+    proc = subprocess.run(
+        [sys.executable, "-c", "import sys; from emu import cli; sys.exit(cli.main())",
+         "inputs", "fetch", "--dir", str(tmp_path / "in"), "--tools", "samp"],
+        stdin=subprocess.DEVNULL, capture_output=True, text=True, env=env, cwd=str(tmp_path))
+    assert proc.returncode == 2, proc.stderr
+    assert "Traceback" not in proc.stderr
+    assert "EMU_EARTHDATA_USER" in proc.stderr

@@ -218,3 +218,22 @@ def test_verify_counts_checked_bytes_for_the_rate(good, monkeypatch):
     p = seen["p"]
     assert p.bytes_transferred == sum(e.size for e in entries[1:])
     assert p.files_done == 4 and p.failed == 1
+
+
+def test_unexpected_error_during_verify_is_reported(good, monkeypatch):
+    import emu.inputs.fetch as fetchmod
+
+    root, entries = good
+    real = fetchmod.check_file
+
+    def flaky(entry, r):
+        if entry.path == entries[2].path:
+            raise OSError(5, "Input/output error")
+        return real(entry, r)
+
+    monkeypatch.setattr(fetchmod, "check_file", flaky)
+    summary = verify(entries, root, jobs=2)
+    assert summary.exit_code == EXIT_FAILURES
+    assert summary.ok == 4
+    assert [(e.path, msg) for e, msg in summary.errors] == [(entries[2].path, "[Errno 5] Input/output error")]
+    assert f"error\t{entries[2].path}" in (root / "verify_failures.txt").read_text()

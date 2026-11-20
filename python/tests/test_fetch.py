@@ -275,3 +275,29 @@ def test_lock_prevents_a_second_concurrent_fetch(setup):
     with pytest.raises(LockHeldError):
         setup.run()
     assert setup.server.requests == []
+
+
+# ---- unexpected errors in a worker (review gap 1) ----
+
+@pytest.mark.parametrize("jobs", [1, 3])
+def test_unexpected_error_in_one_file_is_reported_as_a_failure(setup, monkeypatch, jobs):
+    # An error transfer_file doesn't expect (e.g. permission denied or a
+    # full disk) must count as that file's failure, not silently stop its
+    # worker and let the run report success
+    import emu.inputs.fetch as fetchmod
+
+    bad = setup.entries[4].path
+    real = fetchmod.transfer_file
+
+    def flaky(entry, *args, **kwargs):
+        if entry.path == bad:
+            raise PermissionError(13, "Permission denied", entry.path)
+        return real(entry, *args, **kwargs)
+
+    monkeypatch.setattr(fetchmod, "transfer_file", flaky)
+    summary = setup.run(jobs=jobs)
+    assert summary.exit_code == EXIT_FAILURES
+    assert [f.path for f in summary.failed] == [bad]
+    assert "Permission denied" in summary.failed[0].error
+    assert summary.downloaded == N_FILES - 1  # the worker went on to the other files
+    assert bad in (setup.root / "fetch_failures.txt").read_text()

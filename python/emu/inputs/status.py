@@ -15,7 +15,7 @@ import json
 import os
 import socket
 
-from emu.inputs.fetch import FAILURES_FILE, LOCK_FILE, STATE_FILE
+from emu.inputs.fetch import FAILURES_FILE, LOCK_FILE, STATE_FILE, VERIFY_FAILURES_FILE
 from emu.inputs.progress import SNAPSHOT_FILE, format_hm
 from emu.inputs.state import FetchState, _pid_is_alive
 
@@ -36,6 +36,9 @@ class Status:
         self.running = None    # "running" if a fetch is running now, else None
         self.lock_note = None  # explanation when a lock is present but not live
         self.snapshot = None   # progress snapshot contents, if present
+        self.verify_problems = []  # (category, path) from verify_failures.txt
+        self.parts = []        # (path, size) of selected files with a .part left
+        self.other_parts = 0   # .part files for files outside the selection
 
 
 def collect_status(entries, root):
@@ -53,6 +56,9 @@ def collect_status(entries, root):
             s.bytes_done += e.size
 
     s.failures = _read_failures(os.path.join(root, FAILURES_FILE))
+    s.verify_problems = [(row[0], row[1]) for row in
+                         _read_failures(os.path.join(root, VERIFY_FAILURES_FILE))]
+    s.parts, s.other_parts = _find_parts(root, {e.path for e in entries})
     s.snapshot = _read_json(os.path.join(root, SNAPSHOT_FILE))
     s.lock = _read_json(os.path.join(root, LOCK_FILE))
 
@@ -118,6 +124,29 @@ def format_status(s, description="the selected files"):
         lines.append("  (Files already on disk but never fetched or verified by emu count "
                      "as still to fetch; `emu inputs fetch` checks them and skips good ones.)")
 
+    # Partly downloaded files a stopped run left behind (not while a
+    # fetch is running, when they are simply in progress)
+    if not s.running and s.parts:
+        n = len(s.parts)
+        size = sum(size for _, size in s.parts)
+        lines.append(f"  {n:,} partly downloaded file{'s' if n != 1 else ''} "
+                     f"(.part, {size / GB:,.1f} GB): rerun the fetch to finish them.")
+    if not s.running and s.other_parts:
+        n = s.other_parts
+        lines.append(f"  {n:,} .part file{' is' if n == 1 else 's are'} for a file "
+                     "outside this selection (e.g. another tool's): rerun that "
+                     "fetch, or delete them.")
+
+    # Problems found by the last verify
+    if s.verify_problems:
+        n = len(s.verify_problems)
+        lines.append(f"  {n} problem{'s' if n != 1 else ''} found by the last verify "
+                     f"(see {VERIFY_FAILURES_FILE}):")
+        for category, path in s.verify_problems[:20]:
+            lines.append(f"    {category}: {path}")
+        if n > 20:
+            lines.append(f"    ... and {n - 20} more")
+
     # Last run's failures
     if s.failures:
         n = len(s.failures)
@@ -127,6 +156,37 @@ def format_status(s, description="the selected files"):
         if n > 20:
             lines.append(f"    ... and {n - 20} more (see {FAILURES_FILE})")
     return "\n".join(lines)
+
+
+def _find_parts(root, selected_paths):
+    """Find *.part files under root: return ([(path, size)] for selected
+    files, count of .part files for other files). Paths are relative.
+
+    Uses os.scandir without following symlinks: a linked input tree has
+    one symlink per file, and following each over NFS (as os.walk does
+    to tell directories from files) took minutes instead of a second.
+    """
+    parts, others = [], 0
+    stack = [root]
+    while stack:
+        directory = stack.pop()
+        try:
+            with os.scandir(directory) as it:
+                for item in it:
+                    if item.is_dir(follow_symlinks=False):
+                        stack.append(item.path)
+                    elif item.name.endswith(".part") and not item.is_symlink():
+                        rel = os.path.relpath(item.path, root)[:-len(".part")]
+                        if rel in selected_paths:
+                            try:
+                                parts.append((rel, item.stat(follow_symlinks=False).st_size))
+                            except OSError:
+                                continue  # removed while we looked
+                        else:
+                            others += 1
+        except OSError:
+            continue  # unreadable or removed directory
+    return sorted(parts), others
 
 
 def _read_json(path):

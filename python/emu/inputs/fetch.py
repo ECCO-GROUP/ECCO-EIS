@@ -34,6 +34,7 @@ from emu.inputs.transfer import (
     INTERRUPTED,
     SKIPPED,
     VERIFIED_EXISTING,
+    TransferResult,
     md5_file,
     transfer_file,
 )
@@ -112,11 +113,17 @@ def fetch(entries, url_for, root, auth, jobs=8, tries=5, timeout=60,
                     entry = work.get_nowait()
                 except queue.Empty:
                     return
-                result = transfer_file(
-                    entry, url_for(entry.path), root, state, verified, auth,
-                    tries=tries, timeout=timeout, sleep=sleep, opener=opener,
-                    stop=stop, progress=progress,
-                )
+                try:
+                    result = transfer_file(
+                        entry, url_for(entry.path), root, state, verified, auth,
+                        tries=tries, timeout=timeout, sleep=sleep, opener=opener,
+                        stop=stop, progress=progress,
+                    )
+                except Exception as error:
+                    # Anything transfer_file doesn't handle itself (permission
+                    # denied, disk full, ...) fails this file, not the worker
+                    result = TransferResult(entry.path, FAILED, 0,
+                                            f"unexpected error: {error}")
                 with summary_lock:
                     _count(summary, result)
                 progress.finish(result, entry)
@@ -258,6 +265,7 @@ VERIFY_FAILURES_FILE = "verify_failures.txt"
 
 # verify() outcomes per file
 OK, MISSING, WRONG_SIZE, WRONG_MD5 = "ok", "missing", "wrong size", "wrong md5"
+ERROR = "error"  # the check itself failed (e.g. an I/O error reading the file)
 
 
 class VerifySummary:
@@ -268,11 +276,13 @@ class VerifySummary:
         self.missing = []
         self.wrong_size = []
         self.wrong_md5 = []
+        self.errors = []  # (entry, message) for checks that raised
         self.interrupted = False
 
     @property
     def problems(self):
-        return len(self.missing) + len(self.wrong_size) + len(self.wrong_md5)
+        return (len(self.missing) + len(self.wrong_size) + len(self.wrong_md5)
+                + len(self.errors))
 
     @property
     def exit_code(self):
@@ -329,7 +339,17 @@ def verify(entries, root, jobs=4, stop=None, on_result=None, progress_stream=Non
                     entry = work.get_nowait()
                 except queue.Empty:
                     return
-                outcome = check_file(entry, root)
+                try:
+                    outcome = check_file(entry, root)
+                except Exception as error:
+                    # e.g. an I/O error reading the file: report it, keep going
+                    state.forget(entry.path)
+                    progress.checked(entry, False, 0)
+                    with summary_lock:
+                        summary.errors.append((entry, str(error)))
+                    if on_result is not None:
+                        on_result(entry.path, ERROR)
+                    continue
                 # A file checked for md5 was read in full; others weren't
                 read = entry.size if outcome in (OK, WRONG_MD5) else 0
                 progress.checked(entry, outcome == OK, read)
@@ -381,7 +401,8 @@ def verify(entries, root, jobs=4, stop=None, on_result=None, progress_stream=Non
     report = os.path.join(root, VERIFY_FAILURES_FILE)
     rows = [(MISSING, e) for e in summary.missing] + \
            [(WRONG_SIZE, e) for e in summary.wrong_size] + \
-           [(WRONG_MD5, e) for e in summary.wrong_md5]
+           [(WRONG_MD5, e) for e in summary.wrong_md5] + \
+           [(ERROR, e) for e, _ in summary.errors]
     if rows:
         with open(report, "w") as f:
             for category, e in sorted(rows, key=lambda r: (r[0], r[1].path)):

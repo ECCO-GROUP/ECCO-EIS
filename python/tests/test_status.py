@@ -265,3 +265,62 @@ def test_status_while_a_verify_runs(tmp_path):
         fetchmod.check_file = real_check
     assert any("Verify running" in s and "MB/s" in s for s in seen)
     assert "Last verify finished" in format_status(collect_status(ents, root))
+
+
+# ---- verify failures and leftover .part files ----
+
+def test_last_verify_failures_are_shown(entries, tmp_path):
+    (tmp_path / "verify_failures.txt").write_text(
+        "missing\td/f0.data\nwrong md5\td/f3.data\n")
+    _write_snapshot(tmp_path, mode="verify", state="finished")
+    text = format_status(collect_status(entries, tmp_path))
+    assert "2 problems found by the last verify" in text
+    assert "missing: d/f0.data" in text and "wrong md5: d/f3.data" in text
+
+
+def test_leftover_part_files_are_reported(entries, tmp_path):
+    (tmp_path / "d").mkdir()
+    (tmp_path / "d" / "f1.data.part").write_bytes(b"x" * 1500)
+    (tmp_path / "d" / "f2.data.part").write_bytes(b"x" * 500)
+    s = collect_status(entries, tmp_path)
+    assert s.parts == [("d/f1.data", 1500), ("d/f2.data", 500)]
+    text = format_status(s)
+    assert "2 partly downloaded files (.part, 0.0 GB)" in text
+    assert "rerun the fetch" in text
+
+
+def test_part_for_a_file_outside_the_selection_is_named_as_such(entries, tmp_path):
+    # A .part from another selection (e.g. trc, when samp is shown) isn't
+    # finished by rerunning this selection's fetch; say so
+    other = tmp_path / "forcing" / "x.data.part"
+    other.parent.mkdir(parents=True)
+    other.write_bytes(b"y" * 10)
+    text = format_status(collect_status(entries, tmp_path))
+    assert "1 .part file is for a file outside this selection" in text
+
+
+def test_part_files_while_running_are_not_called_leftovers(entries, tmp_path):
+    (tmp_path / ".emu_fetch.lock").write_text(json.dumps({"pid": os.getpid(), "host": socket.gethostname()}))
+    _write_snapshot(tmp_path)
+    (tmp_path / "d").mkdir()
+    (tmp_path / "d" / "f1.data.part").write_bytes(b"x" * 10)
+    text = format_status(collect_status(entries, tmp_path))
+    assert "partly downloaded" not in text  # in progress, not left over
+
+
+def test_no_part_files_no_mention(entries, tmp_path):
+    assert ".part" not in format_status(collect_status(entries, tmp_path))
+
+
+def test_part_scan_does_not_follow_or_count_symlinks(entries, tmp_path):
+    # Linked input trees are full of symlinks; the scan must not follow
+    # them (slow over NFS), and a symlink isn't a leftover download
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "f1.data.part").write_bytes(b"x")
+    root = tmp_path / "in"
+    (root / "d").mkdir(parents=True)
+    os.symlink(outside, root / "linked_dir")                 # not followed
+    os.symlink(outside / "f1.data.part", root / "d" / "f1.data.part")  # not counted
+    s = collect_status(entries, root)
+    assert s.parts == [] and s.other_parts == 0
