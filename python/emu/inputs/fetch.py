@@ -20,8 +20,11 @@ the live progress line (on a terminal), fetch_progress.log and the
 
 import os
 import queue
+import shutil
+import subprocess
 import sys
 import threading
+import time
 
 from emu.inputs.progress import Progress, Reporter
 from emu.inputs.state import FetchLock, FetchState
@@ -156,6 +159,99 @@ def fetch(entries, url_for, root, auth, jobs=8, tries=5, timeout=60,
 
     _write_failures(root, summary)
     return summary
+
+
+POSTPROCESS_LOG = "postprocess.log"
+
+# postprocess() outcomes
+POSTPROCESS_NOT_NEEDED = "not needed"     # no rule, or its tool isn't selected
+POSTPROCESS_EXISTS = "already done"       # the directory it creates exists
+POSTPROCESS_INCOMPLETE = "inputs incomplete"
+POSTPROCESS_DONE = "done"
+POSTPROCESS_FAILED = "failed"
+
+
+class PostprocessResult:
+    """Outcome of postprocess(): one of the POSTPROCESS_* statuses."""
+
+    def __init__(self, status, message=""):
+        self.status = status
+        self.message = message
+
+
+def postprocess(release, entries, root, tools=None, select_all=False):
+    """Run the release's post-fetch step if it is needed and possible.
+
+    For v4r4-llc90-flux this is 1.2a's emu_input_install.sh step for the
+    Tracer Tool: once state_weekly and scripts are in place, symlink
+    scripts/* into forcing/other/flux-forced and run reverseintime_all.sh
+    there, which builds state_weekly_rev_time_227808 (links to the
+    weekly files in reverse time order, for the adjoint tracer).
+
+    It runs only if the rule's tool is selected (or select_all), the
+    directory it creates doesn't exist yet, and every selected file under
+    its `requires` paths is recorded as verified. Output goes to
+    <root>/postprocess.log. If the script fails, whatever it created is
+    moved to <creates>.incomplete so a rerun tries again.
+    """
+    rule = release.postprocess
+    if not rule or not (select_all or rule["tool"] in (tools or [])):
+        return PostprocessResult(POSTPROCESS_NOT_NEEDED)
+    # Absolute, so the links made below still resolve from the workdir
+    root = os.path.abspath(root)
+
+    creates = os.path.join(root, rule["creates"])
+    if os.path.lexists(creates):
+        return PostprocessResult(POSTPROCESS_EXISTS, f"{rule['creates']} already exists")
+
+    # Every required input must be verified (a failed or partial fetch
+    # leaves some unverified, and the script would build a broken tree)
+    verified = FetchState(os.path.join(root, STATE_FILE)).load_verified()
+    needed = [e for e in entries
+              if any(e.path == p or e.path.startswith(p + "/") for p in rule["requires"])]
+    missing = [e.path for e in needed
+               if verified.get(e.path, {}).get("md5") != e.md5]
+    if missing or not needed:
+        return PostprocessResult(
+            POSTPROCESS_INCOMPLETE,
+            f"{len(missing)} required file(s) not yet in place, e.g. {missing[0]}" if missing
+            else "no required files selected")
+
+    script = os.path.join(root, rule["scripts_dir"], rule["script"])
+    if not os.path.isfile(script):
+        return PostprocessResult(POSTPROCESS_FAILED, f"{script} not found")
+
+    # As 1.2a: link each scripts/* file into the work directory, then run
+    # the script there with bash (ln -sf: replace any existing link)
+    workdir = os.path.join(root, rule["workdir"])
+    scripts_dir = os.path.join(root, rule["scripts_dir"])
+    for name in sorted(os.listdir(scripts_dir)):
+        link = os.path.join(workdir, name)
+        if os.path.islink(link):
+            os.remove(link)
+        if not os.path.exists(link):
+            os.symlink(os.path.join(scripts_dir, name), link)
+
+    log_path = os.path.join(root, POSTPROCESS_LOG)
+    with open(log_path, "a") as log:
+        log.write(f"--- {time.strftime('%Y-%m-%d %H:%M:%S')} running {rule['script']} "
+                  f"in {workdir}\n")
+        log.flush()
+        proc = subprocess.run(["bash", rule["script"]], cwd=workdir,
+                              stdout=log, stderr=subprocess.PIPE, text=True)
+        log.write(proc.stderr)
+        log.write(f"--- exit status {proc.returncode}\n")
+
+    if proc.returncode != 0:
+        if os.path.lexists(creates):
+            aside = creates + ".incomplete"
+            if os.path.lexists(aside):
+                shutil.rmtree(aside)  # an earlier failed attempt's leftovers
+            os.replace(creates, aside)
+        last = proc.stderr.strip().splitlines()[-1] if proc.stderr.strip() else ""
+        return PostprocessResult(
+            POSTPROCESS_FAILED, f"{rule['script']} exited {proc.returncode}: {last}")
+    return PostprocessResult(POSTPROCESS_DONE, f"built {rule['creates']}")
 
 
 VERIFY_FAILURES_FILE = "verify_failures.txt"

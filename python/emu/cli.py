@@ -17,7 +17,8 @@ import urllib.request
 from pathlib import Path
 
 from emu import __version__
-from emu.inputs.fetch import (EXIT_FAILURES, EXIT_OK, FAILURES_FILE, VERIFY_FAILURES_FILE,
+from emu.inputs.fetch import (EXIT_FAILURES, EXIT_OK, FAILURES_FILE, POSTPROCESS_FAILED,
+                              POSTPROCESS_LOG, VERIFY_FAILURES_FILE, postprocess,
                               fetch, verify)
 from emu.inputs.manifest import UnknownToolError, parse_inventory, select_entries, to_url
 from emu.inputs.state import LockHeldError
@@ -366,7 +367,25 @@ def run_fetch(args):
               "Run the same command again to continue.")
     if summary.exit_code == EXIT_OK:
         print("All files in place.")
-    return summary.exit_code
+
+    # The release's post-fetch step (V4r4: build state_weekly_rev_time_227808
+    # for the Tracer Tool), only after a clean fetch and unless switched off
+    exit_code = summary.exit_code
+    rule = release.postprocess
+    wanted = rule and (args.all or rule["tool"] in (args.tools or []))
+    if wanted and args.no_postprocess:
+        print(f"Skipping {rule['script']} (--no-postprocess).")
+    elif wanted and exit_code == EXIT_OK:
+        print(f"Running {rule['script']} to build {rule['creates']} ...")
+        result = postprocess(release, selected, root, tools=args.tools, select_all=args.all)
+        log = os.path.join(root, POSTPROCESS_LOG)
+        if result.status == POSTPROCESS_FAILED:
+            print(f"emu: post-processing failed: {result.message} (see {log})")
+            exit_code = EXIT_FAILURES
+        else:
+            print(f"Post-processing: {result.status}"
+                  + (f" ({result.message})" if result.message else ""))
+    return exit_code
 
 
 def main(argv=None):

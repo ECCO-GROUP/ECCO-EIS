@@ -18,8 +18,11 @@ class ReleaseNotFoundError(Exception):
 class Release:
     """One release's definition, read from its release.json."""
 
-    def __init__(self, name, base_url, path_map, always_group, tool_groups, inventory_path):
+    def __init__(self, name, base_url, path_map, always_group, tool_groups, inventory_path,
+                 postprocess=None):
         self.name = name
+        # Optional step run after a fetch (see fetch.postprocess), or None
+        self.postprocess = postprocess
         self.base_url = base_url
         self.path_map = path_map
         self.always_group = always_group
@@ -62,4 +65,5 @@ def load_release(name):
         always_group=data["always_group"],
         tool_groups=data["tool_groups"],
         inventory_path=data["inventory_path"],
+        postprocess=data.get("postprocess"),
     )

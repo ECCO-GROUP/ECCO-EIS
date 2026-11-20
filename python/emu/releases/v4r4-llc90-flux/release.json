@@ -49,5 +49,15 @@
       "emu_msim/mean_sIceLoadPatmPload_nopabar",
       "emu_msim/mean_TFLUX_oceQsw"
     ]
+  },
+
+  "postprocess": {
+    "description": "Build the time-reversed weekly state for the adjoint tracer, as 1.2a's emu_input_install.sh does",
+    "tool": "trc",
+    "requires": ["forcing/other/flux-forced/state_weekly", "scripts"],
+    "scripts_dir": "scripts",
+    "workdir": "forcing/other/flux-forced",
+    "script": "reverseintime_all.sh",
+    "creates": "forcing/other/flux-forced/state_weekly_rev_time_227808"
   }
 }
