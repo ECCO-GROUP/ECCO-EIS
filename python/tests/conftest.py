@@ -9,12 +9,25 @@ tests use it so they never touch the real ecco.jpl.nasa.gov server.
 
 import base64
 import http.server
+import os
 import socketserver
+import sys
 import threading
 import time
 from urllib.parse import quote, unquote, urlsplit
 
 import pytest
+
+# `python -m pytest` run from the ECCO-EIS root puts that directory on
+# sys.path, where EMU's own emu/ folder (Fortran and scripts) would be
+# imported instead of the emu Python package. Drop it before any test
+# imports emu. (The venv's pytest script, used by emu_test, doesn't add
+# it in the first place.)
+_REPO_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path[:] = [p for p in sys.path if os.path.realpath(p or os.getcwd()) != _REPO_ROOT]
+for _name in [n for n in sys.modules if n == "emu" or n.startswith("emu.")]:
+    if getattr(sys.modules[_name], "__file__", None) is None:
+        del sys.modules[_name]  # the wrong emu, imported as a namespace package
 
 
 class RequestRecord:
